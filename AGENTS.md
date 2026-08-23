@@ -142,15 +142,20 @@ import the other module's service function, not reimplement it.
 - **Design direction:** white-forward, clean UI (Bolt/Uber-inspired). No dark/moody
   default aesthetics. No illustrated/placeholder maps — always real Google Maps
   embeds.
-- **Color system:** three semantic colors only — blue `#2F6FED` (actions), jade
-  `#12B87A` (online/earnings-in), coral `#F0473F` (decline/earnings-out). Amber is
-  reserved for star ratings only, not general use.
-- **All raw hex values live in one palette/theme file.** Components reference
-  semantic tokens (`colors.action`, `colors.positive`, etc.), never hardcoded hex
-  values inline. This is what makes the whole app re-themeable by editing one file.
-  Enforce this even under time pressure — don't hardcode "just this once."
-- **Light/dark mode** via CSS custom property token swapping on a `[data-theme]`
-  attribute — not two parallel hardcoded style sheets.
+- **Color system (from the approved design mockup):** primary blue `#1D4ED8`
+  (actions), success green `#16A34A` (online / earnings-in), danger red `#DC2626`
+  (decline / earnings-out), plus a secondary slate `#64748B`. Amber `#F59E0B` is
+  used for **star ratings and warnings**. These raw values live only in the
+  `palette` in `mobile/src/constants/colors.ts`; components reference semantic
+  tokens (`colors.primary`, `colors.success`, `colors.danger`, …) via the
+  `useTheme()` hook — never hardcoded hex inline. This is what makes the whole app
+  re-themeable by editing one file. Enforce this even under time pressure.
+  _(This palette was chosen over an earlier draft — it is now canonical.)_
+- **Light/dark mode** by swapping the active semantic-token set (`lightColors` /
+  `darkColors` in `colors.ts`) through the `useTheme()` hook, which follows the OS
+  scheme via `useColorScheme` — not two parallel hardcoded stylesheets. (This is
+  React Native, so there is no CSS `[data-theme]` attribute; the token swap is done
+  in JS. Full design system: `docs/design/design-system.md`.)
 - **Driver wallet screen colors carry financial meaning** (success/warning/danger).
   If reskinning this screen, preserve the semantic mapping — don't let a palette swap
   accidentally turn "danger" red into a decorative color choice.

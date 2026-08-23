@@ -1,17 +1,17 @@
-import { Text, View, StyleSheet } from "react-native";
+/**
+ * Entry route ("/") — the landing gate.
+ *
+ * By the time this renders, the root layout has already waited for the persisted
+ * session to load (see _layout.tsx), so we can immediately point the user at the
+ * right place: their home if signed in, otherwise the welcome screen. Keeping this
+ * decision in one tiny place means every other screen can assume it's on the right
+ * side of the auth boundary.
+ */
+import { Redirect } from 'expo-router';
+
+import { useIsSignedIn } from '@/store/authStore';
 
 export default function Index() {
-  return (
-    <View style={styles.container}>
-      <Text>Edit src/app/index.tsx to edit this screen.</Text>
-    </View>
-  );
+  const isSignedIn = useIsSignedIn();
+  return <Redirect href={isSignedIn ? '/home' : '/welcome'} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
