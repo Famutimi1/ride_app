@@ -21,11 +21,13 @@
 export type UserRole = 'rider' | 'driver' | 'both';
 
 /** A fully-onboarded user. `name`/`role` are always set — a half-finished signup
- *  lives in the store's transient `pending` slice, never as an AuthUser. */
+ *  lives in the store's transient `pending` slice, never as an AuthUser.
+ *  `email` is optional: the onboarding collects it, but phone is the real identity. */
 export interface AuthUser {
   id: string;
   phone: string;
   name: string;
+  email?: string;
   role: UserRole;
 }
 
@@ -82,20 +84,25 @@ export async function verifyOtp(phone: string, code: string): Promise<VerifyOtpR
 }
 
 /**
- * Save the new user's name + role after OTP.
+ * Save the new user's profile after OTP.
  * MOCK: echoes back a constructed user record.
- * REAL: `await api.patch('/auth/profile', { name, role })` (authenticated with the
- *       token from verifyOtp).
+ * REAL: `await api.patch('/auth/profile', { name, email, role })` (authenticated
+ *       with the token from verifyOtp).
+ *
+ * `role` defaults to 'rider' at the store level — the mockup's onboarding doesn't
+ * ask for a role up front, so new users start as riders and can switch later.
  */
 export async function completeProfile(input: {
   phone: string;
   name: string;
+  email?: string;
   role: UserRole;
 }): Promise<AuthUser> {
   return fakeNetwork<AuthUser>({
     id: `usr_${Date.now()}`,
     phone: input.phone,
     name: input.name,
+    email: input.email,
     role: input.role,
   });
 }

@@ -1,125 +1,142 @@
 /**
- * ProfileSetupScreen — the final signup step for new users (route: "/profile").
+ * ProfileSetupScreen — collects the new user's name, email and (decorative) photo
+ * (route: "/profile"). Screen 4 in the mockup.
  *
- * By the time we're here the phone is verified (we hold a token in `pending`).
- * Collecting a name + role and calling completeProfile() is what actually creates
- * the session, which flips the router over to the signed-in area.
+ * By the time we're here the phone is verified (we hold a token in `pending`), but
+ * signup ISN'T finished yet — this screen just gathers details and hands them to the
+ * Notifications screen, which is where "Done" actually creates the session. That's
+ * why we push() forward with the name/email as route params instead of writing them
+ * to the store now: they're transient until the final step commits them.
  *
- * Role matters because this is ONE app for riders and drivers (AGENTS.md): the
- * choice here seeds `users.role`, and it can be changed later from the profile.
+ * The "Stats" rows (wallet balance, ride credit, card) are STATIC placeholders that
+ * mirror the mockup — no wallet/ledger data is read or written here.
  */
 import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Input, Text } from '@/components/common';
+import { Avatar, BackButton, Button, Input, ListRow, Text } from '@/components/common';
 import { useTheme } from '@/constants/theme';
-import { type UserRole } from '@/services/authService';
 import { useAuthStore } from '@/store/authStore';
-
-import { AuthScreenLayout } from './AuthScreenLayout';
-
-const ROLES: { value: UserRole; title: string; description: string }[] = [
-  { value: 'rider', title: 'Rider', description: 'Book rides to get around town.' },
-  { value: 'driver', title: 'Driver', description: 'Drive and earn on your schedule.' },
-  { value: 'both', title: 'Both', description: 'Ride and drive from one account.' },
-];
 
 export function ProfileSetupScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const hasPending = useAuthStore((s) => s.pending !== null);
-  const completeProfile = useAuthStore((s) => s.completeProfile);
 
   const [name, setName] = useState('');
-  const [role, setRole] = useState<UserRole | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
   const [error, setError] = useState<string | undefined>();
 
-  const isValid = name.trim().length > 0 && role !== null;
-
-  const onFinish = async () => {
-    if (!isValid || loading || role === null) return;
-    setLoading(true);
-    setError(undefined);
-    try {
-      await completeProfile({ name: name.trim(), role });
-      router.replace('/home');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save your profile. Try again.');
-      setLoading(false);
+  const onDone = () => {
+    if (!name.trim()) {
+      setError('Please enter your full name.');
+      return;
     }
+    // Carry the details to the final step; the session is created there, not here.
+    router.push({
+      pathname: '/notifications',
+      params: { name: name.trim(), email: email.trim() },
+    });
   };
 
   // No verified phone in flight → nothing to complete; send them back to the start.
   if (!hasPending) return <Redirect href="/phone" />;
 
   return (
-    <AuthScreenLayout
-      title="Create your profile"
-      subtitle="Just a couple of details to get you set up."
-      footer={
-        <Button label="Finish" fullWidth onPress={onFinish} loading={loading} disabled={!isValid} />
-      }
-    >
-      <Input
-        label="Full name"
-        value={name}
-        onChangeText={(t) => {
-          setName(t);
-          if (error) setError(undefined);
-        }}
-        placeholder="e.g. Chidi Okeke"
-        autoCapitalize="words"
-        autoFocus
-      />
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingTop: insets.top + theme.spacing.sm,
+            paddingBottom: insets.bottom + theme.spacing.xl,
+            paddingHorizontal: theme.spacing.xl,
+            gap: theme.spacing.xl,
+          }}
+        >
+          <BackButton onPress={() => router.back()} />
 
-      <View style={{ gap: theme.spacing.sm }}>
-        <Text variant="caption" color="textMuted" style={{ marginLeft: 2 }}>
-          How will you use RideApp?
-        </Text>
-        {ROLES.map((option) => {
-          const selected = role === option.value;
-          return (
-            <Pressable
-              key={option.value}
-              onPress={() => setRole(option.value)}
-              accessibilityRole="radio"
-              accessibilityState={{ selected }}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: theme.spacing.md,
-                padding: theme.spacing.lg,
-                borderRadius: theme.radius.md,
-                borderWidth: 1,
-                borderColor: selected ? theme.colors.primary : theme.colors.border,
-                backgroundColor: selected ? theme.colors.primarySoft : theme.colors.surface,
+          {/* Avatar + "Add photo". Photo upload isn't wired yet — the initials
+              fallback stands in, and "Add photo" is a no-op placeholder for now. */}
+          <View style={{ alignItems: 'center', gap: theme.spacing.sm }}>
+            <Avatar name={name || undefined} size="lg" />
+            <Text
+              variant="caption"
+              color="primary"
+              onPress={() => {
+                // TODO: launch expo-image-picker once photo upload is supported.
               }}
             >
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text variant="bodyMedium">{option.title}</Text>
-                <Text variant="caption" color="textMuted">
-                  {option.description}
-                </Text>
-              </View>
-              {selected ? (
-                <Text variant="bodyMedium" color="primary">
-                  ✓
-                </Text>
-              ) : null}
-            </Pressable>
-          );
-        })}
-      </View>
+              Add photo
+            </Text>
+          </View>
 
-      {error ? (
-        <Text variant="caption" color="danger">
-          {error}
-        </Text>
-      ) : null}
-    </AuthScreenLayout>
+          {/* Basic info */}
+          <View style={{ gap: theme.spacing.md }}>
+            <Text variant="bodyMedium">Basic info</Text>
+
+            <Input
+              value={name}
+              onChangeText={(t) => {
+                setName(t);
+                if (error) setError(undefined);
+              }}
+              placeholder="John Doe"
+              autoCapitalize="words"
+              error={error}
+              rightIcon={
+                <Text variant="bodyMedium" color="textMuted">
+                  T
+                </Text>
+              }
+            />
+            <Text variant="caption" color="primary" style={{ marginLeft: 2 }}>
+              Enter your full name
+            </Text>
+
+            <Input
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="john.doe@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              rightIcon={
+                <Text variant="bodyMedium" color="textMuted">
+                  @
+                </Text>
+              }
+            />
+          </View>
+
+          {/* Stats — static display mirroring the mockup (no wallet/ledger access). */}
+          <View style={{ gap: theme.spacing.xs }}>
+            <Text variant="bodyMedium">Stats</Text>
+            <ListRow icon={<Text>💰</Text>} label="Wallet balance" value="$120.00" />
+            <ListRow icon={<Text>🎟️</Text>} label="Ride credit" value="$20.00" />
+            <ListRow icon={<Text>💳</Text>} label="Payment method" value="•••• 4242" />
+          </View>
+
+          {/* Spacer pushes Done to the bottom when the content is short. */}
+          <View style={{ flex: 1 }} />
+
+          <Button label="Done" fullWidth onPress={onDone} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }

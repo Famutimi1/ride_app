@@ -12,7 +12,9 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { useTheme } from '@/constants/theme';
 import { useIsSignedIn, useAuthStore } from '@/store/authStore';
+import { useUiStore } from '@/store/uiStore';
 
 // Keep the native splash screen up until our fonts are ready. The SDK 57 docs are
 // explicit: call this in global scope and DON'T await it — awaiting inside a
@@ -31,12 +33,15 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
-  // The auth store rehydrates from AsyncStorage asynchronously. We wait for that too,
-  // so a returning (already-logged-in) user never sees a flash of the login screen.
-  const hasHydrated = useAuthStore((s) => s._hasHydrated);
+  // Both persisted stores rehydrate from AsyncStorage asynchronously. We wait for
+  // both: the session (so a logged-in user never flashes the login screen) AND the
+  // theme preference (so a dark-mode user never flashes a white screen on launch).
+  const authHasHydrated = useAuthStore((s) => s._hasHydrated);
+  const uiHasHydrated = useUiStore((s) => s._hasHydrated);
   const isSignedIn = useIsSignedIn();
+  const theme = useTheme();
 
-  const ready = (fontsLoaded || fontError) && hasHydrated;
+  const ready = (fontsLoaded || fontError) && authHasHydrated && uiHasHydrated;
 
   // Hide the splash once fonts AND the session are in. If a font fails we still
   // proceed (the OS font fills in) rather than trapping the user on the splash.
@@ -57,8 +62,10 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       {/* SafeAreaProvider powers useSafeAreaInsets()/SafeAreaView used across screens. */}
       <SafeAreaProvider>
-        {/* `style="auto"` flips the status bar text light/dark to match the theme. */}
-        <StatusBar style="auto" />
+        {/* Match the status-bar text to the active theme: light glyphs on the dark
+            background, dark glyphs on the light one. Driven by our theme (not "auto")
+            so it tracks the in-app toggle, not just the OS setting. */}
+        <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
         {/* Custom headers are drawn per-screen (see the mockup), so hide the default.
             Auth-gating: the guard picks which route GROUP is mounted. Flipping the
             session (login/logout) automatically swaps the user between them. */}

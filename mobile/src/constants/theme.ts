@@ -2,14 +2,15 @@
  * theme.ts — assembles the full theme and exposes the `useTheme()` hook every
  * component uses to read colours/spacing/type for the CURRENT colour scheme.
  *
- * Right now the active scheme comes from the OS (`useColorScheme`), which is
- * correct default behaviour and matches app.json's "userInterfaceStyle":
- * "automatic". When the Zustand `uiStore` lands (per AGENTS.md), it will be able
- * to OVERRIDE this with a manual Light/Dark toggle (the Preferences row in the
- * Profile screen) — at that point this hook reads the store first and falls back
- * to the OS scheme. Keeping that logic here means screens never change.
+ * The active scheme comes from the user's saved preference in `uiStore` first, and
+ * falls back to the OS setting (`useColorScheme`) only when that preference is
+ * 'system'. The default preference is 'light', so the app opens in white mode; the
+ * homepage toggle button flips it to dark. Resolving the scheme here (not per screen)
+ * means every component re-themes automatically when the toggle is pressed.
  */
 import { useColorScheme } from 'react-native';
+
+import { useUiStore } from '@/store/uiStore';
 
 import { darkColors, lightColors, type AppColors } from './colors';
 import { elevation, radius, spacing } from './spacing';
@@ -38,10 +39,12 @@ export function getTheme(scheme: ColorScheme): Theme {
   };
 }
 
-/** The hook screens/components call. Follows the OS light/dark setting. */
+/** The hook screens/components call. Preference (uiStore) wins; OS is the fallback. */
 export function useTheme(): Theme {
-  // useColorScheme() is 'light' | 'dark' | null; treat anything non-dark as light.
-  const scheme: ColorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const preference = useUiStore((s) => s.themePreference);
+  // useColorScheme() is 'light' | 'dark' | null; only consulted for 'system'.
+  const osScheme: ColorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const scheme: ColorScheme = preference === 'system' ? osScheme : preference;
   return getTheme(scheme);
 }
 

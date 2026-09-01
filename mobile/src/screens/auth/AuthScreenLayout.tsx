@@ -1,18 +1,19 @@
 /**
- * AuthScreenLayout — the shared chrome for the phone / OTP / profile screens.
+ * AuthScreenLayout — the shared chrome for the phone / profile / notifications
+ * screens.
  *
- * These three screens all want the same frame: safe-area padding, a keyboard that
- * pushes content up instead of covering the input, an optional back button, a
- * title + subtitle at the top, the body in the middle, and a call-to-action pinned
- * near the bottom. Rather than repeat that in every screen, it lives here once.
+ * These screens all want the same frame: safe-area padding, a keyboard that pushes
+ * content up instead of covering the input, an optional back button, a title +
+ * subtitle at the top, the body in the middle, and a call-to-action pinned near the
+ * bottom. Rather than repeat that in every screen, it lives here once.
  *
- * (The Welcome screen is a different, hero-style layout, so it doesn't use this.)
+ * (The Onboarding and OTP screens use their own bespoke layouts.)
  */
 import { type ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Text } from '@/components/common';
+import { BackButton, Text } from '@/components/common';
 import { useTheme } from '@/constants/theme';
 
 interface AuthScreenLayoutProps {
@@ -73,32 +74,5 @@ export function AuthScreenLayout({
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
-  );
-}
-
-/** A round, tappable back chevron. Uses a glyph (no icon library yet — see design-system.md). */
-function BackButton({ onPress }: { onPress: () => void }) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel="Go back"
-      hitSlop={8}
-      style={({ pressed }) => ({
-        width: 40,
-        height: 40,
-        borderRadius: theme.radius.full,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: theme.colors.surfaceMuted,
-        opacity: pressed ? 0.6 : 1,
-      })}
-    >
-      {/* Nudge up a hair so the chevron optically centres in the circle. */}
-      <Text variant="h3" style={{ marginTop: -2 }}>
-        ‹
-      </Text>
-    </Pressable>
   );
 }

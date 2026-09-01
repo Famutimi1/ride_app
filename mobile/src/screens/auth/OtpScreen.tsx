@@ -1,5 +1,5 @@
 /**
- * OtpScreen — verifies the 6-digit code (route: "/otp").
+ * OtpScreen — verifies the 6-digit code (route: "/otp"). Screen 3 in the mockup.
  *
  * UI trick: instead of six fiddly text fields, we render six read-only "boxes" and
  * lay ONE invisible TextInput over them. Tapping the boxes focuses that hidden
@@ -13,13 +13,20 @@ import { Redirect, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
-import { Button, Text } from '@/components/common';
+import { BackButton, Button, Text } from '@/components/common';
 import { useTheme } from '@/constants/theme';
 import { MOCK_OTP_CODE } from '@/services/authService';
 import { useAuthStore } from '@/store/authStore';
 
 const CODE_LENGTH = 6;
 const RESEND_SECONDS = 30;
+
+/** 30 → "00:30". A tiny mm:ss formatter for the resend countdown. */
+function formatCountdown(totalSeconds: number): string {
+  const mm = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+  const ss = String(totalSeconds % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
+}
 
 export function OtpScreen() {
   const theme = useTheme();
@@ -91,36 +98,19 @@ export function OtpScreen() {
           gap: theme.spacing.xl,
         }}
       >
-        <Pressable
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          hitSlop={8}
-          style={({ pressed }) => ({
-            width: 40,
-            height: 40,
-            borderRadius: theme.radius.full,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: theme.colors.surfaceMuted,
-            opacity: pressed ? 0.6 : 1,
-          })}
-        >
-          <Text variant="h3" style={{ marginTop: -2 }}>
-            ‹
-          </Text>
-        </Pressable>
+        <BackButton onPress={() => router.back()} />
 
-        <View style={{ gap: theme.spacing.sm }}>
-          <Text variant="h2">Enter the code</Text>
-          <Text variant="body" color="textMuted">
-            We sent a 6-digit code to {phone}.
+        {/* Centred title — the mockup pins "OTP" in the middle of the screen top. */}
+        <View style={{ alignItems: 'center', gap: theme.spacing.sm }}>
+          <Text variant="h2">OTP</Text>
+          <Text variant="body" color="textMuted" style={{ textAlign: 'center' }}>
+            Enter the 6-digit code we sent to {phone}.
           </Text>
         </View>
 
         {/* The six boxes + the invisible input laid on top of them. */}
         <Pressable onPress={() => inputRef.current?.focus()}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: theme.spacing.sm }}>
             {boxes.map((digit, i) => {
               const isActive = focused && i === code.length;
               const borderColor = error
@@ -135,7 +125,7 @@ export function OtpScreen() {
                     width: 48,
                     height: 56,
                     borderRadius: theme.radius.md,
-                    borderWidth: 1,
+                    borderWidth: isActive ? 2 : 1,
                     borderColor,
                     backgroundColor: theme.colors.surfaceMuted,
                     alignItems: 'center',
@@ -166,14 +156,14 @@ export function OtpScreen() {
         </Pressable>
 
         {error ? (
-          <Text variant="caption" color="danger">
+          <Text variant="caption" color="danger" style={{ textAlign: 'center' }}>
             {error}
           </Text>
         ) : null}
 
         {/* Dev-only hint so the flow is testable without a real SMS. Remove when the
             backend actually sends codes. */}
-        <Text variant="caption" color="textMuted">
+        <Text variant="caption" color="textMuted" style={{ textAlign: 'center' }}>
           Testing? Use code {MOCK_OTP_CODE}.
         </Text>
 
@@ -181,15 +171,19 @@ export function OtpScreen() {
 
         <View style={{ gap: theme.spacing.md }}>
           <Button
-            label="Verify"
+            label="Verify Now"
             fullWidth
             loading={loading}
             disabled={code.length !== CODE_LENGTH}
             onPress={() => submit(code)}
           />
           <Pressable onPress={onResend} disabled={seconds > 0} hitSlop={8}>
-            <Text variant="caption" color={seconds > 0 ? 'textMuted' : 'primary'} style={{ textAlign: 'center' }}>
-              {seconds > 0 ? `Resend code in ${seconds}s` : 'Resend code'}
+            <Text
+              variant="caption"
+              color={seconds > 0 ? 'textMuted' : 'primary'}
+              style={{ textAlign: 'center' }}
+            >
+              {seconds > 0 ? `Resend code in ${formatCountdown(seconds)}` : 'Resend code'}
             </Text>
           </Pressable>
         </View>

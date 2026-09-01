@@ -52,8 +52,9 @@ interface AuthState {
   requestOtp: (phone: string) => Promise<void>;
   /** Step 2: check the code. Returns whether we still need to collect a profile. */
   verifyOtp: (code: string) => Promise<{ needsProfile: boolean }>;
-  /** Step 3 (new users): save name + role, which completes the session. */
-  completeProfile: (input: { name: string; role: UserRole }) => Promise<void>;
+  /** Step 3 (new users): save the profile, which completes the session. `role`
+   *  defaults to 'rider' — the onboarding doesn't ask for one up front. */
+  completeProfile: (input: { name: string; email?: string; role?: UserRole }) => Promise<void>;
   /** Change the active role (rider/driver/both) for the signed-in user. */
   setRole: (role: UserRole) => void;
   /** Clear everything and return to logged-out. */
@@ -95,14 +96,16 @@ export const useAuthStore = create<AuthState>()(
         return { needsProfile: true };
       },
 
-      completeProfile: async ({ name, role }) => {
+      completeProfile: async ({ name, email, role = 'rider' }) => {
         const pending = get().pending;
         if (!pending) {
           throw new Error('Nothing to complete. Start again.');
         }
 
-        const user = await apiCompleteProfile({ phone: pending.phone, name, role });
-        // Session is born here: token (from verify) + the finished user record.
+        // Role defaults to 'rider' at signup — the mockup's onboarding doesn't ask
+        // for a role, so new users start as riders and switch to driving later via
+        // setRole(). Session is born here: token (from verify) + the finished user.
+        const user = await apiCompleteProfile({ phone: pending.phone, name, email, role });
         set({ session: { token: pending.token, user }, pending: null });
       },
 

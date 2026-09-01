@@ -1,9 +1,10 @@
 /**
- * Button — the app's pressable action, matching the mockup's four button styles.
+ * Button — the app's pressable action, matching the mockup's button styles.
  *
  * Variants (from the mockup's component library):
  *   • primary     — solid brand blue, white label. The main call-to-action.
  *   • secondary   — subtle filled surface, normal text. Lower emphasis.
+ *   • outline     — transparent with a hairline border (e.g. "Sign up with Google").
  *   • ghost       — transparent, brand-coloured label. A "text button".
  *   • destructive — solid danger red. Cancel trip, delete, sign out, etc.
  *
@@ -26,7 +27,7 @@ import { useTheme } from '@/constants/theme';
 
 import { Text } from './Text';
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive';
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends Omit<PressableProps, 'style' | 'children'> {
@@ -60,6 +61,7 @@ export function Button({
   const bg = {
     primary: theme.colors.primary,
     secondary: theme.colors.surfaceMuted,
+    outline: 'transparent',
     ghost: 'transparent',
     destructive: theme.colors.danger,
   }[variant];
@@ -67,6 +69,7 @@ export function Button({
   const labelColorByVariant = {
     primary: 'textInverse',
     secondary: 'text',
+    outline: 'text',
     ghost: 'primary',
     destructive: 'textInverse',
   } as const;
@@ -85,6 +88,11 @@ export function Button({
           backgroundColor: bg,
           paddingHorizontal: theme.spacing.xl,
           opacity: isDisabled ? 0.5 : pressed ? 0.85 : 1,
+        },
+        // Outline is the only variant with a visible border (the Google button).
+        variant === 'outline' && {
+          borderWidth: 1,
+          borderColor: theme.colors.borderStrong,
         },
         fullWidth && styles.fullWidth,
       ]}
