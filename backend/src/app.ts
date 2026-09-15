@@ -3,6 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { healthRouter } from './routes/health';
+import { mapsRouter } from './modules/maps/maps.routes';
+import { tripsRouter } from './modules/trips/trips.routes';
+import { locationRouter } from './modules/location/location.routes';
 
 /**
  * Build and configure the Express application.
@@ -22,6 +25,14 @@ export function createApp(): Express {
     res.json({ name: 'ride-app-backend', status: 'running' });
   });
   app.use('/api/health', healthRouter);
+  app.use('/api', mapsRouter);
+  app.use('/api/trips', tripsRouter);
+  app.use('/api/location', locationRouter);
+
+  app.use((error: Error, _req: Request, res: Response, _next: unknown) => {
+    console.error(error.message);
+    res.status(error.name === 'TimeoutError' ? 504 : 502).json({ error: error.message });
+  });
 
   // 404 fallback
   app.use((_req: Request, res: Response) => {

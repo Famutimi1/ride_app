@@ -15,10 +15,9 @@
  *
  * Usage:  <StatusPill tone="success" label="Online" dot />
  */
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import type { AppColors } from '@/constants/colors';
-import { useTheme } from '@/constants/theme';
 
 import { Text } from './Text';
 
@@ -31,51 +30,54 @@ export interface StatusPillProps {
 }
 
 // Maps each tone to its (soft background token, solid foreground token).
-const TONE_TOKENS: Record<PillTone, { bg: keyof AppColors; fg: keyof AppColors }> = {
-  primary: { bg: 'primarySoft', fg: 'primary' },
-  success: { bg: 'successSoft', fg: 'success' },
-  warning: { bg: 'warningSoft', fg: 'warning' },
-  danger: { bg: 'dangerSoft', fg: 'danger' },
-  neutral: { bg: 'surfaceMuted', fg: 'textMuted' },
+const TONE_TOKENS: Record<
+  PillTone,
+  { fg: keyof AppColors; bgClass: string; dotClass: string }
+> = {
+  primary: {
+    fg: 'primary',
+    bgClass: 'bg-primarySoft',
+    dotClass: 'bg-primary',
+  },
+  success: {
+    fg: 'success',
+    bgClass: 'bg-successSoft',
+    dotClass: 'bg-success',
+  },
+  warning: {
+    fg: 'warning',
+    bgClass: 'bg-warningSoft',
+    dotClass: 'bg-warning',
+  },
+  danger: {
+    fg: 'danger',
+    bgClass: 'bg-dangerSoft',
+    dotClass: 'bg-danger',
+  },
+  neutral: {
+    fg: 'textMuted',
+    bgClass: 'bg-surfaceMuted',
+    dotClass: 'bg-textMuted',
+  },
 };
 
 export function StatusPill({ label, tone = 'neutral', dot = false }: StatusPillProps) {
-  const theme = useTheme();
-  const { bg, fg } = TONE_TOKENS[tone];
+  const { fg, bgClass, dotClass } = TONE_TOKENS[tone];
 
+  // hug the content instead of stretching
   return (
     <View
-      style={[
-        styles.pill,
-        { backgroundColor: theme.colors[bg], borderRadius: theme.radius.full },
-      ]}
+      className={`flex-row items-center self-start gap-[6px] rounded-full px-2.5 py-xs ${bgClass}`}
     >
-      {dot && (
-        <View style={[styles.dot, { backgroundColor: theme.colors[fg] }]} />
-      )}
-      <Text variant="caption" color={fg} style={styles.label}>
+      {dot && <View className={`h-1.5 w-1.5 rounded-full ${dotClass}`} />}
+      <Text
+        variant="caption"
+        color={fg}
+        // Slightly heavier than plain caption so the status reads as a label.
+        className="!font-inter-medium !font-medium"
+      >
         {label}
       </Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start', // hug the content instead of stretching
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  label: {
-    // Slightly heavier than plain caption so the status reads as a label.
-    fontWeight: '500',
-  },
-});

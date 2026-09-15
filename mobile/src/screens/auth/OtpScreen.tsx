@@ -11,15 +11,24 @@
  */
 import { Redirect, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { cssInterop } from 'nativewind';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BackButton, Button, Text } from '@/components/common';
-import { useTheme } from '@/constants/theme';
-import { MOCK_OTP_CODE } from '@/services/authService';
+import { Button, Text } from '@/components/common';
 import { useAuthStore } from '@/store/authStore';
 
 const CODE_LENGTH = 6;
 const RESEND_SECONDS = 30;
+
+const StyledSafeAreaView = cssInterop(SafeAreaView, { className: 'style' });
 
 /** 30 → "00:30". A tiny mm:ss formatter for the resend countdown. */
 function formatCountdown(totalSeconds: number): string {
@@ -29,8 +38,9 @@ function formatCountdown(totalSeconds: number): string {
 }
 
 export function OtpScreen() {
-  const theme = useTheme();
   const router = useRouter();
+  const { height } = useWindowDimensions();
+  const isTallScreen = height >= 800;
 
   const phone = useAuthStore((s) => s.pending?.phone);
   const verifyOtp = useAuthStore((s) => s.verifyOtp);
@@ -54,10 +64,9 @@ export function OtpScreen() {
     setLoading(true);
     setError(undefined);
     try {
-      const { needsProfile } = await verifyOtp(value);
+      await verifyOtp(value);
       // replace(), not push(), so Back doesn't return to the code screen post-login.
-      if (needsProfile) router.replace('/profile');
-      else router.replace('/home');
+      router.replace('/home');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Verification failed. Try again.');
       setCode(''); // wipe the wrong code so they can retype cleanly
@@ -88,106 +97,117 @@ export function OtpScreen() {
   const boxes = Array.from({ length: CODE_LENGTH }, (_, i) => code[i] ?? '');
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View
-        style={{
-          flex: 1,
-          paddingTop: theme.spacing['3xl'],
-          paddingHorizontal: theme.spacing.xl,
-          paddingBottom: theme.spacing.xl,
-          gap: theme.spacing.xl,
-        }}
+    <StyledSafeAreaView edges={['top', 'bottom']} className="flex-1">
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <BackButton onPress={() => router.back()} />
-
-        {/* Centred title — the mockup pins "OTP" in the middle of the screen top. */}
-        <View style={{ alignItems: 'center', gap: theme.spacing.sm }}>
-          <Text variant="h2">OTP</Text>
-          <Text variant="body" color="textMuted" style={{ textAlign: 'center' }}>
-            Enter the 6-digit code we sent to {phone}.
-          </Text>
-        </View>
-
-        {/* The six boxes + the invisible input laid on top of them. */}
-        <Pressable onPress={() => inputRef.current?.focus()}>
-          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: theme.spacing.sm }}>
-            {boxes.map((digit, i) => {
-              const isActive = focused && i === code.length;
-              const borderColor = error
-                ? theme.colors.danger
-                : isActive
-                  ? theme.colors.primary
-                  : theme.colors.border;
-              return (
-                <View
-                  key={i}
-                  style={{
-                    width: 48,
-                    height: 56,
-                    borderRadius: theme.radius.md,
-                    borderWidth: isActive ? 2 : 1,
-                    borderColor,
-                    backgroundColor: theme.colors.surfaceMuted,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text variant="h3">{digit}</Text>
-                </View>
-              );
-            })}
-          </View>
-
-          <TextInput
-            ref={inputRef}
-            value={code}
-            onChangeText={onChange}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            keyboardType="number-pad"
-            maxLength={CODE_LENGTH}
-            autoFocus
-            caretHidden
-            // Enable OS autofill of the SMS code (iOS + Android).
-            textContentType="oneTimeCode"
-            autoComplete="sms-otp"
-            style={{ position: 'absolute', width: 1, height: 1, opacity: 0 }}
-          />
-        </Pressable>
-
-        {error ? (
-          <Text variant="caption" color="danger" style={{ textAlign: 'center' }}>
-            {error}
-          </Text>
-        ) : null}
-
-        {/* Dev-only hint so the flow is testable without a real SMS. Remove when the
-            backend actually sends codes. */}
-        <Text variant="caption" color="textMuted" style={{ textAlign: 'center' }}>
-          Testing? Use code {MOCK_OTP_CODE}.
-        </Text>
-
-        <View style={{ flex: 1 }} />
-
-        <View style={{ gap: theme.spacing.md }}>
-          <Button
-            label="Verify Now"
-            fullWidth
-            loading={loading}
-            disabled={code.length !== CODE_LENGTH}
-            onPress={() => submit(code)}
-          />
-          <Pressable onPress={onResend} disabled={seconds > 0} hitSlop={8}>
-            <Text
-              variant="caption"
-              color={seconds > 0 ? 'textMuted' : 'primary'}
-              style={{ textAlign: 'center' }}
+        <View className="flex-1 bg-background">
+          <View className="px-[34px] pb-xl pt-[42px]">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              hitSlop={12}
+              onPress={() => router.back()}
+              className="h-6 w-6 items-start justify-center"
             >
-              {seconds > 0 ? `Resend code in ${formatCountdown(seconds)}` : 'Resend code'}
-            </Text>
-          </Pressable>
+              <Text variant="body" className="!text-[24px] !leading-[24px]">
+                ←
+              </Text>
+            </Pressable>
+
+            {/* Centred title — the mockup pins "OTP" in the middle of the screen
+                top, with a small "1 2 3 4 5 6" index row directly beneath it. */}
+            <View className="mt-[58px] items-center gap-xs">
+              <Text
+                variant="h2"
+                className={isTallScreen ? '!text-[26px] !leading-[32px]' : '!text-[20px] !leading-[26px]'}
+              >
+                OTP
+              </Text>
+              <Text
+                variant="caption"
+                color="textMuted"
+                className={`${isTallScreen ? '!text-[14px]' : '!text-[12px]'} tracking-[4px]`}
+              >
+                1 2 3 4 5 6
+              </Text>
+            </View>
+
+            {/* The six boxes + the invisible input laid on top of them. */}
+            <Pressable className="mt-[29px]" onPress={() => inputRef.current?.focus()}>
+              <View className="flex-row justify-center gap-md">
+                {boxes.map((digit, i) => {
+                  const isActive = focused && i === code.length;
+                  const borderClass = error
+                    ? 'border-danger'
+                    : isActive
+                      ? 'border-primary'
+                      : 'border-border';
+                  return (
+                    <View
+                      key={i}
+                      className={`h-[44px] w-[32px] items-center justify-center rounded-[7px] bg-surfaceMuted ${
+                        isActive ? 'border-2' : 'border'
+                      } ${borderClass}`}
+                    >
+                      <Text variant="h3" className={isTallScreen ? '!text-[22px]' : '!text-[18px]'}>
+                        {digit}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+
+              <TextInput
+                ref={inputRef}
+                value={code}
+                onChangeText={onChange}
+                onFocus={() => setFocused(true)}
+                onBlur={() => setFocused(false)}
+                keyboardType="number-pad"
+                maxLength={CODE_LENGTH}
+                autoFocus
+                caretHidden
+                // Enable OS autofill of the SMS code (iOS + Android).
+                textContentType="oneTimeCode"
+                autoComplete="sms-otp"
+                className="absolute h-px w-px opacity-0"
+              />
+            </Pressable>
+
+            {error ? (
+              <Text variant="caption" color="danger" className="text-center">
+                {error}
+              </Text>
+            ) : null}
+
+            {/* Fixed gap (not a flex-1 spacer) — the mockup keeps the button and
+                resend link anchored below the boxes, with leftover space at the
+                very bottom of the screen rather than the CTA being pinned there. */}
+            <View className="mt-[70px] gap-xl">
+              <Button
+                label="Verify Now"
+                fullWidth
+                loading={loading}
+                disabled={code.length !== CODE_LENGTH}
+                onPress={() => submit(code)}
+                className="h-[40px] rounded-[12px]"
+              />
+              <Pressable onPress={onResend} disabled={seconds > 0} hitSlop={8}>
+                <Text
+                  variant="caption"
+                  color={seconds > 0 ? 'textMuted' : 'primary'}
+                  className={`${isTallScreen ? '!text-[13px]' : '!text-[11px]'} text-center`}
+                >
+                  {seconds > 0 ? `Resend code in ${formatCountdown(seconds)}` : 'Resend code'}
+                </Text>
+              </Pressable>
+            </View>
+
+          </View>
         </View>
-      </View>
-    </View>
+      </KeyboardAvoidingView>
+    </StyledSafeAreaView>
   );
 }

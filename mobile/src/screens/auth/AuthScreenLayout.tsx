@@ -9,12 +9,14 @@
  *
  * (The Onboarding and OTP screens use their own bespoke layouts.)
  */
+import { cssInterop } from 'nativewind';
 import { type ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BackButton, Text } from '@/components/common';
-import { useTheme } from '@/constants/theme';
+
+const StyledSafeAreaView = cssInterop(SafeAreaView, { className: 'style' });
 
 interface AuthScreenLayoutProps {
   title: string;
@@ -33,32 +35,24 @@ export function AuthScreenLayout({
   children,
   footer,
 }: AuthScreenLayoutProps) {
-  const theme = useTheme();
-  // Raw insets (notch / home indicator) so we can pad safely without SafeAreaView's
-  // fixed edges — we want fine control over top vs bottom spacing here.
-  const insets = useSafeAreaInsets();
-
+  // SafeAreaView accounts for the notch / home indicator while the NativeWind
+  // padding utilities preserve separate control over top vs bottom spacing here.
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <StyledSafeAreaView edges={['top', 'bottom']} className="flex-1 bg-background">
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        className="flex-1"
         // iOS needs 'padding' to lift content above the keyboard; on Android the OS
         // resizes the window for us, so no behavior is the safe default.
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
+          className="flex-1"
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingTop: insets.top + theme.spacing.sm,
-            paddingBottom: insets.bottom + theme.spacing.xl,
-            paddingHorizontal: theme.spacing.xl,
-            gap: theme.spacing.xl,
-          }}
+          contentContainerClassName="grow gap-xl px-xl pb-xl pt-sm"
         >
           {onBack && <BackButton onPress={onBack} />}
 
-          <View style={{ gap: theme.spacing.sm }}>
+          <View className="gap-sm">
             <Text variant="h2">{title}</Text>
             {subtitle ? (
               <Text variant="body" color="textMuted">
@@ -68,11 +62,11 @@ export function AuthScreenLayout({
           </View>
 
           {/* flex:1 shoves the footer to the bottom when there's spare height. */}
-          <View style={{ flex: 1, gap: theme.spacing.lg }}>{children}</View>
+          <View className="flex-1 gap-lg">{children}</View>
 
-          {footer ? <View style={{ gap: theme.spacing.md }}>{footer}</View> : null}
+          {footer ? <View className="gap-md">{footer}</View> : null}
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </StyledSafeAreaView>
   );
 }

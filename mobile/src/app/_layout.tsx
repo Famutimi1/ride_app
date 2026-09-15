@@ -1,3 +1,5 @@
+import '../../global.css';
+
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -8,13 +10,20 @@ import {
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { cssInterop } from 'nativewind';
 import { useEffect } from 'react';
+import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { useTheme } from '@/constants/theme';
+import { nativeWindTheme, useTheme } from '@/constants/theme';
 import { useIsSignedIn, useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
+import { LocationBootstrap } from '@/components/map';
+
+const StyledGestureHandlerRootView = cssInterop(GestureHandlerRootView, {
+  className: 'style',
+});
 
 // Keep the native splash screen up until our fonts are ready. The SDK 57 docs are
 // explicit: call this in global scope and DON'T await it — awaiting inside a
@@ -59,26 +68,29 @@ export default function RootLayout() {
   return (
     // GestureHandlerRootView MUST wrap the whole app for react-native-gesture-handler
     // to work — bottom sheets / swipeable rows silently do nothing without it.
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      {/* SafeAreaProvider powers useSafeAreaInsets()/SafeAreaView used across screens. */}
-      <SafeAreaProvider>
-        {/* Match the status-bar text to the active theme: light glyphs on the dark
-            background, dark glyphs on the light one. Driven by our theme (not "auto")
-            so it tracks the in-app toggle, not just the OS setting. */}
-        <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
-        {/* Custom headers are drawn per-screen (see the mockup), so hide the default.
-            Auth-gating: the guard picks which route GROUP is mounted. Flipping the
-            session (login/logout) automatically swaps the user between them. */}
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Protected guard={!isSignedIn}>
-            <Stack.Screen name="(auth)" />
-          </Stack.Protected>
-          <Stack.Protected guard={isSignedIn}>
-            <Stack.Screen name="(app)" />
-          </Stack.Protected>
-        </Stack>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <StyledGestureHandlerRootView className="flex-1">
+      <View className="flex-1" style={nativeWindTheme[theme.scheme]}>
+        {/* SafeAreaProvider powers useSafeAreaInsets()/SafeAreaView used across screens. */}
+        <SafeAreaProvider>
+          {isSignedIn ? <LocationBootstrap /> : null}
+          {/* Match the status-bar text to the active theme: light glyphs on the dark
+              background, dark glyphs on the light one. Driven by our theme (not "auto")
+              so it tracks the in-app toggle, not just the OS setting. */}
+          <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
+          {/* Custom headers are drawn per-screen (see the mockup), so hide the default.
+              Auth-gating: the guard picks which route GROUP is mounted. Flipping the
+              session (login/logout) automatically swaps the user between them. */}
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Protected guard={!isSignedIn}>
+              <Stack.Screen name="(auth)" />
+            </Stack.Protected>
+            <Stack.Protected guard={isSignedIn}>
+              <Stack.Screen name="(app)" />
+            </Stack.Protected>
+          </Stack>
+        </SafeAreaProvider>
+      </View>
+    </StyledGestureHandlerRootView>
   );
 }

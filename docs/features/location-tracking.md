@@ -4,14 +4,21 @@
 Drivers send GPS pings; stored in Redis GEO set for fast nearby-driver queries.
 
 ## Key files
-- Backend: /src/modules/location/*
-- Frontend: /src/services/locationService.js, /src/store/locationStore.js
+- Backend: `backend/src/modules/location/*`, `backend/src/shared/config/redis.ts`
+- WebSocket: `backend/src/websocket/*`
+- Frontend: `mobile/src/services/locationService.ts`, `mobile/src/store/mapStore.ts`
+- UI: `mobile/src/components/map/DriverOnlineControl.tsx`
 
 ## How it works
 See docs/architecture/real-time-layer.md
 
 ## Status
-- [x] Driver location update endpoint
+- [x] Driver foreground watcher (4 seconds or 10 metres)
+- [x] Driver background TaskManager update flow
+- [x] Separate foreground/background permission prompts
 - [x] Redis GEO storage
-- [ ] Background location updates (app backgrounded)
-- [ ] Battery-efficient ping interval tuning
+- [x] Nearby-driver GEOSEARCH endpoint
+- [x] Trip-room Socket.io push
+- [x] Smooth rider-side marker interpolation and bearing
+- [ ] Tune intervals with real Lagos driving and battery tests
+- [ ] Add stale-GPS visual treatment to the active trip screen

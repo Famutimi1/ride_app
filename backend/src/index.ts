@@ -1,9 +1,12 @@
+import { createServer } from 'node:http';
 import { createApp } from './app';
 import { env } from './config/env';
+import { attachWebsocket } from './websocket';
 
 const app = createApp();
-
-const server = app.listen(env.PORT, () => {
+const server = createServer(app);
+attachWebsocket(server);
+server.listen(env.PORT, () => {
   console.log(
     `🚗 Ride app backend running in ${env.NODE_ENV} mode on http://localhost:${env.PORT}`,
   );
@@ -19,4 +22,3 @@ server.on('error', (err: NodeJS.ErrnoException) => {
   }
   process.exit(1);
 });
-

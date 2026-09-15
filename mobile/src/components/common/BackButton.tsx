@@ -8,30 +8,19 @@
  */
 import { Pressable } from 'react-native';
 
-import { useTheme } from '@/constants/theme';
-
 import { Text } from './Text';
 
 export function BackButton({ onPress }: { onPress: () => void }) {
-  const theme = useTheme();
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel="Go back"
       hitSlop={8}
-      style={({ pressed }) => ({
-        width: 40,
-        height: 40,
-        borderRadius: theme.radius.full,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: theme.colors.surfaceMuted,
-        opacity: pressed ? 0.6 : 1,
-      })}
+      className="h-10 w-10 items-center justify-center rounded-full bg-surfaceMuted active:opacity-60"
     >
       {/* Nudge up a hair so the chevron optically centres in the circle. */}
-      <Text variant="h3" style={{ marginTop: -2 }}>
+      <Text variant="h3" className="-mt-0.5">
         ‹
       </Text>
     </Pressable>

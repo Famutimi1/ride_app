@@ -10,9 +10,8 @@
  *   <Avatar name="Ada N" size="lg" />
  */
 import { Image } from 'expo-image';
-import { StyleSheet, View } from 'react-native';
-
-import { useTheme } from '@/constants/theme';
+import { cssInterop } from 'nativewind';
+import { View } from 'react-native';
 
 import { Text } from './Text';
 
@@ -25,7 +24,13 @@ export interface AvatarProps {
   size?: AvatarSize;
 }
 
-const DIMENSIONS: Record<AvatarSize, number> = { sm: 32, md: 44, lg: 64 };
+const DIMENSION_CLASSES: Record<AvatarSize, string> = {
+  sm: 'h-8 w-8',
+  md: 'h-11 w-11',
+  lg: 'h-16 w-16',
+};
+
+const StyledImage = cssInterop(Image, { className: 'style' });
 
 /** "Chidi Okeke" → "CO", "Ada" → "A". Guards against empty/whitespace names. */
 function initialsOf(name?: string): string {
@@ -38,19 +43,13 @@ function initialsOf(name?: string): string {
 }
 
 export function Avatar({ uri, name, size = 'md' }: AvatarProps) {
-  const theme = useTheme();
-  const dimension = DIMENSIONS[size];
-  const circle = {
-    width: dimension,
-    height: dimension,
-    borderRadius: theme.radius.full,
-  };
+  const circleClass = `${DIMENSION_CLASSES[size]} rounded-full`;
 
   if (uri) {
     return (
-      <Image
+      <StyledImage
         source={{ uri }}
-        style={circle}
+        className={circleClass}
         contentFit="cover"
         // Smooth fade instead of a hard pop when the photo loads in.
         transition={150}
@@ -59,13 +58,7 @@ export function Avatar({ uri, name, size = 'md' }: AvatarProps) {
   }
 
   return (
-    <View
-      style={[
-        circle,
-        styles.fallback,
-        { backgroundColor: theme.colors.primarySoft },
-      ]}
-    >
+    <View className={`${circleClass} items-center justify-center bg-primarySoft`}>
       <Text
         // Scale the initials with the circle; larger avatars get an h-level size.
         variant={size === 'lg' ? 'h3' : 'bodyMedium'}
@@ -76,10 +69,3 @@ export function Avatar({ uri, name, size = 'md' }: AvatarProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  fallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

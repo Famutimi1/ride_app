@@ -3,5 +3,8 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  // Tailwind directives in global.css are valid for NativeWind but unknown to the
+  // default VS Code CSS linter, so silence the editor-only warnings.
+  "css.lint.unknownAtRules": "ignore"
 }

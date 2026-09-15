@@ -24,10 +24,11 @@ caveats in `docs/setup/dependencies.md`.
 ## Config
 - app.json / app.config.js — bundle IDs, permissions (location "always" for driver mode)
 - EXPO_PUBLIC_* env vars are exposed to the client — never put secrets here
-  (see .env.example — only API_BASE_URL and the public Maps key go here)
+  (see `.env.example` — only API base URL and public platform Maps keys go here)
 
 ## Gotchas to document as we hit them
-- Background location permission flow differs iOS vs Android — document once implemented
+- Foreground permission is requested after an app-owned explanation. Background
+  permission is requested separately only when a driver chooses to go online.
 - **Custom dev build is required** (confirmed): background location, remote push,
   and maps all fail in Expo Go. Set up the EAS dev-build workflow from day one.
 - `TaskManager.defineTask` must be called at the **top level** of the JS bundle,

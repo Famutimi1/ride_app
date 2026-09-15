@@ -11,14 +11,22 @@
  * SAME value so they always agree — editing either edits the one real number.
  */
 import { useRouter } from 'expo-router';
+import { cssInterop } from 'nativewind';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Input, Text } from '@/components/common';
-import { useTheme } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 
-import { AuthScreenLayout } from './AuthScreenLayout';
+const StyledSafeAreaView = cssInterop(SafeAreaView, { className: 'style' });
 
 /** Strip anything non-numeric, drop a leading 0, and cap at 10 digits. */
 function normalizeLocalNumber(raw: string): string {
@@ -26,8 +34,9 @@ function normalizeLocalNumber(raw: string): string {
 }
 
 export function PhoneScreen() {
-  const theme = useTheme();
   const router = useRouter();
+  const { height } = useWindowDimensions();
+  const isTallScreen = height >= 800;
   const requestOtp = useAuthStore((s) => s.requestOtp);
 
   const [local, setLocal] = useState('');
@@ -62,92 +71,122 @@ export function PhoneScreen() {
   };
 
   return (
-    <AuthScreenLayout
-      title="Phone number"
-      footer={<LoginLink onPress={() => router.push('/phone')} />}
-    >
-      {/* Top field — the standalone "Phone number" input from the mockup. */}
-      <Input
-        placeholder="Phone number"
-        value={local}
-        onChangeText={onChange}
-        keyboardType="phone-pad"
-        maxLength={10}
-        error={error}
-      />
+    <StyledSafeAreaView edges={['top', 'bottom']} className="flex-1 bg-background">
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          className="flex-1"
+          keyboardShouldPersistTaps="handled"
+          contentContainerClassName="min-h-full px-[28px] pb-[56px] pt-[95px]"
+        >
+          <Text
+            variant="h2"
+            className={isTallScreen ? '!text-[26px] !leading-[32px]' : '!text-[20px] !leading-[26px]'}
+          >
+            Phone number
+          </Text>
 
-      {/* Country code + number row. */}
-      <View style={{ gap: 6 }}>
-        <Text variant="caption" color="textMuted" style={{ marginLeft: 2 }}>
-          Country code
-        </Text>
-        <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-          <CountrySelector />
-          <View style={{ flex: 1 }}>
-            <Input
-              placeholder="Enter phone number"
-              value={local}
-              onChangeText={onChange}
-              keyboardType="phone-pad"
-              maxLength={10}
-            />
+      {/* Field group: top phone field + country-code row + helper text sit close
+          together, matching the tighter spacing the mockup gives related fields. */}
+      <View className="mt-md gap-lg">
+        {/* Top field — the standalone "Phone number" input from the mockup. */}
+        <Input
+          placeholder="Phone number"
+          value={local}
+          onChangeText={onChange}
+          keyboardType="phone-pad"
+          maxLength={10}
+          error={error}
+          containerClassName="h-[40px] rounded-[10px] px-md"
+          className={isTallScreen ? '!text-[14px]' : '!text-[12px]'}
+        />
+
+        {/* Country code + number row. */}
+        <View className="gap-[6px]">
+          <Text
+            variant="caption"
+            color="text"
+            className={`ml-[2px] !font-inter-semibold ${isTallScreen ? '!text-[13px]' : '!text-[11px]'}`}
+          >
+            Country code
+          </Text>
+          <View className="flex-row gap-sm">
+            <CountrySelector isTallScreen={isTallScreen} />
+            <View className="flex-1">
+              <Input
+                placeholder="Enter phone number"
+                value={local}
+                onChangeText={onChange}
+                keyboardType="phone-pad"
+                maxLength={10}
+                containerClassName="h-[40px] rounded-[10px] px-md"
+                className={isTallScreen ? '!text-[14px]' : '!text-[12px]'}
+              />
+            </View>
           </View>
         </View>
+
+        <Text
+          variant="caption"
+          color="textMuted"
+          className={`ml-[2px] ${isTallScreen ? '!text-[13px]' : '!text-[11px]'}`}
+        >
+          We&apos;ll send you an OTP
+        </Text>
       </View>
 
-      <Text variant="caption" color="textMuted" style={{ marginLeft: 2 }}>
-        We&apos;ll send you an OTP
-      </Text>
+      {/* Action group: CTA + divider + Google button, spaced a little further
+          apart from the fields above (matches the mockup's more generous gap
+          right before the primary action). */}
+      <View className="mt-[19px] gap-lg">
+        <Button
+          label="Find Taxi"
+          fullWidth
+          onPress={onSend}
+          loading={loading}
+          disabled={!isValid}
+          className="h-[40px] rounded-[12px]"
+        />
 
-      <Button
-        label="Find Taxi"
-        fullWidth
-        onPress={onSend}
-        loading={loading}
-        disabled={!isValid}
-      />
+        <OrDivider isTallScreen={isTallScreen} />
 
-      <OrDivider />
+        <Button
+          label="Sign up with Google"
+          variant="outline"
+          fullWidth
+          onPress={onGoogle}
+          leftIcon={
+            // Placeholder mark — swap for the real multicolour Google "G" asset later.
+            <Text variant="button" color="text" className="!font-bold">
+              G
+            </Text>
+          }
+          className="h-[42px] rounded-[11px]"
+        />
+      </View>
 
-      <Button
-        label="Sign up with Google"
-        variant="outline"
-        fullWidth
-        onPress={onGoogle}
-        leftIcon={
-          // Placeholder mark — swap for the real multicolour Google "G" asset later.
-          <Text variant="button" color="text" style={{ fontWeight: '700' }}>
-            G
-          </Text>
-        }
-      />
-    </AuthScreenLayout>
+          <View className="flex-1" />
+          <LoginLink isTallScreen={isTallScreen} onPress={() => router.push('/phone')} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </StyledSafeAreaView>
   );
 }
 
 /** The "🇳🇬 +234 ▾" pill. Styled like an Input; the picker itself isn't wired yet. */
-function CountrySelector() {
-  const theme = useTheme();
+function CountrySelector({ isTallScreen }: { isTallScreen: boolean }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Select country code"
       // TODO: open a country picker. Fixed to Nigeria (+234) for the Lagos market now.
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: theme.spacing.xs,
-        height: 52,
-        paddingHorizontal: theme.spacing.lg,
-        borderRadius: theme.radius.md,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        backgroundColor: theme.colors.surfaceMuted,
-      }}
+      className="h-[40px] flex-row items-center gap-xs rounded-[10px] border border-border bg-surfaceMuted px-sm"
     >
-      <Text variant="body">🇳🇬</Text>
-      <Text variant="body">+234</Text>
-      <Text variant="caption" color="textMuted">
+      <Text variant="body" className={isTallScreen ? '!text-[14px]' : '!text-[12px]'}>🇳🇬</Text>
+      <Text variant="body" className={isTallScreen ? '!text-[14px]' : '!text-[12px]'}>+234</Text>
+      <Text variant="caption" color="textMuted" className={isTallScreen ? '!text-[13px]' : '!text-[11px]'}>
         ▾
       </Text>
     </Pressable>
@@ -155,28 +194,37 @@ function CountrySelector() {
 }
 
 /** A horizontal rule with a centred "or" — the divider above the Google button. */
-function OrDivider() {
-  const theme = useTheme();
+function OrDivider({ isTallScreen }: { isTallScreen: boolean }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-      <View style={{ flex: 1, height: 1, backgroundColor: theme.colors.border }} />
-      <Text variant="caption" color="textMuted">
+    <View className="flex-row items-center gap-md">
+      <View className="h-px flex-1 bg-border" />
+      <Text variant="caption" color="textMuted" className={isTallScreen ? '!text-[13px]' : '!text-[11px]'}>
         or
       </Text>
-      <View style={{ flex: 1, height: 1, backgroundColor: theme.colors.border }} />
+      <View className="h-px flex-1 bg-border" />
     </View>
   );
 }
 
 /** "Already have an account? Log in" — the bottom-pinned link. */
-function LoginLink({ onPress }: { onPress: () => void }) {
-  const theme = useTheme();
+function LoginLink({
+  isTallScreen,
+  onPress,
+}: {
+  isTallScreen: boolean;
+  onPress: () => void;
+}) {
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: theme.spacing.xs }}>
-      <Text variant="caption" color="textMuted">
+    <View className="flex-row justify-center gap-xs">
+      <Text variant="caption" color="textMuted" className={isTallScreen ? '!text-[13px]' : '!text-[11px]'}>
         Already have an account?
       </Text>
-      <Text variant="caption" color="primary" onPress={onPress}>
+      <Text
+        variant="caption"
+        color="primary"
+        className={isTallScreen ? '!text-[13px]' : '!text-[11px]'}
+        onPress={onPress}
+      >
         Log in
       </Text>
     </View>

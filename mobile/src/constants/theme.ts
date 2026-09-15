@@ -8,15 +8,30 @@
  * homepage toggle button flips it to dark. Resolving the scheme here (not per screen)
  * means every component re-themes automatically when the toggle is pressed.
  */
+import { vars } from 'nativewind';
 import { useColorScheme } from 'react-native';
 
 import { useUiStore } from '@/store/uiStore';
 
-import { darkColors, lightColors, type AppColors } from './colors';
-import { elevation, radius, spacing } from './spacing';
+import { darkColors, lightColors, shadowColors, type AppColors } from './colors';
+import { radius, spacing } from './spacing';
 import { typography } from './typography';
 
 export type ColorScheme = 'light' | 'dark';
+
+function createColorVariables(colors: AppColors) {
+  const variables = Object.fromEntries([
+    ...Object.entries(colors).map(([token, value]) => [`--color-${token}`, value]),
+    ...Object.entries(shadowColors).map(([token, value]) => [`--shadow-${token}`, value]),
+  ]) as Record<`--${string}`, string>;
+
+  return vars(variables);
+}
+
+export const nativeWindTheme = {
+  light: createColorVariables(lightColors),
+  dark: createColorVariables(darkColors),
+} as const;
 
 export interface Theme {
   scheme: ColorScheme;
@@ -24,7 +39,6 @@ export interface Theme {
   typography: typeof typography;
   spacing: typeof spacing;
   radius: typeof radius;
-  elevation: typeof elevation;
 }
 
 /** Build a theme object for a known scheme (handy for tests / Storybook). */
@@ -35,7 +49,6 @@ export function getTheme(scheme: ColorScheme): Theme {
     typography,
     spacing,
     radius,
-    elevation,
   };
 }
 
@@ -48,5 +61,5 @@ export function useTheme(): Theme {
   return getTheme(scheme);
 }
 
-export { lightColors, darkColors, typography, spacing, radius, elevation };
+export { lightColors, darkColors, typography, spacing, radius };
 export type { AppColors };

@@ -8,8 +8,10 @@
 | `driver:{id}:onTrip` | Locks driver to a trip ID | 60s |
 
 ## Socket.io responsibilities
-- Rooms: `driver:{id}`, `trip:{id}`, `user:{id}`
-- Event names live in `/websocket/events.js` — never hardcode strings
+- Implemented room: `trip:{id}`. Driver/user rooms remain part of the broader trip/auth roadmap.
+- Event names live in `backend/src/websocket/events.ts` — never hardcode strings
+- `driver:location:update` writes Redis first, then emits `driver:location` to the trip room
+- Rider coordinates are interpolated over incoming updates for smoother marker motion
 - Multi-instance deployment requires the Socket.io Redis adapter
 
 ## Why split this way

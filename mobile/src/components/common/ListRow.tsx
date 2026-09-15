@@ -13,9 +13,7 @@
  *   <ListRow icon={<Text>💰</Text>} label="Wallet balance" value="$120.00" />
  *   <ListRow label="Push notifications" right={<Toggle value={on} onValueChange={setOn} />} />
  */
-import { Pressable, View, type ViewStyle } from 'react-native';
-
-import { useTheme } from '@/constants/theme';
+import { Pressable, View } from 'react-native';
 
 import { Text } from './Text';
 
@@ -28,40 +26,21 @@ export interface ListRowProps {
   /** A custom right-hand node (a Toggle, chevron…) — wins over `value`. */
   right?: React.ReactNode;
   onPress?: () => void;
-  style?: ViewStyle;
+  className?: string;
 }
 
-export function ListRow({ label, value, icon, right, onPress, style }: ListRowProps) {
-  const theme = useTheme();
-
+export function ListRow({ label, value, icon, right, onPress, className }: ListRowProps) {
   const content = (
     <View
-      style={[
-        {
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.spacing.md,
-          paddingVertical: theme.spacing.md,
-        },
-        style,
-      ]}
+      className={['flex-row items-center gap-md py-md', className].filter(Boolean).join(' ')}
     >
       {icon != null ? (
-        <View
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: theme.radius.full,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: theme.colors.primarySoft,
-          }}
-        >
+        <View className="h-9 w-9 items-center justify-center rounded-full bg-primarySoft">
           {icon}
         </View>
       ) : null}
 
-      <Text variant="body" style={{ flex: 1 }}>
+      <Text variant="body" className="flex-1">
         {label}
       </Text>
 
@@ -71,7 +50,7 @@ export function ListRow({ label, value, icon, right, onPress, style }: ListRowPr
 
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+      <Pressable onPress={onPress} className="active:opacity-60">
         {content}
       </Pressable>
     );

@@ -17,6 +17,10 @@ those go in .env).
 "maintenance mode" reputation is outdated); TypeScript types are bundled.
 
 Notes:
+- `drivers:locations` is updated with `GEOADD`; `/api/location/nearby` uses
+  `GEOSEARCH` with distance and coordinates.
+- `driver:{id}:status` and `driver:{id}:location` expire after 30 seconds unless
+  refreshed by another GPS ping.
 - Driver-trip locking uses `SET driver:{id}:onTrip {tripId} NX EX 60` (AGENTS.md).
 - Socket.io's Redis adapter (multi-instance only) needs **two** connections —
   create the second with `pub.duplicate()`. See docs/third-party/socketio.md.

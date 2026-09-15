@@ -12,16 +12,7 @@
  *   <Input label="Email" error="That email looks off" ... />
  */
 import { useState } from 'react';
-import {
-  type NativeSyntheticEvent,
-  StyleSheet,
-  TextInput,
-  type TextInputFocusEventData,
-  type TextInputProps,
-  View,
-} from 'react-native';
-
-import { useTheme } from '@/constants/theme';
+import { TextInput, type TextInputProps, View } from 'react-native';
 
 import { Text } from './Text';
 
@@ -30,6 +21,8 @@ export interface InputProps extends TextInputProps {
   error?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  /** Optional sizing/layout override for the visible input shell. */
+  containerClassName?: string;
 }
 
 export function Input({
@@ -37,58 +30,56 @@ export function Input({
   error,
   leftIcon,
   rightIcon,
+  containerClassName,
   onFocus,
   onBlur,
-  style,
+  className,
   ...rest
 }: InputProps) {
-  const theme = useTheme();
   const [focused, setFocused] = useState(false);
 
   // Border colour is a small priority ladder: error beats focus beats default.
-  const borderColor = error
-    ? theme.colors.danger
+  const borderClass = error
+    ? 'border-danger'
     : focused
-      ? theme.colors.primary
-      : theme.colors.border;
+      ? 'border-primary'
+      : 'border-border';
 
   return (
-    <View style={styles.wrapper}>
+    <View className="gap-[6px]">
       {label && (
-        <Text variant="caption" color="textMuted" style={styles.label}>
+        <Text variant="caption" color="textMuted" className="ml-[2px]">
           {label}
         </Text>
       )}
 
       <View
-        style={[
-          styles.field,
-          {
-            borderColor,
-            borderRadius: theme.radius.md,
-            backgroundColor: theme.colors.surfaceMuted,
-            paddingHorizontal: theme.spacing.lg,
-          },
-        ]}
+        className={[
+          'h-[52px] flex-row items-center gap-sm rounded-md border bg-surfaceMuted px-lg',
+          borderClass,
+          containerClassName,
+        ]
+          .filter(Boolean)
+          .join(' ')}
       >
         {leftIcon}
         <TextInput
-          placeholderTextColor={theme.colors.textMuted}
           // Merge the body type style so the text matches the rest of the app,
           // then force the themed text colour (RN ignores inherited colour).
-          style={[
-            theme.typography.body,
-            styles.input,
-            { color: theme.colors.text },
-            style,
-          ]}
-          onFocus={(e: NativeSyntheticEvent<TextInputFocusEventData>) => {
+          // Kill the default vertical padding so text centres in our fixed height.
+          className={[
+            'flex-1 py-0 font-inter-regular text-body font-normal text-text placeholder:text-textMuted',
+            className,
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          onFocus={(e) => {
             setFocused(true);
-            onFocus?.(e);
+            onFocus?.(e as any);
           }}
-          onBlur={(e: NativeSyntheticEvent<TextInputFocusEventData>) => {
+          onBlur={(e) => {
             setFocused(false);
-            onBlur?.(e);
+            onBlur?.(e as any);
           }}
           {...rest}
         />
@@ -96,34 +87,10 @@ export function Input({
       </View>
 
       {error && (
-        <Text variant="caption" color="danger" style={styles.error}>
+        <Text variant="caption" color="danger" className="ml-[2px]">
           {error}
         </Text>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrapper: {
-    gap: 6,
-  },
-  label: {
-    marginLeft: 2,
-  },
-  field: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    height: 52,
-    borderWidth: 1,
-  },
-  input: {
-    flex: 1,
-    // Kill the default vertical padding so text centres in our fixed height.
-    paddingVertical: 0,
-  },
-  error: {
-    marginLeft: 2,
-  },
-});

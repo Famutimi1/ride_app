@@ -9,3 +9,12 @@
  */
 export { MapPlaceholder } from './MapPlaceholder';
 export type { MapPlaceholderProps } from './MapPlaceholder';
+export { AddressSheet } from './AddressSheet';
+export { RideMap } from './RideMap';
+export { AppMap } from './AppMap';
+export type { AppMapHandle, AppMapMarker, MarkerKind } from './AppMap';
+export { AddressSearchInput } from './AddressSearchInput';
+export { DriverOnlineControl } from './DriverOnlineControl';
+export { LocationBootstrap } from './LocationBootstrap';
+export { RideConfirmationModal } from './RideConfirmationModal';
+export { DriverResponseModal } from './DriverResponseModal';

@@ -40,18 +40,12 @@ export function ThemeToggle({ floating = false }: ThemeToggleProps) {
       // Announce the ACTION (what tapping does), not just the current state.
       accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       hitSlop={8}
-      style={({ pressed }) => ({
-        width: floating ? 48 : 40,
-        height: floating ? 48 : 40,
-        borderRadius: theme.radius.full,
-        alignItems: 'center',
-        justifyContent: 'center',
-        // Floating sits on the map → white + shadow so it stands out; on-surface
-        // uses the muted fill so it reads as a control within a card.
-        backgroundColor: floating ? theme.colors.surface : theme.colors.surfaceMuted,
-        opacity: pressed ? 0.6 : 1,
-        ...(floating ? theme.elevation.sm : null),
-      })}
+      // Floating sits on the map → white + shadow so it stands out; on-surface
+      // uses the muted fill so it reads as a control within a card.
+      className={[
+        'items-center justify-center rounded-full active:opacity-60',
+        floating ? 'h-12 w-12 bg-surface shadow-sm' : 'h-10 w-10 bg-surfaceMuted',
+      ].join(' ')}
     >
       <Text variant="bodyMedium">{isDark ? '🌙' : '☀️'}</Text>
     </Pressable>

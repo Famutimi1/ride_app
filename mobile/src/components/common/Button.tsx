@@ -15,13 +15,7 @@
  *   <Button label="Confirm ride" onPress={...} />
  *   <Button label="Cancel" variant="destructive" loading={submitting} />
  */
-import {
-  ActivityIndicator,
-  Pressable,
-  type PressableProps,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, type PressableProps, View } from 'react-native';
 
 import { useTheme } from '@/constants/theme';
 
@@ -41,7 +35,11 @@ export interface ButtonProps extends Omit<PressableProps, 'style' | 'children'> 
   rightIcon?: React.ReactNode;
 }
 
-const HEIGHTS: Record<ButtonSize, number> = { sm: 40, md: 52, lg: 56 };
+const SIZE_CLASSES: Record<ButtonSize, string> = {
+  sm: 'h-10 rounded-md',
+  md: 'h-[52px] rounded-md',
+  lg: 'h-14 rounded-lg',
+};
 
 export function Button({
   label,
@@ -52,6 +50,7 @@ export function Button({
   leftIcon,
   rightIcon,
   disabled,
+  className,
   ...rest
 }: ButtonProps) {
   const theme = useTheme();
@@ -59,11 +58,11 @@ export function Button({
 
   // Resolve background + label colour per variant from the ACTIVE theme.
   const bg = {
-    primary: theme.colors.primary,
-    secondary: theme.colors.surfaceMuted,
-    outline: 'transparent',
-    ghost: 'transparent',
-    destructive: theme.colors.danger,
+    primary: 'bg-primary',
+    secondary: 'bg-surfaceMuted',
+    outline: 'border border-borderStrong bg-transparent',
+    ghost: 'bg-transparent',
+    destructive: 'bg-danger',
   }[variant];
 
   const labelColorByVariant = {
@@ -75,33 +74,28 @@ export function Button({
   } as const;
   const labelColor = labelColorByVariant[variant];
 
+  // Outline is the only variant with a visible border (the Google button).
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
-      style={({ pressed }) => [
-        styles.base,
-        {
-          height: HEIGHTS[size],
-          borderRadius: theme.radius.md,
-          backgroundColor: bg,
-          paddingHorizontal: theme.spacing.xl,
-          opacity: isDisabled ? 0.5 : pressed ? 0.85 : 1,
-        },
-        // Outline is the only variant with a visible border (the Google button).
-        variant === 'outline' && {
-          borderWidth: 1,
-          borderColor: theme.colors.borderStrong,
-        },
-        fullWidth && styles.fullWidth,
-      ]}
+      className={[
+        'items-center justify-center px-xl',
+        SIZE_CLASSES[size],
+        bg,
+        fullWidth ? 'self-stretch' : '',
+        isDisabled ? 'opacity-50' : 'active:opacity-[0.85]',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
       {...rest}
     >
       {loading ? (
         <ActivityIndicator color={theme.colors[labelColor]} />
       ) : (
-        <View style={styles.content}>
+        <View className="flex-row items-center gap-sm">
           {leftIcon}
           <Text variant="button" color={labelColor}>
             {label}
@@ -112,18 +106,3 @@ export function Button({
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fullWidth: {
-    alignSelf: 'stretch',
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-});

@@ -1,0 +1,33 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Subtle back glow -->
+  <circle cx="200" cy="150" r="110" fill="#EFF6FF"/>
+  <circle cx="200" cy="150" r="85" fill="#DBEAFE" fill-opacity="0.5"/>
+
+  <!-- In-app Wallet Card (Back) -->
+  <g transform="translate(110, 80) rotate(-8)" filter="drop-shadow(0px 8px 20px rgba(15, 23, 42, 0.12))">
+    <rect width="180" height="110" rx="16" fill="#1E293B"/>
+    <circle cx="150" cy="30" r="14" fill="#334155"/>
+    <rect x="20" y="24" width="28" height="20" rx="4" fill="#F59E0B"/>
+    <rect x="20" y="70" width="80" height="8" rx="4" fill="#64748B"/>
+    <rect x="20" y="84" width="40" height="6" rx="3" fill="#475569"/>
+  </g>
+
+  <!-- Primary Bank Card (Front) -->
+  <g transform="translate(120, 110) rotate(4)" filter="drop-shadow(0px 12px 24px rgba(29, 78, 216, 0.25))">
+    <rect width="185" height="115" rx="16" fill="#1D4ED8"/>
+    <!-- Card Chip -->
+    <rect x="24" y="24" width="28" height="20" rx="4" fill="#FDE047"/>
+    <!-- Card Details -->
+    <rect x="24" y="65" width="100" height="8" rx="4" fill="#93C5FD"/>
+    <rect x="24" y="82" width="60" height="6" rx="3" fill="#BFDBFE"/>
+    <!-- Payment Logo Circles -->
+    <circle cx="145" cy="85" r="12" fill="#EF4444" fill-opacity="0.85"/>
+    <circle cx="157" cy="85" r="12" fill="#F59E0B" fill-opacity="0.85"/>
+  </g>
+
+  <!-- Floating Success Check Badge -->
+  <g transform="translate(245, 80)" filter="drop-shadow(0px 6px 14px rgba(22, 163, 74, 0.3))">
+    <circle cx="24" cy="24" r="24" fill="#16A34A"/>
+    <path d="M16 24 L22 30 L32 18" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

@@ -11,17 +11,21 @@
  *   <Skeleton width="100%" height={20} />
  *   <Skeleton width={44} height={44} radius="full" />   // avatar placeholder
  */
+import { vars } from 'nativewind';
 import { useEffect } from 'react';
-import { type DimensionValue, StyleSheet } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
+import { type DimensionValue, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
 import type { Radius } from '@/constants/spacing';
-import { useTheme } from '@/constants/theme';
+
+const RADIUS_CLASSES: Record<Radius, string> = {
+  xs: 'rounded-xs',
+  sm: 'rounded-sm',
+  md: 'rounded-md',
+  lg: 'rounded-lg',
+  xl: 'rounded-xl',
+  full: 'rounded-full',
+};
 
 export interface SkeletonProps {
   width?: DimensionValue;
@@ -31,7 +35,6 @@ export interface SkeletonProps {
 }
 
 export function Skeleton({ width = '100%', height = 16, radius = 'sm' }: SkeletonProps) {
-  const theme = useTheme();
   const opacity = useSharedValue(0.5);
 
   useEffect(() => {
@@ -41,25 +44,20 @@ export function Skeleton({ width = '100%', height = 16, radius = 'sm' }: Skeleto
   }, [opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const dimensions = vars({
+    '--skeleton-width': width as string | number,
+    '--skeleton-height': height as string | number,
+  });
 
   return (
-    <Animated.View
-      style={[
-        styles.base,
-        {
-          width,
-          height,
-          borderRadius: theme.radius[radius],
-          backgroundColor: theme.colors.skeleton,
-        },
-        animatedStyle,
-      ]}
-    />
+    // Reanimated's Animated.View gets the animated opacity; a normal View carries
+    // the NativeWind classes. NativeWind classes on Animated.View are not reliable
+    // on iOS/Android, so we never pass `className` to it.
+    <Animated.View style={animatedStyle}>
+      <View
+        className={`h-[--skeleton-height] w-[--skeleton-width] overflow-hidden bg-skeleton ${RADIUS_CLASSES[radius]}`}
+        style={dimensions}
+      />
+    </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    overflow: 'hidden',
-  },
-});

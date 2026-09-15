@@ -11,82 +11,50 @@
  * <MapPlaceholder>…</MapPlaceholder> exactly the same way, the same trick
  * <HeroIllustration> uses for the onboarding art.
  */
-import { View, type ViewStyle } from 'react-native';
+import { View } from 'react-native';
 
 import { Text } from '@/components/common';
-import { useTheme } from '@/constants/theme';
 
 export interface MapPlaceholderProps {
   /** Overlays drawn on top of the map (e.g. the ETA pill). */
   children?: React.ReactNode;
-  style?: ViewStyle;
+  className?: string;
 }
 
-export function MapPlaceholder({ children, style }: MapPlaceholderProps) {
-  const theme = useTheme();
-
+export function MapPlaceholder({ children, className }: MapPlaceholderProps) {
   // A single faint "road": a thin bar in the border colour. We scatter a few at a
   // slight angle to suggest a street grid without pretending to be a real map.
-  const road = (extra: ViewStyle) => (
-    <View
-      style={[
-        { position: 'absolute', backgroundColor: theme.colors.border, opacity: 0.7 },
-        extra,
-      ]}
-    />
+  const road = (roadClassName: string) => (
+    <View className={`absolute bg-border opacity-70 ${roadClassName}`} />
   );
 
   return (
     <View
-      style={[
-        { flex: 1, backgroundColor: theme.colors.surfaceMuted, overflow: 'hidden' },
-        style,
-      ]}
+      className={['flex-1 overflow-hidden bg-surfaceMuted', className]
+        .filter(Boolean)
+        .join(' ')}
     >
       {/* Decorative street grid — purely cosmetic until the real map lands. */}
-      {road({ top: '24%', left: -40, right: -40, height: 10, transform: [{ rotate: '-12deg' }] })}
-      {road({ top: '54%', left: -40, right: -40, height: 16, transform: [{ rotate: '-12deg' }] })}
-      {road({ top: '80%', left: -40, right: -40, height: 8, transform: [{ rotate: '-12deg' }] })}
-      {road({ top: -40, bottom: -40, left: '38%', width: 12, transform: [{ rotate: '-12deg' }] })}
-      {road({ top: -40, bottom: -40, left: '66%', width: 8, transform: [{ rotate: '-12deg' }] })}
+      {road('-left-10 -right-10 top-[24%] h-2.5 -rotate-12')}
+      {road('-left-10 -right-10 top-[54%] h-4 -rotate-12')}
+      {road('-left-10 -right-10 top-[80%] h-2 -rotate-12')}
+      {road('-bottom-10 -top-10 left-[38%] w-3 -rotate-12')}
+      {road('-bottom-10 -top-10 left-[66%] w-2 -rotate-12')}
 
       {/* A parked car + the rider's pickup dot, echoing the mockup. */}
-      <View style={{ position: 'absolute', top: '40%', left: '54%' }}>
+      <View className="absolute left-[54%] top-[40%]">
         <Text variant="h3">🚗</Text>
       </View>
       <View
-        style={{
-          position: 'absolute',
-          top: '46%',
-          left: '32%',
-          width: 18,
-          height: 18,
-          borderRadius: theme.radius.full,
-          backgroundColor: theme.colors.danger, // the palette's only red — used as the pin
-          borderWidth: 3,
-          borderColor: theme.colors.surface,
-        }}
+        // the palette's only red — used as the pin
+        className="absolute left-[32%] top-[46%] h-[18px] w-[18px] rounded-full border-[3px] border-surface bg-danger"
       />
 
       {/* Overlays passed by the screen (the ETA pill sits here). */}
       {children}
 
       {/* Map-data attribution chip, like the mockup's "G Google". */}
-      <View
-        style={{
-          position: 'absolute',
-          bottom: theme.spacing.md,
-          left: theme.spacing.md,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 6,
-          backgroundColor: theme.colors.surface,
-          paddingHorizontal: theme.spacing.sm,
-          paddingVertical: 6,
-          borderRadius: theme.radius.full,
-          ...theme.elevation.sm,
-        }}
-      >
+      <View className="absolute bottom-md left-md flex-row items-center gap-[6px] rounded-full bg-surface px-sm py-[6px] shadow-sm">
         <Text variant="bodyMedium">G</Text>
         <Text variant="caption" color="textMuted">
           Google

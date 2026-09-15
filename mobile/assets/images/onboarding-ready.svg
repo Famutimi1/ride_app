@@ -1,0 +1,30 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Glowing circle halo -->
+  <circle cx="200" cy="150" r="100" fill="#DBEAFE" fill-opacity="0.4"/>
+  <circle cx="200" cy="150" r="75" fill="#EFF6FF"/>
+
+  <!-- Ready / Speed / Smartphone Ride Confirmation Badge -->
+  <g transform="translate(140, 60)" filter="drop-shadow(0px 12px 28px rgba(29, 78, 216, 0.2))">
+    <!-- Phone frame -->
+    <rect width="120" height="180" rx="22" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="3"/>
+    <!-- Phone screen -->
+    <rect x="8" y="12" width="104" height="156" rx="16" fill="#F8FAFC"/>
+    <!-- Dynamic island / notch -->
+    <rect x="42" y="16" width="36" height="6" rx="3" fill="#0F172A"/>
+
+    <!-- Map route preview on phone -->
+    <circle cx="35" cy="55" r="8" fill="#1D4ED8"/>
+    <path d="M35 55 Q70 70 85 105" stroke="#3B82F6" stroke-width="4" stroke-dasharray="4 4" fill="none"/>
+    <circle cx="85" cy="105" r="8" fill="#16A34A"/>
+
+    <!-- Ride Ready Banner inside phone -->
+    <rect x="18" y="125" width="84" height="28" rx="8" fill="#1D4ED8"/>
+    <rect x="30" y="137" width="60" height="4" rx="2" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Speed / Sparkle Accents -->
+  <g fill="#F59E0B">
+    <path d="M105 110 L115 115 L105 120 L100 130 L95 120 L85 115 L95 110 L100 100 Z" opacity="0.8"/>
+    <path d="M295 160 L302 164 L295 168 L291 175 L287 168 L280 164 L287 160 L291 153 Z" opacity="0.8"/>
+  </g>
+</svg>

@@ -13,9 +13,8 @@
  *   <RatingStars value={4.8} />                       // read-only display
  *   <RatingStars value={rating} interactive onChange={setRating} />
  */
-import { Pressable, StyleSheet, View } from 'react-native';
-
-import { useTheme } from '@/constants/theme';
+import { vars } from 'nativewind';
+import { Pressable, View } from 'react-native';
 
 import { Text } from './Text';
 
@@ -37,22 +36,26 @@ export function RatingStars({
   interactive = false,
   onChange,
 }: RatingStarsProps) {
-  const theme = useTheme();
   const filledCount = Math.round(value);
+  const starSize = vars({
+    '--star-size': `${size}px`,
+    '--star-line-height': `${size + 2}px`,
+  });
 
   return (
-    <View style={styles.row} accessibilityLabel={`${value} out of ${max} stars`}>
+    <View
+      className="flex-row gap-[2px]"
+      style={starSize}
+      accessibilityLabel={`${value} out of ${max} stars`}
+    >
       {Array.from({ length: max }, (_, i) => {
         const filled = i < filledCount;
         // Same glyph whether filled or not — only the colour changes — so the
         // stars keep identical widths and stay perfectly aligned.
         const star = (
           <Text
-            style={{
-              fontSize: size,
-              lineHeight: size + 2,
-              color: filled ? theme.colors.warning : theme.colors.borderStrong,
-            }}
+            color={filled ? 'warning' : 'borderStrong'}
+            className="!text-[length:var(--star-size)] !leading-[var(--star-line-height)]"
           >
             ★
           </Text>
@@ -77,10 +80,3 @@ export function RatingStars({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    gap: 2,
-  },
-});

@@ -85,14 +85,14 @@
 
   /store                    # Zustand stores
     authStore.js             # user, token, role
-    locationStore.js          # current GPS position
+    mapStore.ts               # GPS, pickup/dropoff, drivers, route, camera
     tripStore.js               # active trip state
     uiStore.js                  # role toggle, modals, loading flags
 
   /services
     api.js                    # axios instance + interceptors (attach JWT)
     socket.js                  # socket.io client setup
-    locationService.js          # GPS watching, background updates
+    locationService.ts          # GPS watching, permissions, background updates
     mapsService.js                # Google Places/Directions calls
     paymentService.js              # Paystack SDK wrapper
 

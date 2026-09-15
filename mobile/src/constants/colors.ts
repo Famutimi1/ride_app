@@ -30,6 +30,8 @@ const palette = {
   green600: '#16A34A', // success  — online / earnings-in
   amber500: '#F59E0B', // warning  — star ratings + warnings
   red600: '#DC2626', // danger   — decline / earnings-out
+  coral500: '#F0473F',
+  jade500: '#12B87A',
 
   // Neutrals — light surfaces & text (mockup: neutral / lightText)
   white: '#FFFFFF',
@@ -46,6 +48,9 @@ const palette = {
   slate800: '#1E293B', // darkSecondary — cards/surfaces in dark mode
   slate700: '#334155',
   slate600: '#475569',
+  shadowSm: '#0F172A0F',
+  shadowMd: '#0F172A1A',
+  shadowLg: '#0F172A24',
 } as const;
 
 // ── 2. Brand tokens — identical in both themes ──────────────────────────────
@@ -55,6 +60,10 @@ const brand = {
   success: palette.green600,
   warning: palette.amber500, // amber == ratings + warnings
   danger: palette.red600,
+  mapPickup: palette.blue700,
+  mapDropoff: palette.coral500,
+  mapDriver: palette.jade500,
+  mapNearbyDriver: palette.slate500,
 } as const;
 
 // Soft tinted backgrounds for status pills / badges. Kept as rgba over the base
@@ -64,6 +73,12 @@ const tint = {
   successSoft: 'rgba(22, 163, 74, 0.12)',
   warningSoft: 'rgba(245, 158, 11, 0.14)',
   dangerSoft: 'rgba(220, 38, 38, 0.12)',
+} as const;
+
+export const shadowColors = {
+  sm: palette.shadowSm,
+  md: palette.shadowMd,
+  lg: palette.shadowLg,
 } as const;
 
 // ── 3. Light theme semantic tokens ──────────────────────────────────────────
@@ -112,3 +127,23 @@ export const darkColors: AppColors = {
 // free to give each a different hex. Add a token to light and TypeScript makes
 // you add it to dark too; miss one and it won't compile.
 export type AppColors = Record<keyof typeof lightColors, string>;
+
+export const mapStyles = {
+  light: [
+    { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
+    { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+    { featureType: 'poi', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+    { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: palette.gray50 }] },
+    { featureType: 'road', elementType: 'geometry', stylers: [{ color: palette.white }] },
+    { featureType: 'water', elementType: 'geometry', stylers: [{ color: palette.gray200 }] },
+  ],
+  dark: [
+    { elementType: 'geometry', stylers: [{ color: palette.slate900 }] },
+    { elementType: 'labels.text.fill', stylers: [{ color: palette.gray400 }] },
+    { elementType: 'labels.text.stroke', stylers: [{ color: palette.slate900 }] },
+    { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+    { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+    { featureType: 'road', elementType: 'geometry', stylers: [{ color: palette.slate700 }] },
+    { featureType: 'water', elementType: 'geometry', stylers: [{ color: palette.slate800 }] },
+  ],
+} as const;

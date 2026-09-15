@@ -10,13 +10,16 @@ See docs/architecture/real-time-layer.md for rooms and event design.
   flaky path in React Native); sticky sessions then aren't needed server-side
 - Reconnection is automatic (defaults: infinite attempts, 1s→5s backoff) — no
   need to hand-tune backoff in most cases
-- The OS suspends the socket when the app is backgrounded, and it reconnects as a
-  *new* session on foreground. Don't rely on the socket for background driver
-  location — that's the background-location task + HTTP POST (see
-  docs/features/location-tracking.md)
+- The OS may suspend the socket when the app is backgrounded. The current
+  TaskManager implementation emits through the shared Socket.io service when it
+  wakes, but production testing must confirm delivery on supported devices. If
+  vendors prevent reliable reconnect-and-emit behaviour, add an authenticated
+  HTTP location-ingest endpoint as the background transport while retaining
+  Socket.io for foreground trip-room delivery.
 
 ## Server setup
 - socket.io v4.8, attaches to the same HTTP server as Express
+- Current events: `trip:join`, `driver:location:update`, `driver:location`, and `location:error`
 - Named rooms `driver:{id}` and `trip:{id}` for targeted delivery; event names
   live as constants in /websocket/events.ts (AGENTS.md Section 6)
 - Multi-instance scaling: `@socket.io/redis-adapter` v8.3 — **defer until 2+

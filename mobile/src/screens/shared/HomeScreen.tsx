@@ -1,256 +1,123 @@
-/**
- * HomeScreen — the rider's landing screen after signing in (route: "/home").
- *
- * Rebuilt to match the "Rider Home" design mockup: a full-bleed map with floating
- * controls on top (theme toggle · "where to" search · recentre), and a docked
- * card of recent destinations ending in a "Set Pickup" call-to-action.
- *
- * Honest placeholders for now (nothing here is silently faked):
- *   • The map is <MapPlaceholder> — a real map needs a native maps library we
- *     haven't added yet (a major dependency to flag first, AGENTS.md §10).
- *   • Search / recentre / Set Pickup are stubs — the rider booking flow
- *     (SetDestination → ConfirmRide → …) is the next build step.
- *   • The recent destinations are hard-coded sample data (no trips module yet).
- *
- * TEMPORARY: the role switch + "Log out" strip at the bottom of the card belongs
- * on the shared ProfileScreen (see docs/architecture/structure.md). It lives here
- * only so you can still switch role / sign out until that screen exists.
- */
-import { Pressable, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+/** Rider home: live map, destination search, and an adjustable address sheet. */
+import { cssInterop } from 'nativewind';
+import { useRouter } from 'expo-router';
+import { Pressable, ScrollView, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, Card, Text, ThemeToggle } from '@/components/common';
-import { MapPlaceholder } from '@/components/map';
-import { useTheme } from '@/constants/theme';
-import { type UserRole } from '@/services/authService';
+import { Text, ThemeToggle } from '@/components/common';
+import { DriverOnlineControl, RideMap } from '@/components/map';
 import { useAuthStore } from '@/store/authStore';
 
-// The rider's saved / recent destinations shown in the mockup. Hard-coded for
-// now; a real list will come from the trips module once it exists.
-const RECENT_DESTINATIONS = [
-  { id: 'home', icon: '🏠', label: 'Home', address: '12, Road 12, Staten.', price: '$12.10' },
-  { id: 'work', icon: '🏢', label: 'Work', address: '32, Park Avenue.', price: '$0.40' },
+const StyledSafeAreaView = cssInterop(SafeAreaView, { className: 'style' });
+
+const QUICK_PLACES = [
+  { id: 'home', icon: '⌂', label: 'Home', address: '12 Road 12, Lekki Phase 1' },
+  { id: 'work', icon: '▣', label: 'Work', address: 'Admiralty Way, Lekki Phase 1' },
 ] as const;
 
-const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
-  { value: 'rider', label: 'Rider' },
-  { value: 'driver', label: 'Driver' },
-  { value: 'both', label: 'Both' },
-];
+const SERVICES = [
+  { id: 'ride', icon: '🚙', label: 'Ride', detail: 'Everyday trips' },
+  { id: 'comfort', icon: '🚘', label: 'Comfort', detail: 'More comfort' },
+  { id: 'xl', icon: '🚐', label: 'XL', detail: 'Up to 6 seats' },
+  { id: 'schedule', icon: '◷', label: 'Schedule', detail: 'Book ahead' },
+] as const;
 
 export function HomeScreen() {
-  const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  const user = useAuthStore((s) => s.session?.user);
-  const setRole = useAuthStore((s) => s.setRole);
-  const logout = useAuthStore((s) => s.logout);
+  const router = useRouter();
+  const user = useAuthStore((state) => state.session?.user);
 
-  // The router only shows this screen when signed in, but guard anyway for types.
   if (!user) return null;
 
+  const openDestinationPage = () => router.push('/set-destination');
+
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* ── Map region: fills all the space above the docked card ─────────── */}
-      <View style={{ flex: 1 }}>
-        <MapPlaceholder>
-          {/* ETA pill, centred over the map like the mockup's "3 min". */}
-          <View style={{ position: 'absolute', top: '58%', left: 0, right: 0, alignItems: 'center' }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: theme.spacing.sm,
-                backgroundColor: theme.colors.primary,
-                paddingHorizontal: theme.spacing.lg,
-                paddingVertical: theme.spacing.md,
-                borderRadius: theme.radius.full,
-                ...theme.elevation.md,
-              }}
-            >
-              <Text variant="button" color="textInverse">
-                🕐
-              </Text>
-              <Text variant="button" color="textInverse">
-                3 min
+    <View className="flex-1 bg-background">
+      <RideMap />
+      {(user.role === 'driver' || user.role === 'both') ? <DriverOnlineControl driverId={user.id} /> : null}
+
+      <StyledSafeAreaView edges={['top']} className="absolute left-lg right-lg top-0 pt-sm">
+        <View className="flex-row items-center justify-between">
+          <Pressable accessibilityRole="button" accessibilityLabel="Open account menu" onPress={() => router.push('/menu')} className="h-12 w-12 items-center justify-center rounded-full bg-surface shadow-sm active:opacity-70">
+            <Text variant="h3" className="!text-[22px]">☰</Text>
+          </Pressable>
+          <ThemeToggle floating />
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open pickup and destination search"
+          onPress={openDestinationPage}
+          className="mt-md h-16 flex-row items-center gap-md rounded-full bg-surface px-lg shadow-md active:opacity-[0.9]"
+        >
+          <View className="h-9 w-9 items-center justify-center rounded-full bg-primarySoft">
+            <Text variant="bodyMedium" color="primary">⌕</Text>
+          </View>
+          <View className="flex-1">
+            <Text variant="caption" color="textMuted">Where to?</Text>
+            <Text variant="bodyMedium" className="mt-1" numberOfLines={1}>
+              Enter your destination
+            </Text>
+          </View>
+          <Text variant="body" color="icon">›</Text>
+        </Pressable>
+      </StyledSafeAreaView>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Center map on my current location"
+        className="absolute right-lg top-[42%] h-12 w-12 items-center justify-center rounded-full bg-success shadow-md active:opacity-80"
+      >
+        <Text variant="h3" color="textInverse" className="!text-[22px]">◎</Text>
+      </Pressable>
+
+      <StyledSafeAreaView
+        edges={['bottom']}
+        className="absolute bottom-0 left-0 right-0 h-[48%] rounded-t-[28px] bg-surface pb-sm pt-md shadow-lg"
+      >
+          <ScrollView className="flex-1" contentContainerClassName="pb-md" showsVerticalScrollIndicator={false}>
+          <View>
+            <View className="mb-sm items-center">
+              <View className="h-1 w-10 rounded-full bg-borderStrong" />
+            </View>
+            <View className="flex-row items-center justify-between px-xl">
+              <Text variant="bodyMedium">Our services</Text>
+              <Text variant="caption" color="primary">Explore</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-sm px-xl py-md">
+              {SERVICES.map((service) => <Pressable key={service.id} onPress={openDestinationPage} className="w-28 rounded-xl bg-surfaceMuted p-md active:opacity-70"><Text variant="h3" className="!text-[25px]">{service.icon}</Text><Text variant="bodyMedium" className="mt-sm">{service.label}</Text><Text variant="caption" color="textMuted" numberOfLines={1}>{service.detail}</Text></Pressable>)}
+            </ScrollView>
+            <View className="mb-sm flex-row items-center justify-between px-xl">
+              <Text variant="bodyMedium">Ride again</Text>
+              <Text variant="caption" color="primary" onPress={openDestinationPage}>
+                See all
               </Text>
             </View>
-          </View>
-        </MapPlaceholder>
-
-        {/* ── Floating top bar: theme toggle · search · recentre ──────────── */}
-        <View
-          style={{
-            position: 'absolute',
-            top: insets.top + theme.spacing.sm,
-            left: theme.spacing.lg,
-            right: theme.spacing.lg,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: theme.spacing.sm,
-          }}
-        >
-          {/* Mockup's top-left is a round button; we use it for the light/dark
-              toggle (a real "back" would be a dead control on the root screen). */}
-          <ThemeToggle floating />
-
-          {/* "where to" search — a tap target for now; the search screen is next. */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Search for a destination"
-            onPress={() => {
-              /* TODO: open the destination search screen (rider flow) */
-            }}
-            style={({ pressed }) => ({
-              flex: 1,
-              height: 48,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: theme.spacing.sm,
-              paddingHorizontal: theme.spacing.lg,
-              borderRadius: theme.radius.full,
-              backgroundColor: theme.colors.surface,
-              opacity: pressed ? 0.85 : 1,
-              ...theme.elevation.sm,
-            })}
-          >
-            <Text variant="body" color="textMuted">
-              🔍
-            </Text>
-            <Text variant="body" color="textMuted">
-              where to
-            </Text>
-          </Pressable>
-
-          {/* Recentre-on-me button — stub until the real map lands. */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Center on my location"
-            hitSlop={8}
-            onPress={() => {
-              /* TODO: recentre the map on the rider's GPS position */
-            }}
-            style={({ pressed }) => ({
-              width: 48,
-              height: 48,
-              borderRadius: theme.radius.full,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: theme.colors.surface,
-              opacity: pressed ? 0.6 : 1,
-              ...theme.elevation.sm,
-            })}
-          >
-            <Text variant="bodyMedium">◎</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      {/* ── Docked bottom card: recent destinations + Set Pickup ──────────── */}
-      <Card
-        elevation="lg"
-        padding="lg"
-        style={{
-          borderTopLeftRadius: theme.radius.xl,
-          borderTopRightRadius: theme.radius.xl,
-          borderBottomLeftRadius: 0,
-          borderBottomRightRadius: 0,
-          paddingBottom: insets.bottom + theme.spacing.lg,
-          gap: theme.spacing.sm,
-        }}
-      >
-        {RECENT_DESTINATIONS.map((item, index) => (
-          <View key={item.id}>
-            {/* Hairline divider between rows (not before the first one). */}
-            {index > 0 && <View style={{ height: 1, backgroundColor: theme.colors.border }} />}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Set pickup to ${item.label}`}
-              onPress={() => {
-                /* TODO: prefill this destination into the booking flow */
-              }}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: theme.spacing.md,
-                paddingVertical: theme.spacing.md,
-                opacity: pressed ? 0.6 : 1,
-              })}
-            >
-              {/* Icon tile (the mockup shows a photo for Home, an icon for Work;
-                  we use a themed emoji tile for both until we have real data). */}
-              <View
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: theme.radius.md,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: theme.colors.surfaceMuted,
-                }}
+            {QUICK_PLACES.map((place) => (
+              <Pressable
+                key={place.id}
+                accessibilityRole="button"
+                accessibilityLabel={`Ride to ${place.label}`}
+                onPress={openDestinationPage}
+                className="mx-xl flex-row items-center gap-md border-t border-border py-sm active:opacity-60"
               >
-                <Text variant="h3">{item.icon}</Text>
-              </View>
-
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text variant="bodyMedium">{item.label}</Text>
-                <Text variant="caption" color="textMuted">
-                  {item.address}
-                </Text>
-              </View>
-
-              <Text variant="bodyMedium">{item.price}</Text>
-            </Pressable>
-          </View>
-        ))}
-
-        <Button
-          label="Set Pickup"
-          fullWidth
-          onPress={() => {
-            /* TODO: start the booking flow (SetDestination → ConfirmRide → …) */
-          }}
-        />
-
-        {/* ── TEMPORARY account controls ─────────────────────────────────────
-            These belong on the shared ProfileScreen (docs/architecture). Kept
-            here so you can still switch role / log out until that screen exists;
-            remove this whole block once ProfileScreen lands. */}
-        <View style={{ height: 1, backgroundColor: theme.colors.border, marginTop: theme.spacing.xs }} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-          <View
-            style={{
-              flex: 1,
-              flexDirection: 'row',
-              backgroundColor: theme.colors.surfaceMuted,
-              borderRadius: theme.radius.md,
-              padding: 4,
-              gap: 4,
-            }}
-          >
-            {ROLE_OPTIONS.map((option) => {
-              const selected = user.role === option.value;
-              return (
-                <Text
-                  key={option.value}
-                  onPress={() => setRole(option.value)}
-                  variant="caption"
-                  color={selected ? 'text' : 'textMuted'}
-                  style={{
-                    flex: 1,
-                    textAlign: 'center',
-                    paddingVertical: theme.spacing.sm,
-                    borderRadius: theme.radius.sm,
-                    backgroundColor: selected ? theme.colors.surface : 'transparent',
-                  }}
-                >
-                  {option.label}
-                </Text>
-              );
-            })}
-          </View>
-          <Button label="Log out" variant="ghost" size="sm" onPress={logout} />
-        </View>
-      </Card>
+                <View className="h-10 w-10 items-center justify-center rounded-full bg-surfaceMuted">
+                  <Text variant="bodyMedium">{place.icon}</Text>
+                </View>
+                <View className="flex-1">
+                  <Text variant="bodyMedium">{place.label}</Text>
+                  <Text variant="caption" color="textMuted" numberOfLines={1}>
+                    {place.address}
+                  </Text>
+                </View>
+                <Text variant="body" color="icon">›</Text>
+              </Pressable>
+            ))}
+            <View className="mx-xl mt-xs flex-row items-center justify-center gap-sm rounded-lg bg-primarySoft px-md py-sm">
+              <Text variant="caption" color="primary">🛡</Text>
+              <Text variant="caption" color="primary">Trips are tracked for your safety</Text>
+            </View>
+          </View></ScrollView>
+      </StyledSafeAreaView>
     </View>
   );
 }

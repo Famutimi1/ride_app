@@ -12,6 +12,7 @@
  * mirror the mockup — no wallet/ledger data is read or written here.
  */
 import { Redirect, useRouter } from 'expo-router';
+import { cssInterop } from 'nativewind';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -19,16 +20,15 @@ import {
   ScrollView,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, BackButton, Button, Input, ListRow, Text } from '@/components/common';
-import { useTheme } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 
+const StyledSafeAreaView = cssInterop(SafeAreaView, { className: 'style' });
+
 export function ProfileSetupScreen() {
-  const theme = useTheme();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   const hasPending = useAuthStore((s) => s.pending !== null);
 
@@ -52,26 +52,21 @@ export function ProfileSetupScreen() {
   if (!hasPending) return <Redirect href="/phone" />;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <StyledSafeAreaView edges={['top', 'bottom']} className="flex-1 bg-background">
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
+          className="flex-1"
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingTop: insets.top + theme.spacing.sm,
-            paddingBottom: insets.bottom + theme.spacing.xl,
-            paddingHorizontal: theme.spacing.xl,
-            gap: theme.spacing.xl,
-          }}
+          contentContainerClassName="grow gap-xl px-xl pb-xl pt-sm"
         >
           <BackButton onPress={() => router.back()} />
 
           {/* Avatar + "Add photo". Photo upload isn't wired yet — the initials
               fallback stands in, and "Add photo" is a no-op placeholder for now. */}
-          <View style={{ alignItems: 'center', gap: theme.spacing.sm }}>
+          <View className="items-center gap-sm">
             <Avatar name={name || undefined} size="lg" />
             <Text
               variant="caption"
@@ -85,7 +80,7 @@ export function ProfileSetupScreen() {
           </View>
 
           {/* Basic info */}
-          <View style={{ gap: theme.spacing.md }}>
+          <View className="gap-md">
             <Text variant="bodyMedium">Basic info</Text>
 
             <Input
@@ -103,7 +98,7 @@ export function ProfileSetupScreen() {
                 </Text>
               }
             />
-            <Text variant="caption" color="primary" style={{ marginLeft: 2 }}>
+            <Text variant="caption" color="primary" className="ml-[2px]">
               Enter your full name
             </Text>
 
@@ -124,7 +119,7 @@ export function ProfileSetupScreen() {
           </View>
 
           {/* Stats — static display mirroring the mockup (no wallet/ledger access). */}
-          <View style={{ gap: theme.spacing.xs }}>
+          <View className="gap-xs">
             <Text variant="bodyMedium">Stats</Text>
             <ListRow icon={<Text>💰</Text>} label="Wallet balance" value="$120.00" />
             <ListRow icon={<Text>🎟️</Text>} label="Ride credit" value="$20.00" />
@@ -132,11 +127,11 @@ export function ProfileSetupScreen() {
           </View>
 
           {/* Spacer pushes Done to the bottom when the content is short. */}
-          <View style={{ flex: 1 }} />
+          <View className="flex-1" />
 
           <Button label="Done" fullWidth onPress={onDone} />
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </StyledSafeAreaView>
   );
 }

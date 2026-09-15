@@ -16,7 +16,6 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { Button, Input, ListRow, Text, Toggle } from '@/components/common';
-import { useTheme } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 
 import { AuthScreenLayout } from './AuthScreenLayout';
@@ -28,7 +27,6 @@ function paramString(value: string | string[] | undefined): string {
 }
 
 export function NotificationsScreen() {
-  const theme = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{ name?: string; email?: string }>();
 
@@ -73,7 +71,7 @@ export function NotificationsScreen() {
       }
     >
       {/* General */}
-      <View style={{ gap: theme.spacing.xs }}>
+      <View className="gap-xs">
         <Text variant="bodyMedium">General</Text>
         <ListRow
           label="Push notifications"
@@ -82,7 +80,7 @@ export function NotificationsScreen() {
       </View>
 
       {/* Email — confirm the contact details we'll reach you on. */}
-      <View style={{ gap: theme.spacing.md }}>
+      <View className="gap-md">
         <Text variant="bodyMedium">Email</Text>
         <Input
           value={email}
@@ -106,7 +104,7 @@ export function NotificationsScreen() {
       </View>
 
       {/* Promo */}
-      <View style={{ gap: theme.spacing.xs }}>
+      <View className="gap-xs">
         <Text variant="bodyMedium">Promo</Text>
         <ListRow
           label="Tips & offers"

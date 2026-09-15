@@ -2,8 +2,8 @@
 
 The recommended libraries for this project, mobile and backend, with the
 reasoning behind each and **when** to add it (mapped to the build order in
-`CLAUDE.md`). This is a plan, not a lock file — nothing here is installed until
-the relevant build stage.
+`CLAUDE.md`). The maps/location dependencies described below are now installed;
+the remaining entries are planning guidance.
 
 > **Provenance:** Researched and verified on **2026-08-22** against the Expo
 > **SDK 57** versioned docs (`docs.expo.dev/versions/v57.0.0/`) and live npm.
@@ -45,7 +45,7 @@ aligned with SDK 57.
 | Secure token storage (JWT) | `expo-secure-store` | Yes | Works in Expo Go. Treat as a **cache**, not permanent storage — Android clears it on uninstall. Always be able to re-auth via refresh token. |
 | Persisted state (Zustand) | `@react-native-async-storage/async-storage` | Yes (listed third-party) | Pairs with Zustand `persist`. **Never** store tokens/PII here — it's unencrypted; that's SecureStore's job. |
 | Real-time client | `socket.io-client` | No (plain npm) | **RN gotcha:** pass `transports: ['websocket']` to skip flaky long-polling. Socket drops when app is backgrounded — use it for foreground live-trip updates, not background tracking. |
-| Route polylines | `@mapbox/polyline` | No (plain npm) | Decodes the encoded polyline from Google Directions/Routes API into coordinates for `<Polyline>`. Proxy the routing call through the backend to keep the API key off the device. |
+| Route polylines | Internal decoder | No extra package | `mobile/src/utils/polyline.ts` decodes Google's encoded route, avoiding another runtime dependency. |
 | Photos (license / vehicle) | `expo-image-picker` | Yes | Set `microphonePermission: false` in the config plugin — it adds `RECORD_AUDIO` by default, which we don't need. |
 | Marker clustering (optional) | `react-native-map-clustering` | No (plain npm) | For many drivers on screen. Verify on a dev build first — New-Architecture readiness unconfirmed. |
 
@@ -53,8 +53,9 @@ aligned with SDK 57.
 
 ## Backend (`backend/`)
 
-Currently installed: `cors`, `dotenv`, `express@5`, `helmet`, `morgan` (all fine
-on Express 5). The data / real-time / auth layer is still unbuilt.
+Currently installed for this stage: `cors`, `dotenv`, `express@5`, `helmet`,
+`morgan`, `pg`, `ioredis`, and `socket.io`. Authentication and the full trip
+persistence layer remain separate work.
 
 ### Core set — install when you start Stage 1 (Auth)
 ```bash
@@ -106,7 +107,7 @@ Node's built-in `fetch`:
 | 3. Trips + WebSocket | `socket.io` | `socket.io-client` |
 | 4. Payments | Paystack via `fetch`; `node-cron`/`croner` | — |
 | 5. Ratings | — | — |
-| 6. Frontend polish | — | `expo-notifications`, `expo-image-picker`, `@mapbox/polyline` |
+| 6. Frontend polish | — | `expo-notifications`, `expo-image-picker`; route decoding is already internal |
 
 ---
 

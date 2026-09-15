@@ -50,13 +50,16 @@ interface AuthState {
   // --- actions ---
   /** Step 1: ask for an OTP and remember which phone we're verifying. */
   requestOtp: (phone: string) => Promise<void>;
-  /** Step 2: check the code. Returns whether we still need to collect a profile. */
+  /** Step 2: check the code and establish a session immediately. */
   verifyOtp: (code: string) => Promise<{ needsProfile: boolean }>;
   /** Step 3 (new users): save the profile, which completes the session. `role`
    *  defaults to 'rider' — the onboarding doesn't ask for one up front. */
   completeProfile: (input: { name: string; email?: string; role?: UserRole }) => Promise<void>;
   /** Change the active role (rider/driver/both) for the signed-in user. */
   setRole: (role: UserRole) => void;
+  /** Update editable local profile fields. Backend persistence can replace this
+   * optimistic store update when the profile endpoint is connected. */
+  updateProfile: (input: Partial<Pick<AuthUser, 'name' | 'email' | 'phone'>>) => void;
   /** Clear everything and return to logged-out. */
   logout: () => void;
   /** Internal: flipped once persisted state has been rehydrated. */
@@ -91,9 +94,16 @@ export const useAuthStore = create<AuthState>()(
           return { needsProfile: false };
         }
 
-        // New number — hang on to the token; the profile screen finishes the job.
-        set({ pending: { phone: pending.phone, token } });
-        return { needsProfile: true };
+        // New riders enter the app immediately. Profile details can be completed
+        // later from account settings instead of blocking the first ride.
+        const newRider: AuthUser = {
+          id: `usr_${pending.phone.replace(/\D/g, '')}`,
+          phone: pending.phone,
+          name: 'Rider',
+          role: 'rider',
+        };
+        set({ session: { token, user: newRider }, pending: null });
+        return { needsProfile: false };
       },
 
       completeProfile: async ({ name, email, role = 'rider' }) => {
@@ -115,6 +125,12 @@ export const useAuthStore = create<AuthState>()(
         // Roles are a plain profile field (not money/ledger data), so an in-place
         // update is fine. A real backend call would PATCH /users/me here too.
         set({ session: { ...session, user: { ...session.user, role } } });
+      },
+
+      updateProfile: (input) => {
+        const session = get().session;
+        if (!session) return;
+        set({ session: { ...session, user: { ...session.user, ...input } } });
       },
 
       logout: () => set({ session: null, pending: null }),
