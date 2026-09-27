@@ -22,22 +22,57 @@ import {
   Text,
 } from '@/components/common';
 import { useTheme } from '@/constants/theme';
+import { BrandLogo } from '@/components/common/BrandLogo';
+import { useUiStore } from '@/store/uiStore';
 
 const StyledSafeAreaView = cssInterop(SafeAreaView, { className: 'style' });
 
 export function ComponentGalleryScreen() {
   const theme = useTheme();
   const [rating, setRating] = useState(4);
+  const setThemePreference = useUiStore((state) => state.setThemePreference);
 
   return (
     <StyledSafeAreaView className="flex-1 bg-background">
       <ScrollView contentContainerClassName="gap-xl p-xl">
         <View className="gap-xs">
-          <Text variant="h2">Design System</Text>
+          <Text variant="h2">Rakky Ride</Text>
           <Text variant="body" color="textMuted">
             Live preview · {theme.scheme} mode
           </Text>
         </View>
+
+        <View className="flex-row flex-wrap gap-sm">
+          <Button label="Light" size="sm" variant="secondary" onPress={() => setThemePreference('light')} />
+          <Button label="Dark" size="sm" variant="secondary" onPress={() => setThemePreference('dark')} />
+          <Button label="System" size="sm" variant="secondary" onPress={() => setThemePreference('system')} />
+        </View>
+
+        <Section title="Brand and launch appearance">
+          <View className="items-center justify-center rounded-xl border border-border bg-background py-3xl">
+            <BrandLogo size={180} />
+          </View>
+          <Text variant="caption" color="textMuted">Logo preview. Native launch sizing is verified in a release build.</Text>
+        </Section>
+
+        <Section title="Booking and wallet">
+          <Card padding="lg" className="gap-md">
+            <Text variant="h3">Your next ride</Text>
+            <Input label="Destination" placeholder="Where to?" />
+            <Button label="Choose your ride" onPress={() => {}} fullWidth />
+          </Card>
+          <Card padding="lg" className="gap-md">
+            <Text variant="caption" color="success">AVAILABLE BALANCE</Text>
+            <Text variant="h2">₦42,850</Text>
+            <View className="flex-row flex-wrap gap-sm">
+              <StatusPill tone="success" label="Paid" />
+              <StatusPill tone="warning" label="Pending" />
+              <StatusPill tone="danger" label="Failed" />
+            </View>
+            <Text variant="bodyMedium" color="danger">−₦3,000 · Service fee</Text>
+            <Button label="Request payout" onPress={() => {}} fullWidth />
+          </Card>
+        </Section>
 
         {/* Typography scale */}
         <Section title="Typography">
@@ -53,6 +88,7 @@ export function ComponentGalleryScreen() {
         <Section title="Buttons">
           <Button label="Primary" onPress={() => {}} fullWidth />
           <Button label="Secondary" variant="secondary" onPress={() => {}} fullWidth />
+          <Button label="Outline" variant="outline" onPress={() => {}} fullWidth />
           <Button label="Ghost" variant="ghost" onPress={() => {}} fullWidth />
           <Button label="Destructive" variant="destructive" onPress={() => {}} fullWidth />
           <Button label="Loading" loading fullWidth />

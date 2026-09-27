@@ -1,5 +1,5 @@
 /**
- * HeroIllustration — the artwork slot at the top of each onboarding slide (the blue
+ * HeroIllustration — the artwork slot at the top of each onboarding slide (the green
  * car + location pin + skyline in the mockup).
  *
  * It renders the vector artwork seamlessly with contain mode, allowing custom

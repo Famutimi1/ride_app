@@ -147,7 +147,7 @@ export function OtpScreen() {
                   return (
                     <View
                       key={i}
-                      className={`h-[44px] w-[32px] items-center justify-center rounded-[7px] bg-surfaceMuted ${
+                      className={`h-[44px] w-[32px] items-center justify-center rounded-[5px] bg-surfaceMuted ${
                         isActive ? 'border-2' : 'border'
                       } ${borderClass}`}
                     >
@@ -192,7 +192,7 @@ export function OtpScreen() {
                 loading={loading}
                 disabled={code.length !== CODE_LENGTH}
                 onPress={() => submit(code)}
-                className="h-[40px] rounded-[12px]"
+                className="h-[40px] rounded-[8px]"
               />
               <Pressable onPress={onResend} disabled={seconds > 0} hitSlop={8}>
                 <Text

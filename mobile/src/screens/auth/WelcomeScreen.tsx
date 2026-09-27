@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, Text } from '@/components/common';
+import { BrandLogo, Button, Text } from '@/components/common';
 
 import { HeroIllustration } from './HeroIllustration';
 
@@ -92,10 +92,11 @@ export function WelcomeScreen() {
               className="w-screen flex-1 justify-start px-xl pt-[63px]"
             >
               <View className="h-[210px] w-full items-center justify-center">
-                <HeroIllustration source={item.image} />
+                {item.key === 'anywhere' ? <BrandLogo size={200} /> : <HeroIllustration source={item.image} />}
               </View>
 
               <View className="mt-md gap-sm">
+                <Text variant="caption" color="primary" className="tracking-[2px]">RAKKY RIDE</Text>
                 <Text
                   variant="h2"
                   className={isTallScreen
@@ -136,7 +137,7 @@ export function WelcomeScreen() {
             label="Get Started"
             size="lg"
             fullWidth
-            className="h-[40px] rounded-[13px]"
+            className="h-[40px] rounded-[9px]"
             onPress={() => router.push('/phone')}
           />
 
@@ -150,7 +151,8 @@ export function WelcomeScreen() {
               Already have an account?
             </Text>
             <Pressable
-              onPress={() => router.push('/phone')}
+              accessibilityRole="link"
+              onPress={() => router.push('/login')}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Text

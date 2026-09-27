@@ -142,18 +142,21 @@ import the other module's service function, not reimplement it.
 - **Design direction:** white-forward, clean UI (Bolt/Uber-inspired). No dark/moody
   default aesthetics. No illustrated/placeholder maps — always real Google Maps
   embeds.
-- **Color system (from the approved design mockup):** primary blue `#1D4ED8`
-  (actions), success green `#16A34A` (online / earnings-in), danger red `#DC2626`
-  (decline / earnings-out), plus a secondary slate `#64748B`. Amber `#F59E0B` is
-  used for **star ratings and warnings**. These raw values live only in the
-  `palette` in `mobile/src/constants/colors.ts`; components reference semantic
-  tokens (`colors.primary`, `colors.success`, `colors.danger`, …) via the
-  `useTheme()` hook — never hardcoded hex inline. This is what makes the whole app
-  re-themeable by editing one file. Enforce this even under time pressure.
-  _(This palette was chosen over an earlier draft — it is now canonical.)_
+- **Rakky Ride color system:** green primary actions, white/silver light surfaces,
+  and charcoal dark surfaces. The supplied background-free Rakky Ride logo is the
+  canonical brand asset. Use the semantic light/dark mappings in
+  `mobile/src/constants/colors.ts`; do not restore the previous blue palette.
+  Raw runtime colors (including tints/overlays) live only in `palette`. Components
+  use `useTheme()` semantic tokens; NativeWind reads the same tokens. Build-time
+  splash/icon backgrounds use `nativeBrandColors` from that file. Exported image
+  assets may contain fixed artwork colors, but are not a second UI palette.
+  Keep success/online/earnings-in green, warnings/ratings amber, and
+  danger/decline/earnings-out red. Use text/icons in addition to color.
+  Pair filled controls with `textInverse` for their active theme; do not assume white
+  labels on the brighter dark-mode fills. See `docs/design/brand/theme-spec.md`.
 - **Light/dark mode** by swapping the active semantic-token set (`lightColors` /
-  `darkColors` in `colors.ts`) through the `useTheme()` hook, which follows the OS
-  scheme via `useColorScheme` — not two parallel hardcoded stylesheets. (This is
+  `darkColors` in `colors.ts`) through the `useTheme()` hook, which respects the saved light/dark preference and follows the OS
+  scheme via `useColorScheme` in system mode — not two parallel hardcoded stylesheets. (This is
   React Native, so there is no CSS `[data-theme]` attribute; the token swap is done
   in JS. Full design system: `docs/design/design-system.md`.)
 - **Driver wallet screen colors carry financial meaning** (success/warning/danger).

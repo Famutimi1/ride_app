@@ -17,6 +17,7 @@
  * to show. See app/_layout.tsx.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
@@ -36,6 +37,8 @@ interface Session {
 /** Scratch space that only exists between "entered phone" and "finished profile". */
 interface Pending {
   phone: string;
+  /** Name collected before OTP verification so a new rider is not stored as a placeholder. */
+  name?: string;
   /** The JWT from verifyOtp, held here until a profile is attached. Empty pre-verify. */
   token: string;
 }
@@ -49,7 +52,7 @@ interface AuthState {
 
   // --- actions ---
   /** Step 1: ask for an OTP and remember which phone we're verifying. */
-  requestOtp: (phone: string) => Promise<void>;
+  requestOtp: (phone: string, name?: string) => Promise<void>;
   /** Step 2: check the code and establish a session immediately. */
   verifyOtp: (code: string) => Promise<{ needsProfile: boolean }>;
   /** Step 3 (new users): save the profile, which completes the session. `role`
@@ -66,17 +69,20 @@ interface AuthState {
   setHydrated: () => void;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
+export const useAuthStore = create<AuthState>()((setRuntimeState, get, api) => {
+  // Hydration is runtime-only: never write defaults back after a failed read.
+  const finishHydration = () => setRuntimeState({ _hasHydrated: true });
+  return persist<AuthState, [], [], Pick<AuthState, 'session'>>(
     (set, get) => ({
       session: null,
       pending: null,
       _hasHydrated: false,
 
-      requestOtp: async (phone) => {
+      requestOtp: async (phone, name) => {
         await apiRequestOtp(phone);
-        // Remember the phone so verifyOtp knows what it's confirming.
-        set({ pending: { phone, token: '' } });
+        // Resends omit the name, so preserve the one collected on the phone screen.
+        const pendingName = name ?? get().pending?.name;
+        set({ pending: { phone, token: '', name: pendingName } });
       },
 
       verifyOtp: async (code) => {
@@ -99,7 +105,7 @@ export const useAuthStore = create<AuthState>()(
         const newRider: AuthUser = {
           id: `usr_${pending.phone.replace(/\D/g, '')}`,
           phone: pending.phone,
-          name: 'Rider',
+          name: pending.name ?? 'Rider',
           role: 'rider',
         };
         set({ session: { token, user: newRider }, pending: null });
@@ -135,21 +141,24 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => set({ session: null, pending: null }),
 
-      setHydrated: () => set({ _hasHydrated: true }),
+      setHydrated: finishHydration,
     }),
     {
       name: 'ride-auth',
       storage: createJSONStorage(() => AsyncStorage),
+      // Static web rendering has no browser storage. Hydrate on the client only.
+      skipHydration: Platform.OS === 'web' && typeof window === 'undefined',
       // Persist ONLY the session. `pending` is deliberately dropped — a half-finished
       // login shouldn't survive an app restart.
       partialize: (state) => ({ session: state.session }),
       // Runs after AsyncStorage is read back (even when nothing was stored).
-      onRehydrateStorage: () => (state) => {
-        state?.setHydrated();
+      onRehydrateStorage: (initialState) => (state) => {
+        // A failed read keeps the signed-out default and must still release launch.
+        (state ?? initialState).setHydrated();
       },
     },
-  ),
-);
+  )(setRuntimeState, get, api);
+});
 
 /** Convenience selector: is there a fully-signed-in user? */
 export const useIsSignedIn = () => useAuthStore((s) => s.session !== null);

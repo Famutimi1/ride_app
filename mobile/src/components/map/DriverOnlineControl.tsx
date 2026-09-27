@@ -15,11 +15,11 @@ export function DriverOnlineControl({ driverId }: { driverId: string }) {
     if (online) {
       stopForeground.current?.(); await stopDriverBackgroundUpdates(); setOnline(false); setMessage(null); return;
     }
-    setMessage('Ride needs location access while you are online so nearby riders can find you.');
+    setMessage('Rakky Ride needs location access while you are online so nearby riders can find you.');
     const foreground = await requestForegroundLocation();
     if (foreground !== 'granted') { setMessage('Enable foreground location in Settings before going online.'); return; }
     const background = await requestDriverBackgroundLocation();
-    if (background !== 'granted') { setMessage('Background access is needed to remain available when Ride is not open.'); return; }
+    if (background !== 'granted') { setMessage('Background access is needed to remain available when Rakky Ride is not open.'); return; }
     stopForeground.current = await startDriverLocationUpdates(driverId);
     await startDriverBackgroundUpdates(driverId);
     setOnline(true); setMessage(null);

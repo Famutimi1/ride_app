@@ -16,10 +16,9 @@ const QUICK_PLACES = [
 ] as const;
 
 const SERVICES = [
-  { id: 'ride', icon: '🚙', label: 'Ride', detail: 'Everyday trips' },
-  { id: 'comfort', icon: '🚘', label: 'Comfort', detail: 'More comfort' },
-  { id: 'xl', icon: '🚐', label: 'XL', detail: 'Up to 6 seats' },
-  { id: 'schedule', icon: '◷', label: 'Schedule', detail: 'Book ahead' },
+  { id: 'ride', icon: '🚙', label: 'Ride', detail: 'Everyday trips', service: 'ride' },
+  { id: 'courier', icon: '📦', label: 'Courier', detail: 'Send a package', service: 'courier' },
+  { id: 'schedule', icon: '◷', label: 'Schedule', detail: 'Book ahead', service: 'scheduled' },
 ] as const;
 
 export function HomeScreen() {
@@ -35,7 +34,7 @@ export function HomeScreen() {
       <RideMap />
       {(user.role === 'driver' || user.role === 'both') ? <DriverOnlineControl driverId={user.id} /> : null}
 
-      <StyledSafeAreaView edges={['top']} className="absolute left-lg right-lg top-0 pt-sm">
+      <StyledSafeAreaView edges={['top']} className="absolute left-sm right-sm top-0 pt-sm">
         <View className="flex-row items-center justify-between">
           <Pressable accessibilityRole="button" accessibilityLabel="Open account menu" onPress={() => router.push('/menu')} className="h-12 w-12 items-center justify-center rounded-full bg-surface shadow-sm active:opacity-70">
             <Text variant="h3" className="!text-[22px]">☰</Text>
@@ -43,23 +42,28 @@ export function HomeScreen() {
           <ThemeToggle floating />
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open pickup and destination search"
-          onPress={openDestinationPage}
-          className="mt-md h-16 flex-row items-center gap-md rounded-full bg-surface px-lg shadow-md active:opacity-[0.9]"
-        >
-          <View className="h-9 w-9 items-center justify-center rounded-full bg-primarySoft">
-            <Text variant="bodyMedium" color="primary">⌕</Text>
-          </View>
-          <View className="flex-1">
-            <Text variant="caption" color="textMuted">Where to?</Text>
-            <Text variant="bodyMedium" className="mt-1" numberOfLines={1}>
-              Enter your destination
+        <View className="mt-md h-14 flex-row items-center rounded-lg bg-surface p-xs pl-md shadow-md">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open pickup and destination search"
+            onPress={openDestinationPage}
+            className="h-full flex-1 flex-row items-center gap-md active:opacity-60"
+          >
+            <Text variant="h3" color="icon" className="!text-[22px]">⌕</Text>
+            <Text variant="bodyMedium" color="textMuted" numberOfLines={1}>
+              Where to?
             </Text>
-          </View>
-          <Text variant="body" color="icon">›</Text>
-        </Pressable>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Schedule a ride for later"
+            onPress={() => router.push({ pathname: '/set-destination', params: { service: 'scheduled' } })}
+            className="h-11 flex-row items-center gap-sm rounded-md bg-surfaceMuted px-md active:opacity-70"
+          >
+            <Text variant="body" color="icon">▣</Text>
+            <Text variant="caption">Schedule</Text>
+          </Pressable>
+        </View>
       </StyledSafeAreaView>
 
       <Pressable
@@ -81,10 +85,12 @@ export function HomeScreen() {
             </View>
             <View className="flex-row items-center justify-between px-xl">
               <Text variant="bodyMedium">Our services</Text>
-              <Text variant="caption" color="primary">Explore</Text>
+              <Pressable onPress={() => router.push({ pathname: '/account/[section]', params: { section: 'services' } })} className="px-xs py-xs active:opacity-60">
+                <Text variant="caption" color="primary">Explore</Text>
+              </Pressable>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-sm px-xl py-md">
-              {SERVICES.map((service) => <Pressable key={service.id} onPress={openDestinationPage} className="w-28 rounded-xl bg-surfaceMuted p-md active:opacity-70"><Text variant="h3" className="!text-[25px]">{service.icon}</Text><Text variant="bodyMedium" className="mt-sm">{service.label}</Text><Text variant="caption" color="textMuted" numberOfLines={1}>{service.detail}</Text></Pressable>)}
+              {SERVICES.map((service) => <Pressable key={service.id} onPress={() => router.push({ pathname: '/set-destination', params: { service: service.service } })} className="w-28 rounded-xl bg-surfaceMuted p-md active:opacity-70"><Text variant="h3" className="!text-[25px]">{service.icon}</Text><Text variant="bodyMedium" className="mt-sm">{service.label}</Text><Text variant="caption" color="textMuted" numberOfLines={1}>{service.detail}</Text></Pressable>)}
             </ScrollView>
             <View className="mb-sm flex-row items-center justify-between px-xl">
               <Text variant="bodyMedium">Ride again</Text>

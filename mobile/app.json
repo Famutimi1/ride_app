@@ -1,47 +1,44 @@
 {
   "expo": {
-    "name": "famutimi",
+    "name": "Rakky Ride",
     "slug": "famutimi",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/brand/rakky-ride-logo.png",
     "scheme": "famutimi",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/brand/rakky-ride-logo.png",
       "bundleIdentifier": "com.famutimi.ride"
     },
     "android": {
       "package": "com.famutimi.ride",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/brand/rakky-ride-logo.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/brand/rakky-ride-logo.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "image": "./assets/images/brand/rakky-ride-logo.png",
+          "imageWidth": 288,
+          "resizeMode": "contain"
         }
       ],
       "react-native-maps",
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow Ride to use your location to find pickup points and nearby drivers.",
-          "locationAlwaysAndWhenInUsePermission": "Allow Ride to use your location while you are online so riders can see your arrival.",
+          "locationWhenInUsePermission": "Allow Rakky Ride to use your location to find pickup points and nearby drivers.",
+          "locationAlwaysAndWhenInUsePermission": "Allow Rakky Ride to use your location while you are online so riders can see your arrival.",
           "isIosBackgroundLocationEnabled": true,
           "isAndroidBackgroundLocationEnabled": true
         }

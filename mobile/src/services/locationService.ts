@@ -69,7 +69,7 @@ export async function startDriverBackgroundUpdates(driverId: string, tripId?: st
     timeInterval: 4_000,
     distanceInterval: 10,
     foregroundService: {
-      notificationTitle: 'Ride driver is online',
+      notificationTitle: 'Rakky Ride driver is online',
       notificationBody: 'Sharing your location to receive and complete trips.',
     },
   });

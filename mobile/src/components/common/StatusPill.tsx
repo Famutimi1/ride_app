@@ -5,7 +5,7 @@
  * A pill = a soft tinted background + a matching solid-colour label, so it reads
  * clearly on both light and dark surfaces. Pick a `tone` by meaning:
  *   • success  — online, paid, completed        (green)
- *   • primary  — in-progress, active            (blue)
+ *   • primary  — in-progress, active            (brand green)
  *   • warning  — searching, pending             (amber)
  *   • danger   — cancelled, failed, offline      (red)
  *   • neutral  — muted / informational          (grey)

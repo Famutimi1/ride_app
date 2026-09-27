@@ -6,6 +6,7 @@
  */
 export { Avatar } from './Avatar';
 export { BackButton } from './BackButton';
+export { BrandLogo } from './BrandLogo';
 export { Button } from './Button';
 export { Card } from './Card';
 export { Input } from './Input';

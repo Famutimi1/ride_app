@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Linking, Modal, PanResponder, Pressable, ScrollView, Share, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,22 +20,33 @@ export function OngoingTripScreen() {
   const [sheetHeight, setSheetHeight] = useState(62);
   const [safetyOpen, setSafetyOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
-  const dragStart = useRef(62);
   const driverCoordinate = route[Math.floor(route.length * 0.42)] ?? pickup ?? region;
   const markers = useMemo<AppMapMarker[]>(() => [
     ...(pickup ? [{ ...pickup, id: 'pickup', kind: 'pickup' as const }] : []),
     ...(dropoff ? [{ ...dropoff, id: 'dropoff', kind: 'dropoff' as const }] : []),
     { ...driverCoordinate, id: 'active-driver', kind: 'driver' as const, heading: 42, title: 'James' },
   ], [driverCoordinate, dropoff, pickup]);
-  const panResponder = useMemo(() => PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 5,
-    onPanResponderGrant: () => { dragStart.current = sheetHeight; },
-    onPanResponderMove: (_, gesture) => setSheetHeight(Math.min(78, Math.max(43, dragStart.current - (gesture.dy / 8)))),
-    onPanResponderRelease: (_, gesture) => setSheetHeight(gesture.dy < -35 ? 78 : gesture.dy > 35 ? 43 : 62),
-  }), [sheetHeight]);
+  const [panResponder] = useState(() => {
+    // Keep gesture bookkeeping inside one stable responder. React state owns
+    // the rendered height; move events do not recreate the active responder.
+    let currentHeight = 62;
+    let startHeight = 62;
+    const updateHeight = (value: number) => {
+      currentHeight = value;
+      setSheetHeight(value);
+    };
+    return PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 5,
+      onPanResponderGrant: () => { startHeight = currentHeight; },
+      onPanResponderMove: (_, gesture) => updateHeight(Math.min(78, Math.max(43, startHeight - (gesture.dy / 8)))),
+      onPanResponderRelease: (_, gesture) => updateHeight(gesture.dy < -35 ? 78 : gesture.dy > 35 ? 43 : 62),
+      onPanResponderTerminate: () => updateHeight(62),
+    });
+  });
+
   const pickupAddress = pickup?.address ?? FALLBACK_PICKUP;
   const dropoffAddress = dropoff?.address ?? FALLBACK_DROPOFF;
-  const shareRide = async () => Share.share({ message: `I’m on a Ride trip with James (LND409HS). From ${pickupAddress} to ${dropoffAddress}. Estimated arrival: 5:47 PM.` });
+  const shareRide = async () => Share.share({ message: `I’m on a Rakky Ride trip with James (LND409HS). From ${pickupAddress} to ${dropoffAddress}. Estimated arrival: 5:47 PM.` });
   const goBack = () => router.canGoBack() ? router.back() : router.replace('/home');
 
   return <View className="flex-1 bg-background">
@@ -59,9 +70,9 @@ export function OngoingTripScreen() {
       </ScrollView>
     </View>
 
-    <Modal visible={callOpen} transparent animationType="fade" onRequestClose={() => setCallOpen(false)}><Pressable onPress={() => setCallOpen(false)} className="flex-1 items-center justify-center px-xl" style={[nativeWindTheme[theme.scheme], { backgroundColor: theme.colors.overlay }]}><Pressable onPress={(event) => event.stopPropagation()} className="w-full rounded-[24px] bg-surface p-lg" style={{ maxWidth: 350 }}><View className="flex-row items-center justify-between"><View><Text variant="h3" className="!text-[21px]">Call James</Text><Text variant="caption" color="textMuted">Choose how you want to connect</Text></View><Pressable onPress={() => setCallOpen(false)} className="h-9 w-9 items-center justify-center rounded-full bg-surfaceMuted"><Text>×</Text></Pressable></View><View className="mt-lg flex-row gap-md"><Pressable onPress={() => { setCallOpen(false); void Linking.openURL('tel:+2340000000000'); }} className="flex-1 items-center rounded-xl bg-primarySoft p-lg"><View className="h-12 w-12 items-center justify-center rounded-full bg-primary"><Text variant="h3" color="textInverse">☎</Text></View><Text variant="bodyMedium" className="mt-sm">Audio call</Text><Text variant="caption" color="textMuted">Uses your phone</Text></Pressable><Pressable onPress={() => { setCallOpen(false); Alert.alert('Video call', 'Starting a secure video call with James…'); }} className="flex-1 items-center rounded-xl bg-successSoft p-lg"><View className="h-12 w-12 items-center justify-center rounded-full bg-success"><Text variant="h3" color="textInverse">▣</Text></View><Text variant="bodyMedium" className="mt-sm">Video call</Text><Text variant="caption" color="textMuted">In-app video</Text></Pressable></View></Pressable></Pressable></Modal>
+    <Modal visible={callOpen} transparent animationType="fade" onRequestClose={() => setCallOpen(false)}><Pressable onPress={() => setCallOpen(false)} className="flex-1 items-center justify-center px-xl" style={[nativeWindTheme[theme.scheme], { backgroundColor: theme.colors.overlay }]}><Pressable onPress={(event) => event.stopPropagation()} className="w-full rounded-[12px] bg-surface p-lg" style={{ maxWidth: 350 }}><View className="flex-row items-center justify-between"><View><Text variant="h3" className="!text-[21px]">Call James</Text><Text variant="caption" color="textMuted">Choose how you want to connect</Text></View><Pressable onPress={() => setCallOpen(false)} className="h-9 w-9 items-center justify-center rounded-full bg-surfaceMuted"><Text>×</Text></Pressable></View><View className="mt-lg flex-row gap-md"><Pressable onPress={() => { setCallOpen(false); void Linking.openURL('tel:+2340000000000'); }} className="flex-1 items-center rounded-xl bg-primarySoft p-lg"><View className="h-12 w-12 items-center justify-center rounded-full bg-primary"><Text variant="h3" color="textInverse">☎</Text></View><Text variant="bodyMedium" className="mt-sm">Audio call</Text><Text variant="caption" color="textMuted">Uses your phone</Text></Pressable><Pressable onPress={() => { setCallOpen(false); Alert.alert('Video call', 'Starting a secure video call with James…'); }} className="flex-1 items-center rounded-xl bg-successSoft p-lg"><View className="h-12 w-12 items-center justify-center rounded-full bg-success"><Text variant="h3" color="textInverse">▣</Text></View><Text variant="bodyMedium" className="mt-sm">Video call</Text><Text variant="caption" color="textMuted">In-app video</Text></Pressable></View></Pressable></Pressable></Modal>
 
-    <Modal visible={safetyOpen} transparent animationType="fade" onRequestClose={() => setSafetyOpen(false)}><Pressable onPress={() => setSafetyOpen(false)} className="flex-1 items-center justify-center px-xl" style={[nativeWindTheme[theme.scheme], { backgroundColor: theme.colors.overlay }]}><Pressable onPress={(event) => event.stopPropagation()} className="w-full rounded-[28px] bg-surface p-xl" style={{ maxWidth: 410 }}><View className="h-14 w-14 items-center justify-center rounded-full bg-dangerSoft"><Text variant="h3" color="danger">◆</Text></View><Text variant="h3" className="mt-md !text-[23px]">Safety center</Text><Text variant="caption" color="textMuted" className="mt-xs">Your trip and driver location are being tracked. Choose the help you need.</Text><Pressable className="mt-lg border-b border-border py-md" onPress={() => void shareRide()}><Text variant="bodyMedium">Share live trip</Text><Text variant="caption" color="textMuted">Send your ride details to someone you trust</Text></Pressable><Pressable className="border-b border-border py-md" onPress={() => void Linking.openURL('tel:112')}><Text variant="bodyMedium" color="danger">Call emergency services</Text><Text variant="caption" color="textMuted">Call Nigeria’s emergency number, 112</Text></Pressable><Button label="I’m okay — close" variant="secondary" fullWidth className="mt-lg" onPress={() => setSafetyOpen(false)} /></Pressable></Pressable></Modal>
+    <Modal visible={safetyOpen} transparent animationType="fade" onRequestClose={() => setSafetyOpen(false)}><Pressable onPress={() => setSafetyOpen(false)} className="flex-1 items-center justify-center px-xl" style={[nativeWindTheme[theme.scheme], { backgroundColor: theme.colors.overlay }]}><Pressable onPress={(event) => event.stopPropagation()} className="w-full rounded-[14px] bg-surface p-xl" style={{ maxWidth: 410 }}><View className="h-14 w-14 items-center justify-center rounded-full bg-dangerSoft"><Text variant="h3" color="danger">◆</Text></View><Text variant="h3" className="mt-md !text-[23px]">Safety center</Text><Text variant="caption" color="textMuted" className="mt-xs">Your trip and driver location are being tracked. Choose the help you need.</Text><Pressable className="mt-lg border-b border-border py-md" onPress={() => void shareRide()}><Text variant="bodyMedium">Share live trip</Text><Text variant="caption" color="textMuted">Send your ride details to someone you trust</Text></Pressable><Pressable className="border-b border-border py-md" onPress={() => void Linking.openURL('tel:112')}><Text variant="bodyMedium" color="danger">Call emergency services</Text><Text variant="caption" color="textMuted">Call Nigeria’s emergency number, 112</Text></Pressable><Button label="I’m okay — close" variant="secondary" fullWidth className="mt-lg" onPress={() => setSafetyOpen(false)} /></Pressable></Pressable></Modal>
   </View>;
 }
 

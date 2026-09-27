@@ -15,7 +15,7 @@ export function DriverResponseModal({ visible, rideName, fare, onCancel }: Drive
   const theme = useTheme();
   return <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
     <View className="flex-1 items-center justify-center px-xl" style={[nativeWindTheme[theme.scheme], { backgroundColor: theme.colors.overlay }]}>
-      <View className="w-full items-center rounded-[28px] px-xl pb-lg pt-xl" style={{ backgroundColor: theme.colors.surface, maxWidth: 410 }}>
+      <View className="w-full items-center rounded-[14px] px-xl pb-lg pt-xl" style={{ backgroundColor: theme.colors.surface, maxWidth: 410 }}>
         <View className="h-20 w-20 items-center justify-center rounded-full bg-primarySoft">
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>

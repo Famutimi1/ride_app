@@ -41,46 +41,39 @@ function Example() {
 
 ## 2. Colour
 
-Colour is layered so the app is re-skinnable and theme-aware:
+Rakky Ride uses forest green actions on white/silver light surfaces and brighter
+green actions on charcoal dark surfaces. All runtime values, including opaque
+status tints, overlays, and shadows, live in the `palette` in
+`mobile/src/constants/colors.ts`. Semantic `lightColors` and `darkColors`
+share the same keys. NativeWind and `useTheme()` consume those mappings.
 
-1. **`palette`** — raw hex. The **only** place hex is allowed to exist.
-2. **`brand` + `tint`** — semantic brand colours that mean the same thing in both
-   themes (a primary button is blue in light *and* dark).
-3. **`lightColors` / `darkColors`** — the same token names, mapped to light- or
-   dark-appropriate values. `useTheme()` picks the right set for the OS scheme.
+- `primary`: actions, links, focus, selected state.
+- `secondary`, `textMuted`, `icon`: supporting content.
+- `success`: online, paid, completed, earnings-in; distinct from brand green.
+- `warning`: pending/warnings and amber star ratings.
+- `danger`: decline, failed, cancelled, earnings-out.
+- `primarySoft`, `successSoft`, `warningSoft`, `dangerSoft`: paired tinted surfaces.
+- `background`, `surface`, `surfaceMuted`: page, card/sheet, and filled control surfaces.
+- `border`: separators; `borderStrong`: visible control boundaries.
+- `text`: body/headings; `textInverse`: labels on filled controls. Inverse text is
+  white in light mode and charcoal in dark mode, paired with each theme's fills.
+- `overlay`, `skeleton`: modal dimming and loading placeholders.
+- `mapPickup`, `mapDropoff`, `mapDriver`, `mapNearbyDriver`: green, red, teal,
+  and neutral markers; retain their distinct shapes and titles.
 
-### Brand / status colours (same in light & dark)
+See [brand specification](brand/theme-spec.md) and
+[measured contrast pairs](brand/theme-contrast.json). All 22 tested pairs pass their
+4.5:1 text or 3:1 boundary targets. Always retest after palette changes.
 
-| Token | Hex | Meaning |
-|---|---|---|
-| `primary` | `#1D4ED8` | Primary actions, links, active state |
-| `secondary` | `#64748B` | Lower-emphasis actions/labels |
-| `success` | `#16A34A` | Online, paid, earnings-in |
-| `warning` | `#F59E0B` | **Star ratings** and warnings (amber) |
-| `danger` | `#DC2626` | Decline, cancel, earnings-out |
+The default is light. Settings exposes Light, Dark, and System; persisted choices
+survive restarts. System follows the OS. Never reset storage as part of a reskin.
 
-Each has a soft tinted variant for pill/badge backgrounds: `primarySoft`,
-`successSoft`, `warningSoft`, `dangerSoft`.
-
-### Semantic surface/text tokens (swap by theme)
-
-| Token | Light | Dark | Used for |
-|---|---|---|---|
-| `background` | `#FFFFFF` | `#0F172A` | Screen background |
-| `surface` | `#FFFFFF` | `#1E293B` | Cards, sheets |
-| `surfaceMuted` | `#F3F4F6` | `#334155` | Inputs, chips, filled areas |
-| `border` | `#E5E7EB` | `#334155` | Hairlines, dividers, input outlines |
-| `borderStrong` | `#D1D5DB` | `#475569` | Stronger dividers, empty stars |
-| `text` | `#111827` | `#E5E7EB` | Primary text |
-| `textMuted` | `#6B7280` | `#9CA3AF` | Secondary / caption text |
-| `textInverse` | `#FFFFFF` | `#FFFFFF` | Text on a filled primary button |
-| `icon` | `#6B7280` | `#9CA3AF` | Default icon colour |
-| `overlay` | `rgba(15,23,42,.45)` | `rgba(0,0,0,.6)` | Dim behind modals/sheets |
-| `skeleton` | `#E5E7EB` | `#334155` | Loading placeholders |
-
-> The mockup names ~10 colours; a few extra neutral steps (e.g. `borderStrong`,
-> `textMuted`) come from the same grey/slate families because real screens need
-> borders and muted text the 10 don't cover. They still live in the one `palette`.
+Native splash backgrounds come from `nativeBrandColors` through
+`mobile/app.config.ts`; native appearance follows the OS until JS hydrates the
+saved app preference. The original logo is preserved at
+`mobile/assets/images/brand/rakky-ride-logo.png`. `BrandLogo` centers its visible
+shield using layout without editing its pixels. SVG onboarding artwork uses fixed
+export colors and has been aligned to the green palette.
 
 ---
 
@@ -125,8 +118,10 @@ Usage — always via the `<Text>` component, never a raw `fontSize`:
 | `md` | 12 |  | `3xl` | 48 |
 | `lg` | 16 | | | |
 
-**Radius** (`radius.*`): `xs` 4 · `sm` 8 · `md` 12 · `lg` 16 · `xl` 24 ·
-`full` 9999 (pills, avatars, circular buttons).
+**Radius** (`radius.*`): `xs` 3 · `sm` 6 · `md` 8 · `lg` 10 · `xl` 12 ·
+`full` 9999 (pills, avatars, circular buttons). Content containers use the
+compact scale; draggable and bottom screen sheets keep their larger top-only
+corner radius so their sheet silhouette remains clear.
 
 **Elevation** (`elevation.*`): `none` · `sm` · `md` · `lg`. Each preset sets both
 iOS `shadow*` props and Android `elevation` so cards look right on both platforms.
@@ -143,7 +138,7 @@ All in `mobile/src/components/common/`, all theme-aware. Import from the barrel:
 |---|---|---|
 | `Text` | `variant`, `color` | Themed replacement for RN `<Text>`. `color` = any semantic token. |
 | `Button` | `label`, `variant`, `size`, `loading`, `fullWidth`, `leftIcon`/`rightIcon` | Variants: `primary` · `secondary` · `ghost` · `destructive`. Handles pressed/disabled/loading. |
-| `Input` | `label`, `error`, `leftIcon`/`rightIcon` | 3 states: default / focused (blue border) / error (red). |
+| `Input` | `label`, `error`, `leftIcon`/`rightIcon` | 3 states: default / focused (green border) / error (red). |
 | `Card` | `elevation`, `padding` | Rounded themed surface panel. |
 | `StatusPill` | `label`, `tone`, `dot` | Tones: `success`/`primary`/`warning`/`danger`/`neutral`. For "Online", "Searching…", etc. |
 | `Avatar` | `uri`, `name`, `size` | Photo, or initials fallback on a tinted circle. |
@@ -165,8 +160,9 @@ reference — `mobile/src/screens/dev/ComponentGalleryScreen.tsx`, reachable at 
 route **`/gallery`** (not linked from anywhere; navigate to it manually). It renders
 every component so you can eyeball the system and toggle light/dark.
 
-## 7. Known state / gotchas
+## 7. Verification and remaining work
 
-- `npm run typecheck` currently reports pre-existing framework-level errors
-  (react-native 0.86 ↔ `@types/react` types) that do **not** affect runtime and are
-  unrelated to app code. See the project memory note before acting on them.
+TypeScript checking and lint pass. The baseline and remaining release-build checks are
+tracked in [the execution report](brand/execution-report.md). Browser previews do
+not validate native launch. Address-search race handling and the trip-sheet
+responder also pass focused regression checks; final device interaction checks remain open.

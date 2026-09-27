@@ -27,7 +27,6 @@ export function SetDestinationScreen() {
   useNearbyDrivers(current ?? pickup ?? undefined);
 
   const goBack = () => router.canGoBack() ? router.back() : router.replace('/home');
-  useNearbyDrivers(current ?? pickup ?? undefined);
 
   useEffect(() => () => { if (reverseTimer.current) clearTimeout(reverseTimer.current); }, []);
   useEffect(() => {

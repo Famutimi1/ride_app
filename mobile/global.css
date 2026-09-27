@@ -1,3 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* React Native Web renders TextInput as a native browser input. Keep focus on
+   the caret; the surrounding React Native shell owns all visible field styling. */
+input:focus,
+textarea:focus {
+  outline: none;
+}

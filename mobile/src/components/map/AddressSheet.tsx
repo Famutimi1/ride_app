@@ -6,6 +6,7 @@ import { useMapStore, type MapLocation } from '@/store/mapStore';
 import { AddressSearchInput } from './AddressSearchInput';
 
 type Field = 'pickup' | 'dropoff';
+interface SearchResult { key: string; predictions: PlacePrediction[]; loading: boolean; error: string | null }
 interface AddressSheetProps { onClose: () => void; onFindRide: () => void }
 
 export function AddressSheet({ onClose, onFindRide }: AddressSheetProps) {
@@ -24,26 +25,44 @@ export function AddressSheet({ onClose, onFindRide }: AddressSheetProps) {
   const [pickupEdited, setPickupEdited] = useState(false);
   const [pickupText, setPickupText] = useState(pickup?.address ?? current?.address ?? '');
   const [dropoffText, setDropoffText] = useState(dropoff?.address ?? '');
-  const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
+  const [loadingPlace, setLoadingPlace] = useState(false);
   const [loadingEstimate, setLoadingEstimate] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setError] = useState<string | null>(null);
   const displayedPickup = pickupEdited ? pickupText : (pickup?.address ?? pickupText);
   const query = activeField === 'pickup' ? displayedPickup : dropoffText;
 
+  const normalizedQuery = query.trim();
+  const searchKey = `${activeField}:${normalizedQuery}`;
+  // Results belong to one field/query. Clearing or changing it hides stale data
+  // immediately, without resetting state from an effect.
+  const matchingSearch = normalizedQuery.length >= 2 && searchResult?.key === searchKey
+    ? searchResult : null;
+  const predictions = matchingSearch?.predictions ?? [];
+  const searching = loadingPlace || (matchingSearch?.loading ?? false);
+  const error = actionError ?? matchingSearch?.error ?? null;
+
   useEffect(() => {
-    if (query.trim().length < 2) return;
+    if (normalizedQuery.length < 2) return;
+    let cancelled = false;
     const timer = setTimeout(async () => {
-      setSearching(true); setError(null);
+      setSearchResult({ key: searchKey, predictions: [], loading: true, error: null });
       try {
-        const results = await autocompletePlaces(query.trim(), current ?? undefined);
-        setPredictions(results);
-        if (!results.length) setError('No results. Try another search or adjust the map pin.');
-      } catch { setPredictions([]); setError('Address search is unavailable. You can still adjust the map pin.'); }
-      finally { setSearching(false); }
+        const results = await autocompletePlaces(normalizedQuery, current ?? undefined);
+        if (cancelled) return;
+        setSearchResult({
+          key: searchKey, predictions: results, loading: false,
+          error: results.length ? null : 'No results. Try another search or adjust the map pin.',
+        });
+      } catch {
+        if (!cancelled) setSearchResult({
+          key: searchKey, predictions: [], loading: false,
+          error: 'Address search is unavailable. You can still adjust the map pin.',
+        });
+      }
     }, 300);
-    return () => clearTimeout(timer);
-  }, [current, query]);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [current, normalizedQuery, searchKey]);
 
   const panResponder = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 3,
@@ -57,11 +76,11 @@ export function AddressSheet({ onClose, onFindRide }: AddressSheetProps) {
 
   const selectLocation = async (kind: Field, location: MapLocation) => {
     if (location.countryCode && !['NG', 'Nigeria'].includes(location.countryCode)) {
-      setError('Ride is not available in this area yet. Choose a location in Nigeria.'); return;
+      setError('Rakky Ride is not available in this area yet. Choose a location in Nigeria.'); return;
     }
     if (kind === 'pickup') { setPickup(location); setPickupText(location.address); setPickupEdited(false); }
     else { setDropoff(location); setDropoffText(location.address); }
-    setPredictions([]);
+    setSearchResult(null);
     const other = kind === 'pickup' ? dropoff : pickup;
     if (!other) return;
     const start = kind === 'pickup' ? location : other;
@@ -75,14 +94,14 @@ export function AddressSheet({ onClose, onFindRide }: AddressSheetProps) {
   };
 
   const choosePrediction = async (prediction: PlacePrediction) => {
-    setSearching(true);
+    setLoadingPlace(true);
     try { await selectLocation(activeField, await getPlaceDetails(prediction.placeId)); }
     catch { setError('Could not load that place. Please try again.'); }
-    finally { setSearching(false); }
+    finally { setLoadingPlace(false); }
   };
 
   const changeQuery = (field: Field, value: string) => {
-    setActiveField(field); setPredictions([]); setError(null);
+    setActiveField(field); setSearchResult(null); setError(null);
     if (field === 'pickup') { setPickupEdited(true); setPickupText(value); } else setDropoffText(value);
   };
 
@@ -100,10 +119,20 @@ export function AddressSheet({ onClose, onFindRide }: AddressSheetProps) {
       <ScrollView className="flex-1" keyboardShouldPersistTaps="handled" contentContainerClassName="px-xl pb-md">
         <View className="relative gap-md">
           <AddressSearchInput active={activeField === 'pickup'} label="From" placeholder="Pickup location" value={displayedPickup} loading={searching && activeField === 'pickup'} onFocus={() => setActiveField('pickup')} onChangeText={(value) => changeQuery('pickup', value)} />
-          <AddressSearchInput active={activeField === 'dropoff'} label="To" placeholder="Where are you going?" value={dropoffText} loading={searching && activeField === 'dropoff'} onFocus={() => setActiveField('dropoff')} onChangeText={(value) => changeQuery('dropoff', value)} />
-          <Pressable accessibilityLabel="Swap pickup and destination" onPress={swap} className="absolute left-1/2 top-1/2 -ml-4 -mt-4 h-8 w-8 items-center justify-center rounded-full bg-primary shadow-sm">
-            <Text variant="bodyMedium" color="textInverse">⇅</Text>
-          </Pressable>
+          <AddressSearchInput
+            active={activeField === 'dropoff'}
+            label="To"
+            placeholder="Where are you going?"
+            value={dropoffText}
+            loading={searching && activeField === 'dropoff'}
+            rightAccessory={(
+              <Pressable accessibilityLabel="Swap pickup and destination" onPress={swap} className="h-8 w-8 items-center justify-center rounded-full bg-primary shadow-sm">
+                <Text variant="bodyMedium" color="textInverse">⇅</Text>
+              </Pressable>
+            )}
+            onFocus={() => setActiveField('dropoff')}
+            onChangeText={(value) => changeQuery('dropoff', value)}
+          />
         </View>
 
         {(activeField === 'pickup' && current) || predictions.length || error ? <View className="mt-sm bg-surface">

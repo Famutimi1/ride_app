@@ -69,7 +69,7 @@ export default function RootLayout() {
     // GestureHandlerRootView MUST wrap the whole app for react-native-gesture-handler
     // to work — bottom sheets / swipeable rows silently do nothing without it.
     <StyledGestureHandlerRootView className="flex-1">
-      <View className="flex-1" style={nativeWindTheme[theme.scheme]}>
+      <View className="flex-1 bg-background" style={nativeWindTheme[theme.scheme]}>
         {/* SafeAreaProvider powers useSafeAreaInsets()/SafeAreaView used across screens. */}
         <SafeAreaProvider>
           {isSignedIn ? <LocationBootstrap /> : null}
@@ -80,7 +80,7 @@ export default function RootLayout() {
           {/* Custom headers are drawn per-screen (see the mockup), so hide the default.
               Auth-gating: the guard picks which route GROUP is mounted. Flipping the
               session (login/logout) automatically swaps the user between them. */}
-          <Stack screenOptions={{ headerShown: false }}>
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.background } }}>
             <Stack.Screen name="index" />
             <Stack.Protected guard={!isSignedIn}>
               <Stack.Screen name="(auth)" />

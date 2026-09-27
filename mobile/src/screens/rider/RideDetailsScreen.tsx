@@ -21,7 +21,7 @@ const RIDE_DETAILS = {
 const PAYMENT_OPTIONS = [
   { id: 'cash' as const, name: 'Cash', detail: 'Pay your driver after the ride', icon: '▣' },
   { id: 'card' as const, name: 'Card', detail: 'Secure payment with Paystack', icon: '▤' },
-  { id: 'wallet' as const, name: 'Ride wallet', detail: 'Balance: ₦0', icon: '◉' },
+  { id: 'wallet' as const, name: 'Rakky Ride wallet', detail: 'Balance: ₦0', icon: '◉' },
 ];
 
 export function RideDetailsScreen() {
@@ -82,7 +82,7 @@ export function RideDetailsScreen() {
         <View className="mt-md flex-row items-center gap-sm"><Text variant="h3" className="!text-[24px]">{ride.name}</Text>{ride.badges.map((badge) => <View key={badge} className="rounded-sm bg-success px-sm py-xs"><Text variant="caption" color="textInverse" className="!text-[10px]">{badge}</Text></View>)}</View>
         <Text color="textMuted" className="mt-xs">{ride.description}</Text>
 
-        <View className="mt-md rounded-xl bg-successSoft p-md"><View className="flex-row items-center gap-md"><View className="h-10 w-10 items-center justify-center rounded-lg bg-success"><Text color="textInverse">＋</Text></View><View className="flex-1"><Text variant="bodyMedium" color="success">Earn 5% cashback with Ride Plus</Text><Text variant="caption" color="textMuted">Try it free on your first month</Text></View></View></View>
+        <View className="mt-md rounded-xl bg-successSoft p-md"><View className="flex-row items-center gap-md"><View className="h-10 w-10 items-center justify-center rounded-lg bg-success"><Text color="textInverse">＋</Text></View><View className="flex-1"><Text variant="bodyMedium" color="success">Earn 5% cashback with Rakky Ride Plus</Text><Text variant="caption" color="textMuted">Try it free on your first month</Text></View></View></View>
         <View className="mt-sm flex-row gap-md rounded-xl bg-warningSoft p-md"><Text color="warning">⌁</Text><View className="flex-1"><Text variant="bodyMedium">High demand nearby</Text><Text variant="caption" color="textMuted">Prices may be temporarily higher while more drivers become available.</Text></View></View>
 
         <View className="mt-lg"><Text variant="caption" color="textMuted">Offer your fare</Text><View className="mt-xs flex-row items-end border-b border-borderStrong pb-sm"><Text variant="h2" className="!text-[27px]">₦</Text><TextInput value={offerFare || String(recommendedFare)} onChangeText={(value) => setOfferFare(value.replace(/\D/g, ''))} keyboardType="number-pad" selectionColor={theme.colors.primary} className="flex-1 p-0 font-inter-bold text-[30px] text-text outline-none" /></View><Text variant="caption" color="textMuted" className="mt-xs">Recommended fare: ₦{recommendedFare.toLocaleString()}</Text></View>

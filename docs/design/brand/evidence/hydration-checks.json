@@ -1,0 +1,50 @@
+[
+  {
+    "store": "uiStore",
+    "scenario": "saved",
+    "result": "passed",
+    "storageWrites": 0
+  },
+  {
+    "store": "uiStore",
+    "scenario": "read failure",
+    "result": "passed",
+    "storageWrites": 0
+  },
+  {
+    "store": "uiStore",
+    "scenario": "read/write failure",
+    "result": "passed",
+    "storageWrites": 0
+  },
+  {
+    "store": "uiStore",
+    "scenario": "SSR",
+    "result": "passed",
+    "storageWrites": 0
+  },
+  {
+    "store": "authStore",
+    "scenario": "saved",
+    "result": "passed",
+    "storageWrites": 0
+  },
+  {
+    "store": "authStore",
+    "scenario": "read failure",
+    "result": "passed",
+    "storageWrites": 0
+  },
+  {
+    "store": "authStore",
+    "scenario": "read/write failure",
+    "result": "passed",
+    "storageWrites": 0
+  },
+  {
+    "store": "authStore",
+    "scenario": "SSR",
+    "result": "passed",
+    "storageWrites": 0
+  }
+]

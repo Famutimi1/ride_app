@@ -17,13 +17,14 @@ export const spacing = {
   '3xl': 48,
 } as const;
 
-// Mockup "Radii / Border presets": 4 · 8 · 12 · 16 · 24 · full(9999)
+// Compact radii for controls and content containers. Full remains reserved for
+// pills, avatars, and circular buttons; screen sheets define their top corners.
 export const radius = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
+  xs: 3,
+  sm: 6,
+  md: 8,
+  lg: 10,
+  xl: 12,
   full: 9999, // pills, avatars, circular buttons
 } as const;
 

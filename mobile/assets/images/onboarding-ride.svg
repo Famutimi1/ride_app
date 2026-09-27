@@ -1,46 +1,46 @@
 <svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Soft ground shadow / glow -->
-  <ellipse cx="200" cy="245" rx="150" ry="18" fill="#E0E7FF" fill-opacity="0.6"/>
-  <ellipse cx="190" cy="246" rx="120" ry="12" fill="#C7D2FE" fill-opacity="0.7"/>
-  <ellipse cx="180" cy="248" rx="80" ry="7" fill="#93C5FD" fill-opacity="0.8"/>
+  <ellipse cx="200" cy="245" rx="150" ry="18" fill="#EAF5E5" fill-opacity="0.6"/>
+  <ellipse cx="190" cy="246" rx="120" ry="12" fill="#EAF5E5" fill-opacity="0.7"/>
+  <ellipse cx="180" cy="248" rx="80" ry="7" fill="#798572" fill-opacity="0.8"/>
 
   <!-- City Skyline Background -->
   <g opacity="0.45">
     <!-- Far buildings (lightest) -->
     <rect x="50" y="130" width="30" height="110" rx="3" fill="#E2E8F0"/>
-    <rect x="75" y="105" width="28" height="135" rx="3" fill="#DBEAFE"/>
+    <rect x="75" y="105" width="28" height="135" rx="3" fill="#EAF5E5"/>
     <rect x="110" y="80" width="38" height="160" rx="4" fill="#E2E8F0"/>
-    <rect x="155" y="115" width="32" height="125" rx="3" fill="#EFF6FF"/>
-    <rect x="200" y="70" width="42" height="170" rx="4" fill="#DBEAFE"/>
-    <rect x="250" y="60" width="36" height="180" rx="4" fill="#BFDBFE"/>
-    <rect x="290" y="95" width="30" height="145" rx="3" fill="#DBEAFE"/>
-    <rect x="315" y="50" width="40" height="190" rx="4" fill="#BFDBFE"/>
+    <rect x="155" y="115" width="32" height="125" rx="3" fill="#EAF5E5"/>
+    <rect x="200" y="70" width="42" height="170" rx="4" fill="#EAF5E5"/>
+    <rect x="250" y="60" width="36" height="180" rx="4" fill="#798572"/>
+    <rect x="290" y="95" width="30" height="145" rx="3" fill="#EAF5E5"/>
+    <rect x="315" y="50" width="40" height="190" rx="4" fill="#798572"/>
     <rect x="345" y="120" width="28" height="120" rx="3" fill="#E2E8F0"/>
     
     <!-- Building Antenna / spires -->
     <line x1="129" y1="65" x2="129" y2="80" stroke="#CBD5E1" stroke-width="2"/>
-    <line x1="221" y1="55" x2="221" y2="70" stroke="#93C5FD" stroke-width="2"/>
-    <line x1="335" y1="35" x2="335" y2="50" stroke="#93C5FD" stroke-width="2"/>
+    <line x1="221" y1="55" x2="221" y2="70" stroke="#798572" stroke-width="2"/>
+    <line x1="335" y1="35" x2="335" y2="50" stroke="#798572" stroke-width="2"/>
 
     <!-- Subtle window lines -->
     <line x1="116" y1="95" x2="142" y2="95" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="3 3"/>
     <line x1="116" y1="110" x2="142" y2="110" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="3 3"/>
     <line x1="116" y1="125" x2="142" y2="125" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="3 3"/>
-    <line x1="206" y1="85" x2="236" y2="85" stroke="#BFDBFE" stroke-width="1.5" stroke-dasharray="3 3"/>
-    <line x1="206" y1="100" x2="236" y2="100" stroke="#BFDBFE" stroke-width="1.5" stroke-dasharray="3 3"/>
-    <line x1="256" y1="75" x2="280" y2="75" stroke="#93C5FD" stroke-width="1.5" stroke-dasharray="3 3"/>
-    <line x1="256" y1="90" x2="280" y2="90" stroke="#93C5FD" stroke-width="1.5" stroke-dasharray="3 3"/>
-    <line x1="322" y1="65" x2="348" y2="65" stroke="#93C5FD" stroke-width="1.5" stroke-dasharray="4 3"/>
-    <line x1="322" y1="80" x2="348" y2="80" stroke="#93C5FD" stroke-width="1.5" stroke-dasharray="4 3"/>
-    <line x1="322" y1="95" x2="348" y2="95" stroke="#93C5FD" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <line x1="206" y1="85" x2="236" y2="85" stroke="#798572" stroke-width="1.5" stroke-dasharray="3 3"/>
+    <line x1="206" y1="100" x2="236" y2="100" stroke="#798572" stroke-width="1.5" stroke-dasharray="3 3"/>
+    <line x1="256" y1="75" x2="280" y2="75" stroke="#798572" stroke-width="1.5" stroke-dasharray="3 3"/>
+    <line x1="256" y1="90" x2="280" y2="90" stroke="#798572" stroke-width="1.5" stroke-dasharray="3 3"/>
+    <line x1="322" y1="65" x2="348" y2="65" stroke="#798572" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <line x1="322" y1="80" x2="348" y2="80" stroke="#798572" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <line x1="322" y1="95" x2="348" y2="95" stroke="#798572" stroke-width="1.5" stroke-dasharray="4 3"/>
   </g>
 
   <!-- Big Location Pin in the sky/skyline -->
-  <g filter="drop-shadow(0px 8px 16px rgba(29, 78, 216, 0.25))">
+  <g filter="drop-shadow(0px 8px 16px #141A141A)">
     <!-- Pin shadow -->
-    <path d="M242 85 C222 85 206 101 206 121 C206 148 242 178 242 178 C242 178 278 148 278 121 C278 101 262 85 242 85 Z" fill="#1D4ED8"/>
+    <path d="M242 85 C222 85 206 101 206 121 C206 148 242 178 242 178 C242 178 278 148 278 121 C278 101 262 85 242 85 Z" fill="#176B17"/>
     <!-- Pin gradient highlight -->
-    <path d="M242 85 C222 85 206 101 206 121 C206 130 212 142 222 155 C216 142 212 130 212 121 C212 104 225 90 242 88 C259 86 272 100 272 117 C272 120 271 123 270 126 C275 119 278 112 278 121 C278 101 262 85 242 85 Z" fill="#3B82F6" opacity="0.6"/>
+    <path d="M242 85 C222 85 206 101 206 121 C206 130 212 142 222 155 C216 142 212 130 212 121 C212 104 225 90 242 88 C259 86 272 100 272 117 C272 120 271 123 270 126 C275 119 278 112 278 121 C278 101 262 85 242 85 Z" fill="#176B45" opacity="0.6"/>
     <!-- Pin inner circle -->
     <circle cx="242" cy="118" r="11" fill="#FFFFFF"/>
   </g>
@@ -51,21 +51,21 @@
     <path d="M72 238 C110 242 270 242 308 238 C318 237 325 233 325 228 C325 223 318 221 306 221 L74 221 C62 221 55 224 55 229 C55 234 62 237 72 238 Z" fill="#1E293B" opacity="0.3"/>
 
     <!-- Car Body Lower -->
-    <path d="M68 214 C65 210 65 198 72 188 C79 178 95 174 135 172 C155 171 240 171 270 174 C285 175 298 182 302 192 C306 200 305 210 300 216 C295 222 285 224 265 224 L105 224 C85 224 73 222 68 214 Z" fill="#1D4ED8"/>
+    <path d="M68 214 C65 210 65 198 72 188 C79 178 95 174 135 172 C155 171 240 171 270 174 C285 175 298 182 302 192 C306 200 305 210 300 216 C295 222 285 224 265 224 L105 224 C85 224 73 222 68 214 Z" fill="#176B17"/>
 
     <!-- Front & Rear fenders / lower skirt -->
-    <path d="M66 205 L62 215 C62 219 66 223 74 223 L100 223 C102 217 108 212 116 212 C124 212 130 217 132 223 L238 223 C240 217 246 212 254 212 C262 212 268 217 270 223 L298 223 C304 223 308 219 306 215 L300 205 Z" fill="#1E40AF"/>
+    <path d="M66 205 L62 215 C62 219 66 223 74 223 L100 223 C102 217 108 212 116 212 C124 212 130 217 132 223 L238 223 C240 217 246 212 254 212 C262 212 268 217 270 223 L298 223 C304 223 308 219 306 215 L300 205 Z" fill="#176B17"/>
 
     <!-- Car Cabin / Roof / Greenhouse -->
-    <path d="M120 172 L148 136 C153 130 162 127 172 127 L236 127 C246 127 254 132 258 140 L275 172 Z" fill="#1E3A8A"/>
+    <path d="M120 172 L148 136 C153 130 162 127 172 127 L236 127 C246 127 254 132 258 140 L275 172 Z" fill="#176B17"/>
 
     <!-- Windows -->
     <!-- Windshield -->
-    <path d="M152 137 L127 170 L170 170 L170 137 Z" fill="#93C5FD" opacity="0.85"/>
+    <path d="M152 137 L127 170 L170 170 L170 137 Z" fill="#798572" opacity="0.85"/>
     <!-- Side Front Window -->
-    <path d="M176 137 L176 170 L216 170 L216 137 Z" fill="#BFDBFE" opacity="0.9"/>
+    <path d="M176 137 L176 170 L216 170 L216 137 Z" fill="#798572" opacity="0.9"/>
     <!-- Side Rear Window -->
-    <path d="M222 137 L222 170 L268 170 L252 137 Z" fill="#93C5FD" opacity="0.85"/>
+    <path d="M222 137 L222 170 L268 170 L252 137 Z" fill="#798572" opacity="0.85"/>
     
     <!-- Window Pillars (B-pillar, C-pillar) -->
     <rect x="170" y="135" width="6" height="35" fill="#1E293B"/>
@@ -73,27 +73,27 @@
 
     <!-- Car Hood and Trunk lines -->
     <!-- Front hood slant -->
-    <path d="M68 190 C78 180 100 174 135 172 L120 172 L72 188 Z" fill="#3B82F6"/>
+    <path d="M68 190 C78 180 100 174 135 172 L120 172 L72 188 Z" fill="#176B45"/>
     <!-- Body side highlight / shoulder line -->
-    <path d="M65 196 C90 192 270 192 298 196 C302 201 301 206 295 208 C265 206 95 206 68 208 C64 204 64 199 65 196 Z" fill="#3B82F6" opacity="0.6"/>
+    <path d="M65 196 C90 192 270 192 298 196 C302 201 301 206 295 208 C265 206 95 206 68 208 C64 204 64 199 65 196 Z" fill="#176B45" opacity="0.6"/>
 
     <!-- Headlight (Front Left) -->
     <path d="M65 198 C64 194 68 190 76 190 L85 192 C80 196 74 200 68 202 L65 198 Z" fill="#FFFFFF"/>
-    <ellipse cx="73" cy="195" rx="5" ry="3" fill="#60A5FA"/>
+    <ellipse cx="73" cy="195" rx="5" ry="3" fill="#176B45"/>
 
     <!-- Taillight (Rear Right) -->
     <path d="M294 192 L302 195 C304 198 303 203 298 204 L292 200 Z" fill="#EF4444"/>
 
     <!-- Front Grille & Fog lights -->
     <rect x="62" y="206" width="10" height="5" rx="2" fill="#0F172A"/>
-    <rect x="64" y="213" width="8" height="3" rx="1.5" fill="#93C5FD" opacity="0.8"/>
+    <rect x="64" y="213" width="8" height="3" rx="1.5" fill="#798572" opacity="0.8"/>
 
     <!-- Door Handles -->
-    <rect x="185" y="177" width="12" height="3" rx="1.5" fill="#1E3A8A"/>
-    <rect x="232" y="177" width="12" height="3" rx="1.5" fill="#1E3A8A"/>
+    <rect x="185" y="177" width="12" height="3" rx="1.5" fill="#176B17"/>
+    <rect x="232" y="177" width="12" height="3" rx="1.5" fill="#176B17"/>
 
     <!-- Side Mirror -->
-    <ellipse cx="145" cy="168" rx="6" ry="4" fill="#1D4ED8"/>
+    <ellipse cx="145" cy="168" rx="6" ry="4" fill="#176B17"/>
     <ellipse cx="146" cy="168" rx="4" ry="2.5" fill="#1E293B"/>
 
     <!-- Front Wheel -->

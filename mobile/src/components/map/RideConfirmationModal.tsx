@@ -18,7 +18,7 @@ export function RideConfirmationModal({ visible, rideName, fare, etaMinutes, pay
   const theme = useTheme();
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
     <Pressable onPress={onClose} className="flex-1 items-center justify-center px-lg" style={[nativeWindTheme[theme.scheme], { backgroundColor: theme.colors.overlay }]}>
-      <Pressable onPress={(event) => event.stopPropagation()} className="w-full rounded-[26px] px-lg pb-md pt-lg" style={{ backgroundColor: theme.colors.surface, maxWidth: 430 }}>
+      <Pressable onPress={(event) => event.stopPropagation()} className="w-full rounded-[14px] px-lg pb-md pt-lg" style={{ backgroundColor: theme.colors.surface, maxWidth: 430 }}>
         <View className="flex-row items-start justify-between"><View className="flex-1"><Text variant="h3" className="!text-[22px]">Confirm your ride</Text><Text variant="caption" color="textMuted">Review your trip before requesting a driver.</Text></View><View className="ml-md h-10 w-10 items-center justify-center rounded-full bg-primarySoft"><Text variant="bodyMedium" color="primary">✓</Text></View></View>
 
         <View className="mt-md rounded-xl bg-surfaceMuted p-sm">

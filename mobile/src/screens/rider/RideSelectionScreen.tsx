@@ -20,7 +20,7 @@ const RIDES = [
 const PAYMENTS = [
   { id: 'cash' as const, name: 'Cash', detail: 'Pay the driver after your trip', icon: '▣' },
   { id: 'card' as const, name: 'Card', detail: 'Pay securely with Paystack', icon: '▤' },
-  { id: 'wallet' as const, name: 'Ride wallet', detail: 'Available balance: ₦0', icon: '◉' },
+  { id: 'wallet' as const, name: 'Rakky Ride wallet', detail: 'Available balance: ₦0', icon: '◉' },
 ] as const;
 
 export function RideSelectionScreen() {

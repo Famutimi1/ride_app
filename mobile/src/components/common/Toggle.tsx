@@ -3,7 +3,7 @@
  * screen: "Push notifications" on, "Tips" off).
  *
  * It's a thin wrapper over React Native's <Switch> that pipes our semantic colour
- * tokens into the platform switch, so it turns brand blue when on and greys out its
+ * tokens into the platform switch, so it turns brand green when on and greys out its
  * track when off — in both light and dark mode, with no hard-coded hex.
  *
  * Usage:
@@ -27,7 +27,7 @@ export function Toggle({ value, onValueChange, disabled }: ToggleProps) {
       value={value}
       onValueChange={onValueChange}
       disabled={disabled}
-      // track = the pill behind the thumb: grey when off, brand blue when on.
+      // track = the pill behind the thumb: grey when off, brand green when on.
       trackColor={{ false: theme.colors.borderStrong, true: theme.colors.primary }}
       // thumb = the moving knob. Keep it on the surface colour so it reads in both themes.
       thumbColor={theme.colors.surface}

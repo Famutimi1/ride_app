@@ -2,7 +2,7 @@
  * ThemeToggle — a round button that flips the app between light and dark mode.
  *
  * It shows the CURRENT mode as a glyph (☀️ in light, 🌙 in dark) and, on tap, calls
- * uiStore.toggleTheme() — which every screen's useTheme() is subscribed to, so the
+ * uiStore.setThemePreference() using the opposite resolved scheme, so the
  * whole app re-themes instantly. Styled to match BackButton (a text glyph in a
  * surface-muted circle) since the project has no icon library yet.
  *
@@ -30,12 +30,12 @@ export interface ThemeToggleProps {
 
 export function ThemeToggle({ floating = false }: ThemeToggleProps) {
   const theme = useTheme();
-  const toggleTheme = useUiStore((s) => s.toggleTheme);
+  const setThemePreference = useUiStore((s) => s.setThemePreference);
   const isDark = theme.scheme === 'dark';
 
   return (
     <Pressable
-      onPress={toggleTheme}
+      onPress={() => setThemePreference(isDark ? 'light' : 'dark')}
       accessibilityRole="button"
       // Announce the ACTION (what tapping does), not just the current state.
       accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}

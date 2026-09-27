@@ -1,7 +1,7 @@
 import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text } from '@/components/common';
+import { BrandLogo, Text } from '@/components/common';
 import { useAuthStore } from '@/store/authStore';
 
 type MenuItem = { id: string; icon: string; label: string; detail: string };
@@ -22,7 +22,7 @@ const SUPPORT_ITEMS: readonly MenuItem[] = [
 
 const RIDER_ITEMS: readonly MenuItem[] = [
   { id: 'trips', icon: '◷', label: 'Ride history', detail: 'Receipts, completed rides, and active trips' },
-  { id: 'payment', icon: '▤', label: 'Payment', detail: 'Cash, cards, and Ride wallet' },
+  { id: 'payment', icon: '▤', label: 'Payment', detail: 'Cash, cards, and Rakky Ride wallet' },
 ];
 
 const DRIVER_ITEMS: readonly MenuItem[] = [
@@ -47,7 +47,8 @@ export function AccountMenuScreen() {
 
   return <SafeAreaView className="flex-1 bg-surface" edges={['top', 'bottom']}>
     <ScrollView className="flex-1" contentContainerClassName="pb-xl" showsVerticalScrollIndicator={false}>
-      <View className={`mx-xl mt-xs mb-xs flex-row items-center rounded-xl px-md py-sm ${driverMode ? 'bg-successSoft' : 'bg-primarySoft'}`}>
+      <View className="flex-row items-center gap-md px-xl py-sm"><BrandLogo size={64} /><Text variant="bodyMedium">Rakky Ride</Text></View>
+      <View className={`mb-sm flex-row items-center px-xl py-md ${driverMode ? 'bg-successSoft' : 'bg-primarySoft'}`}>
         <Pressable accessibilityRole="button" accessibilityLabel="Open profile" onPress={() => open('profile')} className="flex-1 flex-row items-center">
           <View className={`h-12 w-12 items-center justify-center rounded-full ${driverMode ? 'bg-success' : 'bg-primary'}`}><Text variant="bodyMedium" color="textInverse">{initials}</Text></View>
           <View className="ml-sm flex-1"><Text variant="bodyMedium">{user.name}</Text><Text variant="caption" color="textMuted">{user.phone}</Text><View className="flex-row items-center gap-xs"><Text variant="caption" color="warning">★★★★★</Text><Text variant="caption" color="textMuted">5.0 · {driverMode ? 'Driver partner' : 'Rider'}</Text></View></View>

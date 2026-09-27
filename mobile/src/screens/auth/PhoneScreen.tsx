@@ -1,14 +1,13 @@
 /**
- * PhoneScreen — collects the user's phone number and requests an OTP (route:
+ * PhoneScreen — collects the user's name and phone number, then requests an OTP (route:
  * "/phone"). This is screen 2 in the design mockup.
  *
  * Nigeria-friendly input: a "+234" country selector sits next to the number field,
  * and the user types their line without the leading 0. We normalise as they type so
  * a valid number is exactly 10 digits, then hand the full "+234…" string to the store.
  *
- * The mockup shows the number in two places (a "Phone number" field up top and an
- * "Enter phone number" field in the country-code row). We keep both bound to the
- * SAME value so they always agree — editing either edits the one real number.
+ * The standalone field collects the rider's name. The country-code row owns the
+ * one phone-number value used to request the OTP.
  */
 import { useRouter } from 'expo-router';
 import { cssInterop } from 'nativewind';
@@ -23,7 +22,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, Input, Text } from '@/components/common';
+import { BrandLogo, Button, Input, Text } from '@/components/common';
 import { useAuthStore } from '@/store/authStore';
 
 const StyledSafeAreaView = cssInterop(SafeAreaView, { className: 'style' });
@@ -39,11 +38,14 @@ export function PhoneScreen() {
   const isTallScreen = height >= 800;
   const requestOtp = useAuthStore((s) => s.requestOtp);
 
+  const [name, setName] = useState('');
   const [local, setLocal] = useState('');
+  const [nameError, setNameError] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
 
-  const isValid = local.length === 10;
+  const trimmedName = name.trim();
+  const isValid = trimmedName.length >= 2 && local.length === 10;
   const fullPhone = `+234${local}`;
 
   const onChange = (t: string) => {
@@ -51,12 +53,21 @@ export function PhoneScreen() {
     if (error) setError(undefined);
   };
 
+  const onNameChange = (value: string) => {
+    setName(value);
+    if (nameError) setNameError(undefined);
+  };
+
   const onSend = async () => {
+    if (trimmedName.length < 2) {
+      setNameError('Enter your name.');
+      return;
+    }
     if (!isValid || loading) return;
     setError(undefined);
     setLoading(true);
     try {
-      await requestOtp(fullPhone);
+      await requestOtp(fullPhone, trimmedName);
       router.push('/otp');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
@@ -81,25 +92,38 @@ export function PhoneScreen() {
           keyboardShouldPersistTaps="handled"
           contentContainerClassName="min-h-full px-[28px] pb-[56px] pt-[95px]"
         >
-          <Text
-            variant="h2"
-            className={isTallScreen ? '!text-[26px] !leading-[32px]' : '!text-[20px] !leading-[26px]'}
-          >
-            Phone number
-          </Text>
-
-      {/* Field group: top phone field + country-code row + helper text sit close
+          <View className="mb-lg flex-row items-center gap-md">
+            <BrandLogo size={64} />
+            <Text variant="bodyMedium">Rakky Ride</Text>
+          </View>
+          <View className="gap-xs">
+            <Text
+              variant="h2"
+              className={isTallScreen ? '!text-[26px] !leading-[32px]' : '!text-[20px] !leading-[26px]'}
+            >
+              Welcome! Let&apos;s get you moving
+            </Text>
+            <Text variant="body" color="textMuted">
+              Create your account and book your first ride in minutes.
+            </Text>
+          </View>
+      {/* Field group: name field + country-code row + helper text sit close
           together, matching the tighter spacing the mockup gives related fields. */}
       <View className="mt-md gap-lg">
-        {/* Top field — the standalone "Phone number" input from the mockup. */}
+        {/* Name is collected before the OTP so a verified new rider has a useful profile. */}
         <Input
-          placeholder="Phone number"
-          value={local}
-          onChangeText={onChange}
-          keyboardType="phone-pad"
-          maxLength={10}
-          error={error}
-          containerClassName="h-[40px] rounded-[10px] px-md"
+          accessibilityLabel="Name"
+          placeholder="Name"
+          value={name}
+          onChangeText={onNameChange}
+          autoCapitalize="words"
+          autoComplete="name"
+          textContentType="name"
+          returnKeyType="next"
+          maxLength={80}
+          error={nameError}
+          containerClassName="rounded-[7px] px-md"
+          containerStyle={{ height: 60, borderWidth: 0 }}
           className={isTallScreen ? '!text-[14px]' : '!text-[12px]'}
         />
 
@@ -116,12 +140,15 @@ export function PhoneScreen() {
             <CountrySelector isTallScreen={isTallScreen} />
             <View className="flex-1">
               <Input
+                accessibilityLabel="Phone number"
                 placeholder="Enter phone number"
                 value={local}
                 onChangeText={onChange}
                 keyboardType="phone-pad"
                 maxLength={10}
-                containerClassName="h-[40px] rounded-[10px] px-md"
+                error={error}
+                containerClassName="rounded-[7px] px-md"
+                containerStyle={{ height: 60, borderWidth: 0 }}
                 className={isTallScreen ? '!text-[14px]' : '!text-[12px]'}
               />
             </View>
@@ -147,7 +174,7 @@ export function PhoneScreen() {
           onPress={onSend}
           loading={loading}
           disabled={!isValid}
-          className="h-[40px] rounded-[12px]"
+          className="h-[40px] rounded-[8px]"
         />
 
         <OrDivider isTallScreen={isTallScreen} />
@@ -163,12 +190,12 @@ export function PhoneScreen() {
               G
             </Text>
           }
-          className="h-[42px] rounded-[11px]"
+          className="h-[42px] rounded-[8px]"
         />
       </View>
 
           <View className="flex-1" />
-          <LoginLink isTallScreen={isTallScreen} onPress={() => router.push('/phone')} />
+          <LoginLink isTallScreen={isTallScreen} onPress={() => router.push('/login')} />
         </ScrollView>
       </KeyboardAvoidingView>
     </StyledSafeAreaView>
@@ -181,8 +208,9 @@ function CountrySelector({ isTallScreen }: { isTallScreen: boolean }) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Select country code"
+      style={{ height: 60 }}
       // TODO: open a country picker. Fixed to Nigeria (+234) for the Lagos market now.
-      className="h-[40px] flex-row items-center gap-xs rounded-[10px] border border-border bg-surfaceMuted px-sm"
+      className="flex-row items-center gap-xs rounded-[7px] border border-border bg-surfaceMuted px-sm"
     >
       <Text variant="body" className={isTallScreen ? '!text-[14px]' : '!text-[12px]'}>🇳🇬</Text>
       <Text variant="body" className={isTallScreen ? '!text-[14px]' : '!text-[12px]'}>+234</Text>
@@ -219,14 +247,19 @@ function LoginLink({
       <Text variant="caption" color="textMuted" className={isTallScreen ? '!text-[13px]' : '!text-[11px]'}>
         Already have an account?
       </Text>
-      <Text
-        variant="caption"
-        color="primary"
-        className={isTallScreen ? '!text-[13px]' : '!text-[11px]'}
+      <Pressable
+        accessibilityRole="link"
+        hitSlop={8}
         onPress={onPress}
       >
-        Log in
-      </Text>
+        <Text
+          variant="caption"
+          color="primary"
+          className={isTallScreen ? '!text-[13px]' : '!text-[11px]'}
+        >
+          Log in
+        </Text>
+      </Pressable>
     </View>
   );
 }

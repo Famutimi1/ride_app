@@ -8,12 +8,12 @@
   </g>
 
   <!-- Glowing Route Path -->
-  <path d="M80 200 C130 160 170 180 220 120 C250 84 280 90 320 85" stroke="#93C5FD" stroke-width="8" stroke-linecap="round" fill="none"/>
-  <path d="M80 200 C130 160 170 180 220 120 C250 84 280 90 320 85" stroke="#1D4ED8" stroke-width="4" stroke-dasharray="8 8" stroke-linecap="round" fill="none"/>
+  <path d="M80 200 C130 160 170 180 220 120 C250 84 280 90 320 85" stroke="#798572" stroke-width="8" stroke-linecap="round" fill="none"/>
+  <path d="M80 200 C130 160 170 180 220 120 C250 84 280 90 320 85" stroke="#176B17" stroke-width="4" stroke-dasharray="8 8" stroke-linecap="round" fill="none"/>
 
   <!-- Start Point (Rider) -->
-  <circle cx="80" cy="200" r="14" fill="#1D4ED8" fill-opacity="0.2"/>
-  <circle cx="80" cy="200" r="8" fill="#1D4ED8"/>
+  <circle cx="80" cy="200" r="14" fill="#176B17" fill-opacity="0.2"/>
+  <circle cx="80" cy="200" r="8" fill="#176B17"/>
   <circle cx="80" cy="200" r="4" fill="#FFFFFF"/>
 
   <!-- Destination Point (Flag / Pin) -->
@@ -26,8 +26,8 @@
   <g transform="translate(170, 95)" filter="drop-shadow(0px 8px 16px rgba(15, 23, 42, 0.15))">
     <rect width="90" height="50" rx="14" fill="#FFFFFF"/>
     <!-- Car icon -->
-    <rect x="12" y="16" width="30" height="18" rx="5" fill="#1D4ED8"/>
-    <rect x="18" y="11" width="18" height="10" rx="3" fill="#3B82F6"/>
+    <rect x="12" y="16" width="30" height="18" rx="5" fill="#176B17"/>
+    <rect x="18" y="11" width="18" height="10" rx="3" fill="#176B45"/>
     <circle cx="19" cy="34" r="4" fill="#1E293B"/>
     <circle cx="35" cy="34" r="4" fill="#1E293B"/>
     <!-- Pulse badge -->

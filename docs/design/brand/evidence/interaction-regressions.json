@@ -1,0 +1,11 @@
+{
+  "method": "Actual TSX components transpiled with TypeScript; hooks, native host components, timers, and maps service mocked. No device gesture claim.",
+  "passed": [
+    "Out-of-order autocomplete results cannot overwrite the latest query",
+    "Short queries immediately hide predictions and loading without another request",
+    "Cancelled requests cannot surface stale errors",
+    "Unmounted autocomplete requests do not update state",
+    "Trip-sheet gesture uses a stable responder and clamps/snaps between 43% and 78%",
+    "Interrupted trip-sheet gestures restore the middle position"
+  ]
+}

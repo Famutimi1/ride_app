@@ -5,6 +5,9 @@ import appJson from './app.json';
 declare const __dirname: string;
 declare const require: (id: string) => unknown;
 
+// The build runs on Node 24, whose native TypeScript loader needs the extension.
+const { nativeBrandColors } = require('./src/constants/colors.ts') as typeof import('./src/constants/colors');
+
 const { resolve } = require('path') as { resolve: (...paths: string[]) => string };
 const { loadEnvFile } = require('process') as { loadEnvFile: (path: string) => void };
 
@@ -27,6 +30,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   const baseConfig = appJson.expo;
   const plugins: ExpoConfig['plugins'] = baseConfig.plugins.map((plugin) => {
+    if (Array.isArray(plugin) && plugin[0] === 'expo-splash-screen') {
+      return ['expo-splash-screen', {
+        image: './assets/images/brand/rakky-ride-logo.png',
+        imageWidth: 288,
+        resizeMode: 'contain',
+        backgroundColor: nativeBrandColors.lightBackground,
+        dark: { backgroundColor: nativeBrandColors.darkBackground },
+      }];
+    }
     if (plugin === 'react-native-maps') {
       return [
         'react-native-maps',
@@ -42,7 +54,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
     ...baseConfig,
-    android: baseConfig.android,
+    primaryColor: nativeBrandColors.primary,
+    android: {
+      ...baseConfig.android,
+      adaptiveIcon: {
+        ...baseConfig.android.adaptiveIcon,
+        backgroundColor: nativeBrandColors.iconBackground,
+      },
+    },
     ios: baseConfig.ios,
     plugins,
   } as ExpoConfig;

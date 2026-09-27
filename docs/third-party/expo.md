@@ -22,6 +22,14 @@ caveats in `docs/setup/dependencies.md`.
 - expo-image-picker (license / vehicle photos; set `microphonePermission: false`)
 
 ## Config
+- Brand config is in `mobile/app.config.ts`, using `nativeBrandColors` from the
+  palette and the original logo in `mobile/assets/images/brand/`. Use Node 24 for
+  this configuration's native TypeScript module loading (verified on 24.20.0).
+- Native display name is Rakky Ride; integration IDs and URL scheme stay unchanged.
+- Run `npx expo prebuild --platform android --no-install` to regenerate native
+  resources. iOS needs its own native generation/build on an Xcode-equipped host.
+- Splash and launcher changes need a rebuilt binary, not only an OTA update.
+  Verify both platforms in release builds; Expo Go/dev launch differs.
 - app.json / app.config.js — bundle IDs, permissions (location "always" for driver mode)
 - EXPO_PUBLIC_* env vars are exposed to the client — never put secrets here
   (see `.env.example` — only API base URL and public platform Maps keys go here)

@@ -14,7 +14,7 @@ import { type ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BackButton, Text } from '@/components/common';
+import { BackButton, BrandLogo, Text } from '@/components/common';
 
 const StyledSafeAreaView = cssInterop(SafeAreaView, { className: 'style' });
 
@@ -51,6 +51,11 @@ export function AuthScreenLayout({
           contentContainerClassName="grow gap-xl px-xl pb-xl pt-sm"
         >
           {onBack && <BackButton onPress={onBack} />}
+
+          <View className="flex-row items-center gap-md">
+            <BrandLogo size={56} />
+            <Text variant="bodyMedium">Rakky Ride</Text>
+          </View>
 
           <View className="gap-sm">
             <Text variant="h2">{title}</Text>

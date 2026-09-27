@@ -2,7 +2,7 @@
  * Button — the app's pressable action, matching the mockup's button styles.
  *
  * Variants (from the mockup's component library):
- *   • primary     — solid brand blue, white label. The main call-to-action.
+ *   • primary     — solid brand green, white label. The main call-to-action.
  *   • secondary   — subtle filled surface, normal text. Lower emphasis.
  *   • outline     — transparent with a hairline border (e.g. "Sign up with Google").
  *   • ghost       — transparent, brand-coloured label. A "text button".
