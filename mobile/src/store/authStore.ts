@@ -1,164 +1,37 @@
-/**
- * authStore — the single source of truth for "who is signed in".
- *
- * Per AGENTS.md, cross-screen state lives in a Zustand store (not prop-drilling),
- * and auth is one domain → one store file. This store also PERSISTS the session to
- * the device (AsyncStorage) so closing and reopening the app keeps you logged in.
- *
- * Two pieces of state, on purpose:
- *   • session — set only once signup is FULLY finished (token + a complete user).
- *               `session != null` is exactly "the app should show the signed-in area".
- *   • pending — the short-lived scratch space DURING login (the phone we're verifying,
- *               and the token we got back from OTP but haven't attached a profile to
- *               yet). Never persisted — if you kill the app mid-login you just start over.
- *
- * Keeping the half-finished signup in `pending` (not `session`) is what lets the
- * router use one dead-simple rule — "session or no session" — to pick which screens
- * to show. See app/_layout.tsx.
- */
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import { apiErrorMessage } from '@/lib/apiClient';
+import { tokenStore } from '@/lib/secureTokenStore';
+import { getMe, googleAuth, logoutSession, requestLogin, requestRegistration, resendOtp, switchActiveRole, verifyLogin, verifyRegistration, type AuthUser, type UserRole } from '@/services/authService';
+import { getGoogleIdToken } from '@/services/googleSignIn';
+import { getDriverApplicationStatus, submitDriverApplication as apiSubmitDriverApplication } from '@/services/driverService';
+import { resetSocket } from '@/services/socket';
+import { useWalletStore } from '@/store/walletStore';
 
-import {
-  type AuthUser,
-  type UserRole,
-  completeProfile as apiCompleteProfile,
-  requestOtp as apiRequestOtp,
-  verifyOtp as apiVerifyOtp,
-} from '@/services/authService';
+interface Session { user: AuthUser }
+export type AuthIntent='register'|'login';
+export type RegistrationAccountType='rider'|'driver';
+export type DriverApplicationStatus='draft'|'pending'|'approved'|'rejected';
+export interface DriverApplication {status:DriverApplicationStatus;submittedAt?:number;rejectionReason?:string;personal:{fullName:string;email:string;address:string};vehicle:{make:string;model:string;year:string;color:string;registrationNumber:string};documents:{driverLicence:string;vehicleRegistration:string;insurance:string}}
+export type AuthDestination='home'|'driver-onboarding'|'driver-dashboard'|'driver-status';
+interface Pending{phone:string;name?:string;intent:AuthIntent;accountType:RegistrationAccountType;phoneVerificationToken?:string}
+interface AuthState{session:Session|null;pending:Pending|null;driverApplication:DriverApplication|null;_hasHydrated:boolean;
+  hydrate:()=>Promise<void>;requestOtp:(phone:string,options?:{name?:string;intent?:AuthIntent;accountType?:RegistrationAccountType})=>Promise<void>;verifyOtp:(code:string)=>Promise<{destination:AuthDestination}>;signInWithGoogle:()=>Promise<'phone'|AuthDestination>;signInWithGoogleIdToken:(idToken:string)=>Promise<'phone'|AuthDestination>;completeProfile:(input:{name:string;email?:string;role?:UserRole})=>Promise<void>;setRole:(role:UserRole)=>Promise<boolean>;submitDriverApplication:(application:Omit<DriverApplication,'status'|'submittedAt'|'rejectionReason'>)=>Promise<void>;refreshDriverApplication:()=>Promise<void>;restartDriverApplication:()=>void;updateProfile:(input:Partial<Pick<AuthUser,'name'|'email'|'phone'>>)=>void;logout:()=>Promise<void>;setHydrated:()=>void}
+const blankApplication=(user?:AuthUser|null):DriverApplication=>({status:'draft',personal:{fullName:user?.name??'',email:user?.email??'',address:''},vehicle:{make:'',model:'',year:'',color:'',registrationNumber:''},documents:{driverLicence:'',vehicleRegistration:'',insurance:''}});
+function applicationFromStatus(status:'none'|'pending'|'approved'|'rejected',user:AuthUser,rejectionReason?:string){const application=blankApplication(user);application.status=status==='none'?'draft':status;application.rejectionReason=rejectionReason;return application;}
 
-interface Session {
-  token: string;
-  user: AuthUser;
-}
-
-/** Scratch space that only exists between "entered phone" and "finished profile". */
-interface Pending {
-  phone: string;
-  /** Name collected before OTP verification so a new rider is not stored as a placeholder. */
-  name?: string;
-  /** The JWT from verifyOtp, held here until a profile is attached. Empty pre-verify. */
-  token: string;
-}
-
-interface AuthState {
-  session: Session | null;
-  pending: Pending | null;
-  /** False until AsyncStorage has been read back. The router waits for this so it
-   *  doesn't flash the login screen at someone who's actually already logged in. */
-  _hasHydrated: boolean;
-
-  // --- actions ---
-  /** Step 1: ask for an OTP and remember which phone we're verifying. */
-  requestOtp: (phone: string, name?: string) => Promise<void>;
-  /** Step 2: check the code and establish a session immediately. */
-  verifyOtp: (code: string) => Promise<{ needsProfile: boolean }>;
-  /** Step 3 (new users): save the profile, which completes the session. `role`
-   *  defaults to 'rider' — the onboarding doesn't ask for one up front. */
-  completeProfile: (input: { name: string; email?: string; role?: UserRole }) => Promise<void>;
-  /** Change the active role (rider/driver/both) for the signed-in user. */
-  setRole: (role: UserRole) => void;
-  /** Update editable local profile fields. Backend persistence can replace this
-   * optimistic store update when the profile endpoint is connected. */
-  updateProfile: (input: Partial<Pick<AuthUser, 'name' | 'email' | 'phone'>>) => void;
-  /** Clear everything and return to logged-out. */
-  logout: () => void;
-  /** Internal: flipped once persisted state has been rehydrated. */
-  setHydrated: () => void;
-}
-
-export const useAuthStore = create<AuthState>()((setRuntimeState, get, api) => {
-  // Hydration is runtime-only: never write defaults back after a failed read.
-  const finishHydration = () => setRuntimeState({ _hasHydrated: true });
-  return persist<AuthState, [], [], Pick<AuthState, 'session'>>(
-    (set, get) => ({
-      session: null,
-      pending: null,
-      _hasHydrated: false,
-
-      requestOtp: async (phone, name) => {
-        await apiRequestOtp(phone);
-        // Resends omit the name, so preserve the one collected on the phone screen.
-        const pendingName = name ?? get().pending?.name;
-        set({ pending: { phone, token: '', name: pendingName } });
-      },
-
-      verifyOtp: async (code) => {
-        const pending = get().pending;
-        if (!pending) {
-          // Defensive: we should always have a pending phone by the time we verify.
-          throw new Error('No phone number to verify. Start again.');
-        }
-
-        const { token, user } = await apiVerifyOtp(pending.phone, code);
-
-        if (user) {
-          // Returning user — profile already exists, so we're fully signed in.
-          set({ session: { token, user }, pending: null });
-          return { needsProfile: false };
-        }
-
-        // New riders enter the app immediately. Profile details can be completed
-        // later from account settings instead of blocking the first ride.
-        const newRider: AuthUser = {
-          id: `usr_${pending.phone.replace(/\D/g, '')}`,
-          phone: pending.phone,
-          name: pending.name ?? 'Rider',
-          role: 'rider',
-        };
-        set({ session: { token, user: newRider }, pending: null });
-        return { needsProfile: false };
-      },
-
-      completeProfile: async ({ name, email, role = 'rider' }) => {
-        const pending = get().pending;
-        if (!pending) {
-          throw new Error('Nothing to complete. Start again.');
-        }
-
-        // Role defaults to 'rider' at signup — the mockup's onboarding doesn't ask
-        // for a role, so new users start as riders and switch to driving later via
-        // setRole(). Session is born here: token (from verify) + the finished user.
-        const user = await apiCompleteProfile({ phone: pending.phone, name, email, role });
-        set({ session: { token: pending.token, user }, pending: null });
-      },
-
-      setRole: (role) => {
-        const session = get().session;
-        if (!session) return;
-        // Roles are a plain profile field (not money/ledger data), so an in-place
-        // update is fine. A real backend call would PATCH /users/me here too.
-        set({ session: { ...session, user: { ...session.user, role } } });
-      },
-
-      updateProfile: (input) => {
-        const session = get().session;
-        if (!session) return;
-        set({ session: { ...session, user: { ...session.user, ...input } } });
-      },
-
-      logout: () => set({ session: null, pending: null }),
-
-      setHydrated: finishHydration,
-    }),
-    {
-      name: 'ride-auth',
-      storage: createJSONStorage(() => AsyncStorage),
-      // Static web rendering has no browser storage. Hydrate on the client only.
-      skipHydration: Platform.OS === 'web' && typeof window === 'undefined',
-      // Persist ONLY the session. `pending` is deliberately dropped — a half-finished
-      // login shouldn't survive an app restart.
-      partialize: (state) => ({ session: state.session }),
-      // Runs after AsyncStorage is read back (even when nothing was stored).
-      onRehydrateStorage: (initialState) => (state) => {
-        // A failed read keeps the signed-out default and must still release launch.
-        (state ?? initialState).setHydrated();
-      },
-    },
-  )(setRuntimeState, get, api);
-});
-
-/** Convenience selector: is there a fully-signed-in user? */
-export const useIsSignedIn = () => useAuthStore((s) => s.session !== null);
+export const useAuthStore=create<AuthState>((set,get)=>({session:null,pending:null,driverApplication:null,_hasHydrated:false,
+  hydrate:async()=>{try{if(!await tokenStore.getAccessToken())return set({_hasHydrated:true});const data=await getMe();const user={...data.user,role:data.activeRole} as AuthUser;set({session:{user},driverApplication:applicationFromStatus(data.driverStatus,user),_hasHydrated:true});}catch{await tokenStore.clear();set({session:null,driverApplication:null,_hasHydrated:true});}},
+  requestOtp:async(phone,options)=>{try{const previous=get().pending;if(!options&&previous){await resendOtp(phone,previous.intent==='register'?'registration':'login');return;}const intent=options?.intent??'login',accountType=options?.accountType??'rider';if(intent==='register')await requestRegistration({fullName:options?.name??'',phone,accountType});else await requestLogin(phone);set({pending:{phone,name:options?.name,intent,accountType,phoneVerificationToken:previous?.phoneVerificationToken}});}catch(error){throw new Error(apiErrorMessage(error));}},
+  verifyOtp:async(code)=>{const pending=get().pending;if(!pending)throw new Error('No phone number to verify. Start again.');try{const data=pending.intent==='register'?await verifyRegistration({fullName:pending.name??'',phone:pending.phone,code,accountType:pending.accountType,phoneVerificationToken:pending.phoneVerificationToken}):await verifyLogin(pending.phone,code);await tokenStore.setTokens(data.tokens);const user={...data.user,role:data.activeRole} as AuthUser;const application=applicationFromStatus(data.driverStatus,user);set({session:{user},pending:null,driverApplication:application});const destination:AuthDestination=data.accountType==='driver'&&data.driverStatus==='none'?'driver-onboarding':data.activeRole==='driver'&&data.driverStatus==='approved'?'driver-dashboard':data.driverStatus==='pending'||data.driverStatus==='rejected'?'driver-status':'home';return{destination};}catch(error){throw new Error(apiErrorMessage(error));}},
+  signInWithGoogle:async()=>get().signInWithGoogleIdToken(await getGoogleIdToken()),
+  signInWithGoogleIdToken:async(idToken)=>{try{const result=await googleAuth(idToken);if('needsPhoneVerification' in result){set({pending:{phone:'',name:result.user.name,intent:'register',accountType:'rider',phoneVerificationToken:result.phoneVerificationToken}});return'phone';}await tokenStore.setTokens(result.tokens);const user={...result.user,role:result.activeRole} as AuthUser;set({session:{user},driverApplication:applicationFromStatus(result.driverStatus,user)});return result.activeRole==='driver'&&result.driverStatus==='approved'?'driver-dashboard':result.driverStatus==='pending'||result.driverStatus==='rejected'?'driver-status':'home';}catch(error){throw new Error(apiErrorMessage(error));}},
+  completeProfile:async({name,email})=>{const session=get().session;if(session)set({session:{user:{...session.user,name,email}}});},
+  setRole:async(role)=>{try{const data=await switchActiveRole(role);const session=get().session;if(session)set({session:{user:{...session.user,role:data.activeRole}}});return true;}catch{return false;}},
+  submitDriverApplication:async(application)=>{try{const {data}=await apiSubmitDriverApplication();set({driverApplication:{...application,status:'pending',submittedAt:new Date(data.submittedAt??Date.now()).getTime()}});}catch(error){throw new Error(apiErrorMessage(error));}},
+  refreshDriverApplication:async()=>{const user=get().session?.user;if(!user)return;const data=await getDriverApplicationStatus();const current=get().driverApplication??blankApplication(user);set({driverApplication:{...current,status:data.status==='none'?'draft':data.status,rejectionReason:data.rejection_reason,submittedAt:data.submitted_at?new Date(data.submitted_at).getTime():current.submittedAt}});},
+  restartDriverApplication:()=>set({driverApplication:blankApplication(get().session?.user)}),
+  updateProfile:(input)=>{const session=get().session;if(session)set({session:{user:{...session.user,...input}}});},
+  logout:async()=>{const refresh=await tokenStore.getRefreshToken();set({session:null,pending:null,driverApplication:null});useWalletStore.getState().reset();resetSocket();await logoutSession(refresh);await tokenStore.clear();},
+  setHydrated:()=>set({_hasHydrated:true}),
+}));
+export const useIsSignedIn=()=>useAuthStore(s=>s.session!==null);

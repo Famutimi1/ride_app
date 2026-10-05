@@ -24,6 +24,7 @@ const SERVICES = [
 export function HomeScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.session?.user);
+  const driverApplication = useAuthStore((state) => state.driverApplication);
 
   if (!user) return null;
 
@@ -32,7 +33,7 @@ export function HomeScreen() {
   return (
     <View className="flex-1 bg-background">
       <RideMap />
-      {(user.role === 'driver' || user.role === 'both') ? <DriverOnlineControl driverId={user.id} /> : null}
+      {user.role === 'driver' && driverApplication?.status === 'approved' ? <DriverOnlineControl driverId={user.id} /> : null}
 
       <StyledSafeAreaView edges={['top']} className="absolute left-sm right-sm top-0 pt-sm">
         <View className="flex-row items-center justify-between">

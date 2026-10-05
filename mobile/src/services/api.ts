@@ -5,10 +5,13 @@ const configuredUrl = (process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost
 const configured = new URL(configuredUrl);
 const metroHost = Constants.expoConfig?.hostUri?.split(':')[0];
 
+const nativeDevelopmentHost = metroHost ?? (Platform.OS === 'android' ? '10.0.2.2' : 'localhost');
+
 // A physical phone cannot reach the Mac through "localhost". During Expo LAN
 // development, reuse Metro's host while preserving the configured backend port.
-export const API_BASE_URL = Platform.OS !== 'web' && metroHost && ['localhost', '127.0.0.1'].includes(configured.hostname)
-  ? `${configured.protocol}//${metroHost}:${configured.port || '4000'}`
+// An Android emulator that launches without Metro reaches the Mac at 10.0.2.2.
+export const API_BASE_URL = Platform.OS !== 'web' && ['localhost', '127.0.0.1'].includes(configured.hostname)
+  ? `${configured.protocol}//${nativeDevelopmentHost}:${configured.port || '4000'}`
   : configuredUrl;
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {

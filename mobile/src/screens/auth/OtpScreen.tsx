@@ -26,7 +26,7 @@ import { Button, Text } from '@/components/common';
 import { useAuthStore } from '@/store/authStore';
 
 const CODE_LENGTH = 6;
-const RESEND_SECONDS = 30;
+const RESEND_SECONDS = 60;
 
 const StyledSafeAreaView = cssInterop(SafeAreaView, { className: 'style' });
 
@@ -43,6 +43,7 @@ export function OtpScreen() {
   const isTallScreen = height >= 800;
 
   const phone = useAuthStore((s) => s.pending?.phone);
+  const intent = useAuthStore((s) => s.pending?.intent);
   const verifyOtp = useAuthStore((s) => s.verifyOtp);
   const requestOtp = useAuthStore((s) => s.requestOtp);
 
@@ -64,9 +65,15 @@ export function OtpScreen() {
     setLoading(true);
     setError(undefined);
     try {
-      await verifyOtp(value);
+      const { destination } = await verifyOtp(value);
       // replace(), not push(), so Back doesn't return to the code screen post-login.
-      router.replace('/home');
+      const destinationPath = {
+        home: '/home',
+        'driver-onboarding': '/driver-onboarding',
+        'driver-dashboard': '/driver-dashboard',
+        'driver-status': '/driver-status',
+      } as const;
+      router.replace(destinationPath[destination]);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Verification failed. Try again.');
       setCode(''); // wipe the wrong code so they can retype cleanly
@@ -108,7 +115,7 @@ export function OtpScreen() {
               accessibilityRole="button"
               accessibilityLabel="Go back"
               hitSlop={12}
-              onPress={() => router.back()}
+              onPress={() => router.replace(intent === 'login' ? '/login' : '/phone')}
               className="h-6 w-6 items-start justify-center"
             >
               <Text variant="body" className="!text-[24px] !leading-[24px]">
@@ -116,22 +123,21 @@ export function OtpScreen() {
               </Text>
             </Pressable>
 
-            {/* Centred title — the mockup pins "OTP" in the middle of the screen
-                top, with a small "1 2 3 4 5 6" index row directly beneath it. */}
-            <View className="mt-[58px] items-center gap-xs">
+            <View className="mt-[46px] items-center gap-xs">
               <Text
                 variant="h2"
                 className={isTallScreen ? '!text-[26px] !leading-[32px]' : '!text-[20px] !leading-[26px]'}
               >
-                OTP
+                Verify your phone
               </Text>
               <Text
                 variant="caption"
                 color="textMuted"
-                className={`${isTallScreen ? '!text-[14px]' : '!text-[12px]'} tracking-[4px]`}
+                className={`${isTallScreen ? '!text-[14px]' : '!text-[12px]'} text-center`}
               >
-                1 2 3 4 5 6
+                Enter the six-digit code sent to {phone}
               </Text>
+              <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.replace(intent === 'login' ? '/login' : '/phone')}><Text variant="caption" color="primary">Change phone number</Text></Pressable>
             </View>
 
             {/* The six boxes + the invisible input laid on top of them. */}
@@ -187,7 +193,7 @@ export function OtpScreen() {
                 very bottom of the screen rather than the CTA being pinned there. */}
             <View className="mt-[70px] gap-xl">
               <Button
-                label="Verify Now"
+                label="Verify and Continue"
                 fullWidth
                 loading={loading}
                 disabled={code.length !== CODE_LENGTH}

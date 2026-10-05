@@ -29,10 +29,25 @@ export async function findNearbyDrivers(latitude: number, longitude: number, rad
     'BYRADIUS', radiusKm, 'km',
     'WITHCOORD', 'WITHDIST', 'ASC', 'COUNT', 30,
   ) as unknown as Array<[string, string, [string, string]]>;
-  return rows.map(([driverId, distanceKm, [lng, lat]]) => ({
-    driverId,
-    distanceKm: Number(distanceKm),
-    latitude: Number(lat),
-    longitude: Number(lng),
-  }));
+  if (!rows.length) return [];
+
+  const statuses = client.pipeline();
+  for (const [driverId] of rows) statuses.get(`driver:${driverId}:status`);
+  const statusResults = await statuses.exec();
+  const staleDriverIds: string[] = [];
+  const liveDrivers = rows.flatMap(([driverId, distanceKm, [lng, lat]], index) => {
+    if (statusResults?.[index]?.[1] !== 'online') {
+      staleDriverIds.push(driverId);
+      return [];
+    }
+    return [{
+      driverId,
+      distanceKm: Number(distanceKm),
+      latitude: Number(lat),
+      longitude: Number(lng),
+    }];
+  });
+
+  if (staleDriverIds.length) await client.zrem(DRIVER_GEO_KEY, ...staleDriverIds);
+  return liveDrivers;
 }

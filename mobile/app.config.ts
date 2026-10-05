@@ -1,7 +1,5 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
-import appJson from './app.json';
-
 declare const __dirname: string;
 declare const require: (id: string) => unknown;
 
@@ -12,8 +10,12 @@ const { resolve } = require('path') as { resolve: (...paths: string[]) => string
 const { loadEnvFile } = require('process') as { loadEnvFile: (path: string) => void };
 
 // Dynamic app config is evaluated before Expo's usual client-env loading step.
-// Load the project-local file explicitly using Node's built-in environment loader.
-loadEnvFile(resolve(__dirname, '.env'));
+// Load the project-local file when present; EAS supplies cloud variables directly.
+try {
+  loadEnvFile(resolve(__dirname, '.env'));
+} catch (error) {
+  if ((error as { code?: string }).code !== 'ENOENT') throw error;
+}
 
 /** Inject the .env Google Maps key into native map configuration at build time. */
 export default ({ config }: ConfigContext): ExpoConfig => {
@@ -21,6 +23,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const androidGoogleMapsKey =
     process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY ?? sharedGoogleMapsKey;
   const iosGoogleMapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_KEY ?? sharedGoogleMapsKey;
+  const iosGoogleClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 
   if (!androidGoogleMapsKey || !iosGoogleMapsKey) {
     throw new Error(
@@ -28,8 +31,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     );
   }
 
-  const baseConfig = appJson.expo;
-  const plugins: ExpoConfig['plugins'] = baseConfig.plugins.map((plugin) => {
+  const plugins: ExpoConfig['plugins'] = (config.plugins ?? []).map((plugin) => {
     if (Array.isArray(plugin) && plugin[0] === 'expo-splash-screen') {
       return ['expo-splash-screen', {
         image: './assets/images/brand/rakky-ride-logo.png',
@@ -48,21 +50,26 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
       ];
     }
+    if (plugin === '@react-native-google-signin/google-signin' && iosGoogleClientId) {
+      const reversedClientId = iosGoogleClientId.replace(
+        /^(.*)\.apps\.googleusercontent\.com$/,
+        'com.googleusercontent.apps.$1',
+      );
+      return [plugin, { iosUrlScheme: reversedClientId }];
+    }
     return plugin as NonNullable<ExpoConfig['plugins']>[number];
   });
 
   return {
     ...config,
-    ...baseConfig,
     primaryColor: nativeBrandColors.primary,
     android: {
-      ...baseConfig.android,
+      ...config.android,
       adaptiveIcon: {
-        ...baseConfig.android.adaptiveIcon,
+        ...config.android?.adaptiveIcon,
         backgroundColor: nativeBrandColors.iconBackground,
       },
     },
-    ios: baseConfig.ios,
     plugins,
   } as ExpoConfig;
 };

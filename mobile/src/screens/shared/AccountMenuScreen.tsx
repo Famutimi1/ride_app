@@ -35,15 +35,28 @@ export function AccountMenuScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.session?.user);
   const setRole = useAuthStore((state) => state.setRole);
+  const driverApplication = useAuthStore((state) => state.driverApplication);
+  const restartDriverApplication = useAuthStore((state) => state.restartDriverApplication);
   if (!user) return null;
-  const driverMode = user.role === 'driver';
+  const driverMode = user.role === 'driver' && driverApplication?.status === 'approved';
   const initials = user.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
   const open = (section: string) => router.push({ pathname: '/account/[section]', params: { section } });
   const close = () => router.canGoBack() ? router.back() : router.replace(driverMode ? '/driver-dashboard' : '/home');
-  const switchMode = () => {
-    if (driverMode) { setRole('rider'); router.replace('/home'); }
-    else { setRole('driver'); router.replace('/driver-dashboard'); }
+  const switchMode = async () => {
+    if (driverMode) { if (await setRole('rider')) router.replace('/home'); }
+    else if (driverApplication?.status === 'approved') { if (await setRole('driver')) router.replace('/driver-dashboard'); }
+    else if (driverApplication?.status === 'pending' || driverApplication?.status === 'rejected') { router.replace('/driver-status'); }
+    else { restartDriverApplication(); router.replace('/driver-onboarding'); }
   };
+  const switchLabel = driverMode
+    ? 'Switch to rider mode'
+    : driverApplication?.status === 'approved'
+      ? 'Switch to driver mode'
+      : driverApplication?.status === 'pending'
+        ? 'View driver application'
+        : driverApplication?.status === 'rejected'
+          ? 'Review driver application'
+          : 'Apply to drive';
 
   return <SafeAreaView className="flex-1 bg-surface" edges={['top', 'bottom']}>
     <ScrollView className="flex-1" contentContainerClassName="pb-xl" showsVerticalScrollIndicator={false}>
@@ -57,7 +70,7 @@ export function AccountMenuScreen() {
       </View>
       <MenuList items={[...ACCOUNT_ITEMS, ...(driverMode ? DRIVER_ITEMS : RIDER_ITEMS), ...(!driverMode ? SERVICE_ITEMS : []), ...SUPPORT_ITEMS]} onPress={open} />
     </ScrollView>
-    <View className="border-t border-border bg-surface px-xl pt-md"><Pressable accessibilityRole="button" onPress={switchMode} className={`h-14 flex-row items-center justify-center gap-sm rounded-xl ${driverMode ? 'border border-primary' : 'bg-primary'}`}><Text color={driverMode ? 'primary' : 'textInverse'}>{driverMode ? '◉' : '🚘'}</Text><Text variant="button" color={driverMode ? 'primary' : 'textInverse'}>Switch to {driverMode ? 'rider' : 'driver'} mode</Text><Text color={driverMode ? 'primary' : 'textInverse'}>→</Text></Pressable></View>
+    <View className="border-t border-border bg-surface px-xl pt-md"><Pressable accessibilityRole="button" onPress={() => void switchMode()} className={`h-14 flex-row items-center justify-center gap-sm rounded-xl ${driverMode ? 'border border-primary' : 'bg-primary'}`}><Text color={driverMode ? 'primary' : 'textInverse'}>{driverMode ? '◉' : '🚘'}</Text><Text variant="button" color={driverMode ? 'primary' : 'textInverse'}>{switchLabel}</Text><Text color={driverMode ? 'primary' : 'textInverse'}>→</Text></Pressable></View>
   </SafeAreaView>;
 }
 

@@ -20,6 +20,8 @@ import { nativeWindTheme, useTheme } from '@/constants/theme';
 import { useIsSignedIn, useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
 import { LocationBootstrap } from '@/components/map';
+import { TripRecovery } from '@/components/trip/TripRecovery';
+import { WalletBootstrap } from '@/components/common/WalletBootstrap';
 
 const StyledGestureHandlerRootView = cssInterop(GestureHandlerRootView, {
   className: 'style',
@@ -46,11 +48,14 @@ export default function RootLayout() {
   // both: the session (so a logged-in user never flashes the login screen) AND the
   // theme preference (so a dark-mode user never flashes a white screen on launch).
   const authHasHydrated = useAuthStore((s) => s._hasHydrated);
+  const hydrateAuth = useAuthStore((s) => s.hydrate);
   const uiHasHydrated = useUiStore((s) => s._hasHydrated);
   const isSignedIn = useIsSignedIn();
   const theme = useTheme();
 
   const ready = (fontsLoaded || fontError) && authHasHydrated && uiHasHydrated;
+
+  useEffect(() => { if (!authHasHydrated) void hydrateAuth(); }, [authHasHydrated, hydrateAuth]);
 
   // Hide the splash once fonts AND the session are in. If a font fails we still
   // proceed (the OS font fills in) rather than trapping the user on the splash.
@@ -73,6 +78,8 @@ export default function RootLayout() {
         {/* SafeAreaProvider powers useSafeAreaInsets()/SafeAreaView used across screens. */}
         <SafeAreaProvider>
           {isSignedIn ? <LocationBootstrap /> : null}
+          {isSignedIn ? <TripRecovery /> : null}
+          {isSignedIn ? <WalletBootstrap /> : null}
           {/* Match the status-bar text to the active theme: light glyphs on the dark
               background, dark glyphs on the light one. Driven by our theme (not "auto")
               so it tracks the in-app toggle, not just the OS setting. */}

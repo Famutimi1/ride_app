@@ -1,4 +1,4 @@
-import { createElement, forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { createElement, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import Constants, { AppOwnership } from 'expo-constants';
 import { Platform, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/common';
@@ -54,13 +54,23 @@ export const AppMap = forwardRef<AppMapHandle, AppMapProps>(function AppMap({
       showsMyLocationButton={false} showsCompass={false} toolbarEnabled={false} mapPadding={mapPadding}
       loadingEnabled onRegionChange={onRegionChange} onRegionChangeComplete={onRegionChangeComplete}
       style={styles.map}>
-      {markers.map((marker) => <Marker key={marker.id} coordinate={marker} anchor={{ x: 0.5, y: 0.5 }} rotation={marker.heading ?? 0} title={marker.title}>
-        <MapMarker kind={marker.kind} />
-      </Marker>)}
+      {markers.map((marker) => marker.kind === 'driver'
+        ? <SmoothDriverMarker key={marker.id} marker={marker} />
+        : <Marker key={marker.id} coordinate={marker} anchor={{ x: 0.5, y: 0.5 }} rotation={marker.heading ?? 0} title={marker.title}><MapMarker kind={marker.kind} /></Marker>)}
       {polyline.length > 1 ? <Polyline coordinates={polyline} strokeColor={colors.primary} strokeWidth={5} /> : null}
     </MapView>
   </View>;
 });
+
+function SmoothDriverMarker({ marker }: { marker: AppMapMarker }) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const maps = require('react-native-maps') as typeof import('react-native-maps');
+  const [coordinate] = useState(() => new maps.AnimatedRegion({ latitude: marker.latitude, longitude: marker.longitude }));
+  useEffect(() => {
+    coordinate.timing({ latitude: marker.latitude, longitude: marker.longitude, latitudeDelta: 0, longitudeDelta: 0, toValue: 0, duration: 1_000, useNativeDriver: false }).start();
+  }, [coordinate, marker.latitude, marker.longitude]);
+  return <maps.Marker.Animated coordinate={coordinate as unknown as AppMapMarker} anchor={{ x: 0.5, y: 0.5 }} rotation={marker.heading ?? 0} title={marker.title}><MapMarker kind="driver" /></maps.Marker.Animated>;
+}
 
 const styles = StyleSheet.create({
   container: {

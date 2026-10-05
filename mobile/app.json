@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "Rakky Ride",
-    "slug": "famutimi",
+    "name": "RackyRide",
+    "slug": "rackyride",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/brand/rakky-ride-logo.png",
-    "scheme": "famutimi",
+    "scheme": "rackyride",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/brand/rakky-ride-logo.png",
-      "bundleIdentifier": "com.famutimi.ride"
+      "bundleIdentifier": "com.rackyride.app"
     },
     "android": {
-      "package": "com.famutimi.ride",
+      "package": "com.rackyride.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/brand/rakky-ride-logo.png"
       },
@@ -25,6 +25,8 @@
     },
     "plugins": [
       "expo-router",
+      "expo-secure-store",
+      "@react-native-google-signin/google-signin",
       [
         "expo-splash-screen",
         {
@@ -47,6 +49,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fed34124-2ccf-4a63-93e0-ea317a1d5587"
+      }
     }
   }
 }

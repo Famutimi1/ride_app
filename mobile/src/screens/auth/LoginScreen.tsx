@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Button, Input, Text } from '@/components/common';
+import { GoogleAuthButton } from '@/components/common/GoogleAuthButton';
 import { useAuthStore } from '@/store/authStore';
 
 import { AuthScreenLayout } from './AuthScreenLayout';
@@ -15,6 +16,8 @@ function normalizeLocalNumber(raw: string): string {
 export function LoginScreen() {
   const router = useRouter();
   const requestOtp = useAuthStore((state) => state.requestOtp);
+  const signInWithGoogle = useAuthStore((state) => state.signInWithGoogle);
+  const signInWithGoogleIdToken = useAuthStore((state) => state.signInWithGoogleIdToken);
   const [localNumber, setLocalNumber] = useState('');
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
@@ -31,7 +34,7 @@ export function LoginScreen() {
     setLoading(true);
     setError(undefined);
     try {
-      await requestOtp(`+234${localNumber}`);
+      await requestOtp(`+234${localNumber}`, { intent: 'login' });
       router.push('/otp');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not send the code. Try again.');
@@ -39,16 +42,22 @@ export function LoginScreen() {
       setLoading(false);
     }
   };
+  const onGoogle = async (idToken?: string) => {
+    setLoading(true); setError(undefined);
+    try { const destination=idToken?await signInWithGoogleIdToken(idToken):await signInWithGoogle(); router.replace(destination==='phone'?'/phone':destination==='driver-dashboard'?'/driver-dashboard':destination==='driver-status'?'/driver-status':'/home'); }
+    catch(reason){setError(reason instanceof Error?reason.message:'Google sign-in failed.');}
+    finally{setLoading(false);}
+  };
 
   return (
     <AuthScreenLayout
       title="Welcome back"
       subtitle="Enter the phone number linked to your Rakky Ride account."
-      onBack={() => router.back()}
+      onBack={() => router.canGoBack() ? router.back() : router.replace('/welcome')}
       footer={(
         <View className="gap-lg">
           <Button
-            label="Log in"
+            label="Continue"
             fullWidth
             loading={loading}
             disabled={!isValid}
@@ -61,12 +70,13 @@ export function LoginScreen() {
             <View className="h-px flex-1 bg-border" />
           </View>
 
-          <Button
-            label="Continue with Google"
-            variant="outline"
-            fullWidth
-            leftIcon={<Text variant="button">G</Text>}
-            onPress={() => {}}
+          <GoogleAuthButton
+            mode="signin"
+            loading={loading}
+            disabled={false}
+            onPress={() => void onGoogle()}
+            onCredential={(token) => void onGoogle(token)}
+            onError={(reason) => setError(reason.message)}
           />
 
           <View className="flex-row justify-center gap-xs">

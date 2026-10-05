@@ -9,9 +9,16 @@
  */
 import { Redirect } from 'expo-router';
 
-import { useIsSignedIn } from '@/store/authStore';
+import { useAuthStore, useIsSignedIn } from '@/store/authStore';
 
 export default function Index() {
   const isSignedIn = useIsSignedIn();
-  return <Redirect href={isSignedIn ? '/home' : '/welcome'} />;
+  const role = useAuthStore((state) => state.session?.user.role);
+  const driverApplication = useAuthStore((state) => state.driverApplication);
+  if (!isSignedIn) return <Redirect href="/welcome" />;
+  if (role === 'driver') {
+    if (driverApplication?.status === 'approved') return <Redirect href="/driver-dashboard" />;
+    return <Redirect href={driverApplication?.status === 'pending' || driverApplication?.status === 'rejected' ? '/driver-status' : '/driver-onboarding'} />;
+  }
+  return <Redirect href="/home" />;
 }

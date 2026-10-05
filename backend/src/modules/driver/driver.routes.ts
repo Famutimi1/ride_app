@@ -1,0 +1,12 @@
+import { Router } from 'express';
+import multer from 'multer';
+import { requireAuth } from '../auth/auth.middleware';
+import { documents, personalInfo, status, submit, vehicleInfo } from './driver.controller';
+const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:8*1024*1024,files:3}});
+export const driverRouter=Router();
+driverRouter.use(requireAuth);
+driverRouter.post('/onboarding/personal-info',personalInfo);
+driverRouter.post('/onboarding/vehicle-info',vehicleInfo);
+driverRouter.post('/onboarding/documents',upload.fields([{name:'license',maxCount:1},{name:'vehicleRegistration',maxCount:1},{name:'insurance',maxCount:1}]),documents);
+driverRouter.post('/onboarding/submit',submit);
+driverRouter.get('/application/status',status);

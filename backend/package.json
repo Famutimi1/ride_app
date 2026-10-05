@@ -7,7 +7,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/modules/trips/*.test.ts",
+    "migrate": "tsx src/shared/config/migrate.ts"
   },
   "engines": {
     "node": ">=18"
@@ -21,19 +23,25 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bullmq": "^6.3.11",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "google-auth-library": "^11.1.0",
     "helmet": "^8.3.0",
     "ioredis": "^6.0.0",
+    "jsonwebtoken": "^9.0.3",
     "morgan": "^1.11.0",
+    "multer": "^2.4.0",
     "pg": "^8.23.0",
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
+    "@types/multer": "^2.3.0",
     "@types/node": "^26.2.0",
     "@types/pg": "^8.23.1",
     "tsx": "^4.23.12",

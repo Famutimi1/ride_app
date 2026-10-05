@@ -13,7 +13,7 @@
 1. Splash Screen
 2. Onboarding (1-2 swipeable slides, skip on repeat visits)
 3. Login (phone + password)
-4. Signup (name, phone, password, role default = rider)
+4. Signup (name, phone, role default = rider)
 
 **Shared/Common (5 screens)**
 5. Home (map-based, shows Rider mode or Driver mode based on toggle)

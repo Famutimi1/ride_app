@@ -26,6 +26,10 @@ interface AuthScreenLayoutProps {
   children: ReactNode;
   /** Bottom-pinned area, typically the primary Button. */
   footer?: ReactNode;
+  /** Disable scrolling for compact screens whose content should stay fixed. */
+  scrollEnabled?: boolean;
+  /** Let the footer follow the form instead of pinning it to the bottom. */
+  footerPinned?: boolean;
 }
 
 export function AuthScreenLayout({
@@ -34,6 +38,8 @@ export function AuthScreenLayout({
   onBack,
   children,
   footer,
+  scrollEnabled = true,
+  footerPinned = true,
 }: AuthScreenLayoutProps) {
   // SafeAreaView accounts for the notch / home indicator while the NativeWind
   // padding utilities preserve separate control over top vs bottom spacing here.
@@ -47,8 +53,9 @@ export function AuthScreenLayout({
       >
         <ScrollView
           className="flex-1"
+          scrollEnabled={scrollEnabled}
           keyboardShouldPersistTaps="handled"
-          contentContainerClassName="grow gap-xl px-xl pb-xl pt-sm"
+          contentContainerClassName={`grow px-xl pb-xl pt-sm ${footerPinned ? 'gap-xl' : 'gap-lg'}`}
         >
           {onBack && <BackButton onPress={onBack} />}
 
@@ -67,7 +74,7 @@ export function AuthScreenLayout({
           </View>
 
           {/* flex:1 shoves the footer to the bottom when there's spare height. */}
-          <View className="flex-1 gap-lg">{children}</View>
+          <View className={`${footerPinned ? 'flex-1' : ''} gap-lg`}>{children}</View>
 
           {footer ? <View className="gap-md">{footer}</View> : null}
         </ScrollView>
