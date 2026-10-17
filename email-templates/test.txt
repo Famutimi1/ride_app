@@ -1,0 +1,11 @@
+This is an administrative delivery test from Rakky Ride.
+
+Receiving this email confirms the sending configuration works for this mailbox.
+
+View email dashboard: https://dashboard.example.test/admin/emails
+
+Need help? mailto:support@example.test
+
+Rakky Ride · Lagos, Nigeria
+
+This is an automatic account notification.

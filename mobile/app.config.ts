@@ -19,6 +19,9 @@ try {
 
 /** Inject the .env Google Maps key into native map configuration at build time. */
 export default ({ config }: ConfigContext): ExpoConfig => {
+  // Local builds use the ignored file in the mobile root. EAS file environment
+  // variables resolve to a temporary path and can override it in cloud builds.
+  const googleServicesFile = process.env.GOOGLE_SERVICES_JSON ?? './google-services.json';
   const sharedGoogleMapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY;
   const androidGoogleMapsKey =
     process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY ?? sharedGoogleMapsKey;
@@ -50,6 +53,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
       ];
     }
+    if (plugin === 'expo-notifications') {
+      return [
+        'expo-notifications',
+        {
+          color: nativeBrandColors.primary,
+          defaultChannel: 'trip_updates',
+        },
+      ];
+    }
     if (plugin === '@react-native-google-signin/google-signin' && iosGoogleClientId) {
       const reversedClientId = iosGoogleClientId.replace(
         /^(.*)\.apps\.googleusercontent\.com$/,
@@ -65,6 +77,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     primaryColor: nativeBrandColors.primary,
     android: {
       ...config.android,
+      googleServicesFile,
       adaptiveIcon: {
         ...config.android?.adaptiveIcon,
         backgroundColor: nativeBrandColors.iconBackground,

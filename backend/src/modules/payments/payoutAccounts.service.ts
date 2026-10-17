@@ -1,7 +1,7 @@
 import { db, inTransaction } from '../../shared/config/db';
 import { ensureRedis } from '../../shared/config/redis';
 import { ApiError } from '../../shared/errors';
-import { generateOtp, verifyOtp } from '../auth/otp.service';
+import { generateOtp, withVerifiedOtp } from '../auth/otp.service';
 import { gateway } from './gateway';
 
 async function approvedDriver(userId:string) {
@@ -29,7 +29,10 @@ export async function listPayoutAccounts(userId:string) {
 export async function listBanksCached() {
   const redis=await ensureRedis();
   const cached=await redis.get('payments:banks:nigeria');
-  if (cached) return JSON.parse(cached) as Array<{name:string;code:string}>;
+  if (cached) {
+    const banks=JSON.parse(cached) as Array<{name:string;code:string}>;
+    return [...new Map(banks.map((bank)=>[bank.code,bank])).values()];
+  }
   const banks=await gateway.listBanks();
   await redis.set('payments:banks:nigeria',JSON.stringify(banks),'EX',86400);
   return banks;
@@ -52,7 +55,7 @@ export async function addPayoutAccount(userId:string,input:{accountNumber:string
   const accountTokens=resolved.accountName.toLowerCase().split(/\s+/);
   const matches=mode==='off'||(mode==='strict'?ownTokens.every((token)=>accountTokens.includes(token)):ownTokens.some((token)=>accountTokens.includes(token)));
   if (!matches) throw new ApiError(409,'payout_name_mismatch');
-  await inTransaction((client)=>verifyOtp(user.phone!,'payout_account',input.otpCode,client));
+  await withVerifiedOtp(user.phone,'payout_account',input.otpCode,async()=>undefined);
   const recipient=await gateway.createRecipient({name:resolved.accountName,accountNumber:input.accountNumber,bankCode:input.bankCode});
   const row=(await db.query('INSERT INTO payout_accounts(user_id,bank_code,bank_name,account_last4,account_name,recipient_code) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(user_id,recipient_code) DO UPDATE SET is_active=true RETURNING id,bank_code,bank_name,account_last4,account_name,created_at',
     [userId,input.bankCode,bank.name,input.accountNumber.slice(-4),resolved.accountName,recipient.recipientCode])).rows[0];

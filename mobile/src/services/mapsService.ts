@@ -1,6 +1,8 @@
 import { apiClient } from '@/lib/apiClient';
-import { decodePolyline } from '@/utils/polyline';
+import { anchorPolyline, decodePolyline } from '@/utils/polyline';
 import type { MapCoordinate, MapLocation } from '@/store/mapStore';
+import { estimateTrip } from './tripService';
+export type { TripEstimate } from './tripService';
 
 export interface PlacePrediction {
   placeId: string;
@@ -8,16 +10,6 @@ export interface PlacePrediction {
   primaryText: string;
   secondaryText: string;
 }
-
-export interface TripEstimate {
-  fareKobo: number;
-  distanceKm: number;
-  durationMin: number;
-  estimatedFare: number;
-  currency: 'NGN';
-}
-
-const estimateCache = new Map<string, { expiresAt: number; value: TripEstimate }>();
 
 export async function autocompletePlaces(input: string, location?: MapCoordinate) {
   const { data: result } = await apiClient.post<{ predictions: PlacePrediction[] }>('/places/autocomplete', { input, location });
@@ -35,20 +27,17 @@ export async function reverseGeocode(location: MapCoordinate) {
 
 export async function getTripRoute(pickup: MapCoordinate, dropoff: MapCoordinate) {
   const {data:result}=await apiClient.post<{encodedPolyline:string;distanceKm:number;durationMin:number}>('/trips/route',{pickup,dropoff});
-  return { ...result, coordinates: decodePolyline(result.encodedPolyline) };
+  return { ...result, coordinates: anchorPolyline(decodePolyline(result.encodedPolyline), pickup, dropoff) };
 }
 
 export async function getTripEstimate(pickup: MapLocation, dropoff: MapLocation) {
-  const key = `${pickup.latitude},${pickup.longitude}:${dropoff.latitude},${dropoff.longitude}`;
-  const cached = estimateCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) return cached.value;
-  const {data:value}=await apiClient.post<TripEstimate>('/trips/estimate',{pickup,dropoff});
-  estimateCache.set(key, { value, expiresAt: Date.now() + 60_000 });
-  return value;
+  // Quotes belong to the current account and expire at the server's configured time.
+  // Route calculation remains cached on the backend; accepted quotes are never cached here.
+  return estimateTrip(pickup, dropoff);
 }
 
-export async function getNearbyDrivers(location: MapCoordinate, radiusKm = 5) {
-  const query = new URLSearchParams({ latitude: String(location.latitude), longitude: String(location.longitude), radiusKm: String(radiusKm) });
+export async function getNearbyDrivers(location: MapCoordinate, radiusKm = 5, serviceType:'ride'|'courier'='ride') {
+  const query = new URLSearchParams({ latitude: String(location.latitude), longitude: String(location.longitude), radiusKm: String(radiusKm), serviceType });
   const { data: result } = await apiClient.get<{ drivers: { driverId: string; latitude: number; longitude: number; distanceKm: number }[] }>(`/location/nearby?${query}`);
   return result.drivers;
 }

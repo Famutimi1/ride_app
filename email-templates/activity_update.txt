@@ -1,0 +1,15 @@
+Hi Ada,
+
+Your top-up has been confirmed. Open your wallet in the app for the amount and receipt.
+
+Reference: PREVIEW-ONLY-001
+
+For your privacy, financial details, private messages and documents are available only inside your authenticated app.
+
+Open Rakky Ride: https://dashboard.example.test/open-app?path=%2Faccount%2Fpayment
+
+Need help? mailto:support@example.test
+
+Rakky Ride · Lagos, Nigeria
+
+This is an automatic account notification.

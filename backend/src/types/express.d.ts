@@ -1,3 +1,3 @@
-import type { AuthUserRow } from '../modules/auth/auth.types';
-declare global { namespace Express { interface Request { userId?: string; authUser?: AuthUserRow } } }
+import type { AuthUserRow, SessionScope } from '../modules/auth/auth.types';
+declare global { namespace Express { interface Request { userId?: string; authUser?: AuthUserRow; sessionScope?: SessionScope } } }
 export {};

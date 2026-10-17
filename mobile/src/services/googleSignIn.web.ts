@@ -5,15 +5,6 @@ interface CredentialResponse {
   credential?: string;
 }
 
-interface PromptMomentNotification {
-  isNotDisplayed(): boolean;
-  getNotDisplayedReason(): string;
-  isSkippedMoment(): boolean;
-  getSkippedReason(): string;
-  isDismissedMoment(): boolean;
-  getDismissedReason(): string;
-}
-
 interface GoogleIdentityApi {
   accounts: {
     id: {
@@ -21,9 +12,8 @@ interface GoogleIdentityApi {
         client_id: string;
         callback: (response: CredentialResponse) => void;
         auto_select?: boolean;
-        cancel_on_tap_outside?: boolean;
-        context?: 'signin' | 'signup' | 'use';
-        use_fedcm_for_prompt?: boolean;
+        ux_mode?: 'popup';
+        use_fedcm_for_button?: boolean;
       }): void;
       renderButton(
         parent: HTMLElement,
@@ -36,7 +26,6 @@ interface GoogleIdentityApi {
           width: number;
         },
       ): void;
-      prompt(callback?: (notification: PromptMomentNotification) => void): void;
     };
   };
 }
@@ -50,9 +39,12 @@ export async function renderGoogleButton(
     throw new Error('Google sign-in is not configured. Add EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID to mobile/.env.');
   }
   const google = await loadGoogleIdentity();
+  if (!parent.isConnected) return;
   google.accounts.id.initialize({
     client_id: googleWebClientId,
     auto_select: false,
+    ux_mode: 'popup',
+    use_fedcm_for_button: false,
     callback: (response) => {
       if (response.credential) onCredential(response.credential);
     },
@@ -75,21 +67,18 @@ declare global {
 }
 
 let scriptPromise: Promise<GoogleIdentityApi> | undefined;
-let pendingRequest: {
-  resolve: (token: string) => void;
-  reject: (error: Error) => void;
-  timeout: ReturnType<typeof setTimeout>;
-} | undefined;
-
 function loadGoogleIdentity(): Promise<GoogleIdentityApi> {
-  if (window.google) return Promise.resolve(window.google);
+  if (window.google?.accounts?.id) return Promise.resolve(window.google);
   if (scriptPromise) return scriptPromise;
 
-  scriptPromise = new Promise((resolve, reject) => {
+  scriptPromise = new Promise<GoogleIdentityApi>((resolve, reject) => {
     const existing = document.querySelector<HTMLScriptElement>(`script[src="${GOOGLE_IDENTITY_SCRIPT}"]`);
     const script = existing ?? document.createElement('script');
-    const onLoad = () => window.google ? resolve(window.google) : reject(new Error('Google sign-in could not be loaded.'));
-    const onError = () => reject(new Error('Google sign-in could not be loaded. Check your connection and try again.'));
+    const onLoad = () => window.google?.accounts?.id ? resolve(window.google) : reject(new Error('Google sign-in could not be loaded.'));
+    const onError = () => {
+      script.remove();
+      reject(new Error('Google sign-in could not be loaded. Check your connection and try again.'));
+    };
 
     script.addEventListener('load', onLoad, { once: true });
     script.addEventListener('error', onError, { once: true });
@@ -98,54 +87,16 @@ function loadGoogleIdentity(): Promise<GoogleIdentityApi> {
       script.async = true;
       document.head.appendChild(script);
     }
+  }).catch((reason: unknown) => {
+    scriptPromise = undefined;
+    throw reason;
   });
 
   return scriptPromise;
 }
 
-function settlePending(error?: Error, token?: string) {
-  const request = pendingRequest;
-  if (!request) return;
-  clearTimeout(request.timeout);
-  pendingRequest = undefined;
-  if (token) request.resolve(token);
-  else request.reject(error ?? new Error('Google sign-in was cancelled.'));
-}
-
+// Web sign-in must start from Google's rendered button. One Tap's prompt() is
+// optional browser-mediated UI and is not a replacement for a sign-in button.
 export async function getGoogleIdToken(): Promise<string> {
-  if (!googleWebClientId) {
-    throw new Error('Google sign-in is not configured. Add EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID to mobile/.env.');
-  }
-  if (pendingRequest) throw new Error('Google sign-in is already open.');
-
-  const google = await loadGoogleIdentity();
-  google.accounts.id.initialize({
-    client_id: googleWebClientId,
-    auto_select: false,
-    cancel_on_tap_outside: false,
-    context: 'signin',
-    use_fedcm_for_prompt: false,
-    callback: (response) => {
-      if (response.credential) settlePending(undefined, response.credential);
-      else settlePending(new Error('Google did not return an identity token.'));
-    },
-  });
-
-  return new Promise<string>((resolve, reject) => {
-    pendingRequest = {
-      resolve,
-      reject,
-      timeout: setTimeout(() => settlePending(new Error('Google sign-in timed out. Please try again.')), 90_000),
-    };
-
-    google.accounts.id.prompt((notification) => {
-      if (notification.isNotDisplayed()) {
-        settlePending(new Error(`Google sign-in could not open (${notification.getNotDisplayedReason()}).`));
-      } else if (notification.isSkippedMoment()) {
-        settlePending(new Error(`Google sign-in was skipped (${notification.getSkippedReason()}).`));
-      } else if (notification.isDismissedMoment() && notification.getDismissedReason() !== 'credential_returned') {
-        settlePending(new Error('Google sign-in was cancelled.'));
-      }
-    });
-  });
+  throw new Error('Use the Google sign-in button to continue in your browser.');
 }

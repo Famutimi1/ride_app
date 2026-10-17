@@ -1,7 +1,7 @@
 import { Pool, type PoolClient } from 'pg';
 import { env } from '../../config/env';
 
-export const db = new Pool({ connectionString: env.DATABASE_URL });
+export const db = new Pool({ connectionString: env.DATABASE_URL, connectionTimeoutMillis: 5000 });
 
 export async function inTransaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await db.connect();

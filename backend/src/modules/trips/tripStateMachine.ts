@@ -1,12 +1,17 @@
 import type { PoolClient } from 'pg';
 import { ApiError } from '../../shared/errors';
 import type { TripActor, TripRow, TripStatus } from './trip.types';
+import { createTripNotifications } from '../notifications/notifications.service';
+import { tripStatusNotifications } from '../notifications/notificationTemplates';
 
 export const ALLOWED_TRANSITIONS: Readonly<Record<TripStatus, readonly TripStatus[]>> = {
+  scheduled: ['searching', 'cancelled'],
   searching: ['driver_assigned', 'no_drivers_found', 'cancelled'],
   driver_assigned: ['driver_arrived', 'cancelled'],
   driver_arrived: ['in_progress', 'cancelled'],
-  in_progress: ['completed'],
+  in_progress: ['completed', 'returning'],
+  returning: ['returned'],
+  returned: [],
   completed: [],
   cancelled: [],
   no_drivers_found: [],
@@ -14,7 +19,7 @@ export const ALLOWED_TRANSITIONS: Readonly<Record<TripStatus, readonly TripStatu
 
 type TransitionFields = Partial<Pick<TripRow,
   'driver_id' | 'accepted_at' | 'arrived_at' | 'started_at' | 'completed_at' |
-  'cancelled_at' | 'cancelled_by' | 'cancel_reason' | 'commission_kobo' | 'driver_earning_kobo'
+  'cancelled_at' | 'cancelled_by' | 'cancel_reason' | 'commission_kobo' | 'driver_earning_kobo' | 'requested_at' | 'delivery_verified_at' | 'delivery_issue_reason' | 'returned_at'
 >>;
 
 const COLUMN_BY_FIELD: Record<keyof TransitionFields, string> = {
@@ -28,6 +33,10 @@ const COLUMN_BY_FIELD: Record<keyof TransitionFields, string> = {
   cancel_reason: 'cancel_reason',
   commission_kobo: 'commission_kobo',
   driver_earning_kobo: 'driver_earning_kobo',
+  requested_at: 'requested_at',
+  delivery_verified_at: 'delivery_verified_at',
+  delivery_issue_reason: 'delivery_issue_reason',
+  returned_at: 'returned_at',
 };
 
 export function canTransition(from: TripStatus, to: TripStatus): boolean {
@@ -65,5 +74,6 @@ export async function transitionTrip(client: PoolClient, input: {
      VALUES ($1,$2,$3,$4,$5,$6)`,
     [input.tripId, input.from, input.to, input.actorId ?? null, input.actorType, input.metadata ?? {}],
   );
+  await createTripNotifications(client,tripStatusNotifications(trip,input.to));
   return trip;
 }

@@ -1,0 +1,96 @@
+{
+  "checkedAt": "2026-10-12T17:33:21.341Z",
+  "mode": "test",
+  "isolated": true,
+  "realFundsMoved": false,
+  "charge": {
+    "reference": "tu_7848225fbb494e9e919bc1b7e8ffc547",
+    "providerTransactionId": 6651205424,
+    "providerEventId": "6acd1712e93b40a26ed665f4",
+    "delivery": {
+      "status": "Delivered",
+      "responseCode": 200,
+      "updatedAt": "2026-10-12T17:27:50.000Z"
+    },
+    "resend": {
+      "httpStatus": 202,
+      "acceptedCount": 2,
+      "failedCount": 0
+    }
+  },
+  "transfer": {
+    "reference": "wd_fdf8b1d2642f4edd8b34624d9a7efd3a",
+    "amountKobo": "100000",
+    "outcome": "provider_rejected",
+    "httpStatus": 400,
+    "code": "transfer_unavailable",
+    "reason": "You cannot initiate third party payouts as a starter business",
+    "verifiedProviderRecord": "404 not_found",
+    "liveTransferEvidence": false
+  },
+  "intents": [
+    {
+      "reference": "tu_0c1d85357632420ead87492266aea8fc",
+      "status": "failed",
+      "amount_kobo": "500000",
+      "fee_kobo": null,
+      "ledger_transaction_id": null
+    },
+    {
+      "reference": "tu_7848225fbb494e9e919bc1b7e8ffc547",
+      "status": "succeeded",
+      "amount_kobo": "500000",
+      "fee_kobo": "17500",
+      "ledger_transaction_id": "5350f05a-08f4-46d8-a809-752adf33139a"
+    }
+  ],
+  "withdrawals": [
+    {
+      "reference": "wd_fdf8b1d2642f4edd8b34624d9a7efd3a",
+      "status": "pending",
+      "attempts": 5,
+      "request_tx_id": "d2717894-10ba-4895-922c-f9f707604841",
+      "final_tx_id": null
+    }
+  ],
+  "receipts": [
+    {
+      "event_type": "charge.success",
+      "status": "processed",
+      "received_at": "2026-10-12T17:21:22.852Z",
+      "processed_at": "2026-10-12T17:21:24.039Z"
+    }
+  ],
+  "postings": [
+    {
+      "type": "topup",
+      "count": "1"
+    },
+    {
+      "type": "withdrawal_request",
+      "count": "1"
+    }
+  ],
+  "balances": [
+    {
+      "kind": "system",
+      "code": "expense_gateway_fees",
+      "balance_kobo": "17500"
+    },
+    {
+      "kind": "system",
+      "code": "gateway_balance",
+      "balance_kobo": "482500"
+    },
+    {
+      "kind": "system",
+      "code": "payout_in_transit",
+      "balance_kobo": "100000"
+    },
+    {
+      "kind": "driver_earnings",
+      "code": "driver_earnings:18855c8e-bb00-418a-9efc-6f2eda1a7ca9",
+      "balance_kobo": "400000"
+    }
+  ]
+}

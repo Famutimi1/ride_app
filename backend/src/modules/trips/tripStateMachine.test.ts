@@ -4,9 +4,11 @@ import { ALLOWED_TRANSITIONS, canTransition } from './tripStateMachine';
 import type { TripStatus } from './trip.types';
 
 const legal: Array<[TripStatus,TripStatus]> = [
+  ['scheduled','searching'],['scheduled','cancelled'],
   ['searching','driver_assigned'],['searching','no_drivers_found'],['searching','cancelled'],
   ['driver_assigned','driver_arrived'],['driver_assigned','cancelled'],
   ['driver_arrived','in_progress'],['driver_arrived','cancelled'],['in_progress','completed'],
+  ['in_progress','returning'],['returning','returned'],
 ];
 
 test('allows every documented transition',()=>{for(const [from,to] of legal)assert.equal(canTransition(from,to),true,`${from} -> ${to}`);});

@@ -14,12 +14,17 @@ tripsRouter.post('/route',tripRateLimit(env.TRIP_ESTIMATE_RATE_LIMIT_PER_MIN),co
 tripsRouter.post('/estimate',requireRiderMode,tripRateLimit(env.TRIP_ESTIMATE_RATE_LIMIT_PER_MIN),controller.estimate);
 tripsRouter.post('/',requireRiderMode,tripRateLimit(10),controller.create);
 tripsRouter.get('/active',controller.active);
+tripsRouter.get('/offers/current',controller.currentOffer);
+tripsRouter.get('/scheduled',requireRiderMode,controller.scheduled);
 tripsRouter.get('/history',controller.history);
 tripsRouter.get('/:id',controller.detail);
+tripsRouter.get('/:id/delivery-code',controller.deliveryCode);
+tripsRouter.post('/:id/delivery-code/rotate',tripRateLimit(2),controller.rotateDeliveryCode);
 tripsRouter.post('/:id/cancel',controller.cancel);
 tripsRouter.post('/:id/accept',requireApprovedDriver,controller.accept);
 tripsRouter.post('/:id/decline',requireApprovedDriver,controller.decline);
 tripsRouter.post('/:id/arrived',requireApprovedDriver,controller.arrived);
 tripsRouter.post('/:id/start',requireApprovedDriver,controller.start);
+tripsRouter.post('/:id/return',requireApprovedDriver,controller.returnDelivery);
 tripsRouter.post('/:id/complete',requireApprovedDriver,controller.complete);
 tripsRouter.post('/:id/rating',controller.rating);

@@ -1,4 +1,5 @@
 import { ensureRedis } from '../../shared/config/redis';
+import { eligibleServiceDriverIds, type DriverService } from '../matching/serviceEligibility';
 
 const DRIVER_GEO_KEY = 'drivers:locations';
 
@@ -21,25 +22,37 @@ export async function saveDriverLocation(location: DriverCoordinate) {
     .exec();
 }
 
-export async function findNearbyDrivers(latitude: number, longitude: number, radiusKm: number) {
+export async function findNearbyDrivers(latitude: number, longitude: number, radiusKm: number, service: DriverService = 'ride') {
   const client = await ensureRedis();
   const rows = await client.geosearch(
     DRIVER_GEO_KEY,
     'FROMLONLAT', longitude, latitude,
     'BYRADIUS', radiusKm, 'km',
-    'WITHCOORD', 'WITHDIST', 'ASC', 'COUNT', 30,
+    'WITHCOORD', 'WITHDIST', 'ASC',
   ) as unknown as Array<[string, string, [string, string]]>;
   if (!rows.length) return [];
 
-  const statuses = client.pipeline();
-  for (const [driverId] of rows) statuses.get(`driver:${driverId}:status`);
-  const statusResults = await statuses.exec();
+  const ids = rows.map(([driverId]) => driverId);
+  const [approvedIds, statusResults] = await Promise.all([
+    eligibleServiceDriverIds(ids,service),
+    (async () => {
+      const statuses = client.pipeline();
+      for (const driverId of ids) {
+        statuses.get(`driver:${driverId}:status`);
+        statuses.exists(`driver:${driverId}:onTrip`);
+      }
+      return statuses.exec();
+    })(),
+  ]);
   const staleDriverIds: string[] = [];
   const liveDrivers = rows.flatMap(([driverId, distanceKm, [lng, lat]], index) => {
-    if (statusResults?.[index]?.[1] !== 'online') {
+    const online = statusResults?.[index * 2]?.[1] === 'online';
+    const busy = Number(statusResults?.[index * 2 + 1]?.[1] ?? 0) > 0;
+    if (!online) {
       staleDriverIds.push(driverId);
       return [];
     }
+    if (!approvedIds.has(driverId) || busy) return [];
     return [{
       driverId,
       distanceKm: Number(distanceKm),

@@ -1,5 +1,6 @@
 import type { Server, Socket } from 'socket.io';
 import { saveDriverLocation, type DriverCoordinate } from '../modules/location/location.service';
+import { assertAnyServiceEnabled } from '../modules/matching/serviceEligibility';
 import { refreshDriverTripLock } from '../modules/matching/matching.service';
 import { ensureRedis } from '../shared/config/redis';
 import { env } from '../config/env';
@@ -36,12 +37,16 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
   });
 
   const locationHandler = async (payload: Partial<DriverCoordinate>, acknowledge?: (result: { ok: boolean; error?: string }) => void) => {
+    if (payload.driverId !== undefined && payload.driverId !== userId) return acknowledge?.({ ok: false, error: 'location_account_mismatch' });
     if (!validCoordinate(payload)) { socket.emit(SOCKET_EVENTS.LOCATION_ERROR, 'Invalid coordinates'); return acknowledge?.({ ok: false, error: 'invalid_coordinates' }); }
     try {
-      const active=(await db.query<{id:string}>("SELECT id FROM trips WHERE driver_id=$1 AND status IN ('driver_assigned','driver_arrived','in_progress') ORDER BY created_at DESC LIMIT 1",[userId])).rows[0];
+      const active=(await db.query<{id:string}>("SELECT id FROM trips WHERE driver_id=$1 AND status IN ('driver_assigned','driver_arrived','in_progress','returning') ORDER BY created_at DESC LIMIT 1",[userId])).rows[0];
+      if (!active && !(await db.query("SELECT 1 FROM users WHERE id=$1 AND active_role='driver' AND is_active=true", [userId])).rowCount) {
+        return acknowledge?.({ ok: false, error: 'switch_to_driver_mode' });
+      }
       const {rows}=await db.query("SELECT 1 FROM driver_profiles WHERE user_id=$1 AND status='approved'",[userId]);
       if(!rows[0]&&!active) { socket.emit(SOCKET_EVENTS.LOCATION_ERROR,'Driver is not approved'); return acknowledge?.({ ok:false,error:'driver_not_approved' }); }
-      if(!active) await assertDriverCanGoOnline(userId);
+      if(!active){await assertAnyServiceEnabled(userId);await assertDriverCanGoOnline(userId);}
       const authenticatedPayload:DriverCoordinate={latitude:payload.latitude!,longitude:payload.longitude!,heading:payload.heading,driverId:userId,timestamp:payload.timestamp!};
       await saveDriverLocation(authenticatedPayload);
       if(active){
@@ -59,7 +64,7 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
   };
   socket.on(SOCKET_EVENTS.DRIVER_LOCATION_UPDATE,locationHandler);
   socket.on(SOCKET_EVENTS.DRIVER_LOCATION,locationHandler);
-  socket.on(SOCKET_EVENTS.DRIVER_OFFLINE,async(acknowledge?:(result:{ok:boolean;error?:string})=>void)=>{try{const active=(await db.query("SELECT 1 FROM trips WHERE driver_id=$1 AND status IN ('driver_assigned','driver_arrived','in_progress')",[userId])).rows[0];if(active)return acknowledge?.({ok:false,error:'active_trip_must_remain_online'});const redis=await ensureRedis();await redis.multi().del(`driver:${userId}:status`,`driver:${userId}:location`).zrem('drivers:locations',userId).exec();acknowledge?.({ok:true});}catch(error){acknowledge?.({ok:false,error:error instanceof Error?error.message:'offline_update_failed'});}});
+  socket.on(SOCKET_EVENTS.DRIVER_OFFLINE,async(acknowledge?:(result:{ok:boolean;error?:string})=>void)=>{try{const active=(await db.query("SELECT 1 FROM trips WHERE driver_id=$1 AND status IN ('driver_assigned','driver_arrived','in_progress','returning')",[userId])).rows[0];if(active)return acknowledge?.({ok:false,error:'active_trip_must_remain_online'});const redis=await ensureRedis();await redis.multi().del(`driver:${userId}:status`,`driver:${userId}:location`).zrem('drivers:locations',userId).exec();acknowledge?.({ok:true});}catch(error){acknowledge?.({ok:false,error:error instanceof Error?error.message:'offline_update_failed'});}});
 
   socket.on(SOCKET_EVENTS.TRIP_MESSAGE_SEND, async (payload: TripMessage) => {
     const text = typeof payload?.text === 'string' ? payload.text.trim() : '';

@@ -2,12 +2,14 @@ import { useEffect, useRef } from 'react';
 import { subscribeToTrip } from '@/services/socket';
 import { bearingBetween, interpolateCoordinate } from '@/utils/driverAnimation';
 import { useMapStore } from '@/store/mapStore';
+import { useTripStore } from '@/store/tripStore';
 
 export function useLiveDriverTracking(tripId?: string) {
   const animation = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     if (!tripId) return;
     const unsubscribe = subscribeToTrip(tripId, (next) => {
+      useTripStore.getState().setDriverLocation(next);
       const previous = useMapStore.getState().driverLocations.find((item) => item.driverId === next.driverId);
       if (!previous) return useMapStore.getState().upsertDriverLocation(next);
       if (animation.current) clearInterval(animation.current);

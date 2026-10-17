@@ -4,15 +4,20 @@
   "description": "Node.js + Express + TypeScript backend for the ride app",
   "main": "dist/index.js",
   "scripts": {
+    "sync:email-brand": "tsx scripts/sync-email-brand.ts",
+    "preview:emails": "tsx scripts/preview-emails.ts",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/modules/trips/*.test.ts",
-    "migrate": "tsx src/shared/config/migrate.ts"
+    "typecheck:scripts": "tsc --ignoreConfig --noEmit --target ES2022 --module nodenext --moduleResolution nodenext --esModuleInterop --skipLibCheck --resolveJsonModule scripts/test-isolated.ts scripts/paystack-e2e.ts scripts/paystack-recovery-check.ts scripts/test-service-connections.ts scripts/sync-email-brand.ts scripts/preview-emails.ts",
+    "verify": "npm run typecheck && npm run typecheck:scripts && npm test",
+    "test": "tsx scripts/test-isolated.ts",
+    "migrate": "tsx src/shared/config/migrate.ts",
+    "test:connections": "tsx scripts/test-service-connections.ts"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.13.0"
   },
   "keywords": [
     "ride-app",
@@ -23,6 +28,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "bullmq": "^6.3.11",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

@@ -1,0 +1,1 @@
+ALTER TABLE driver_profiles ADD COLUMN IF NOT EXISTS accepts_courier BOOLEAN NOT NULL DEFAULT false;

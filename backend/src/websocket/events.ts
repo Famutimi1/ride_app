@@ -3,6 +3,7 @@ export const SOCKET_EVENTS = {
   DRIVER_LOCATION_UPDATE: 'driver:location:update',
   DRIVER_LOCATION: 'driver:location',
   DRIVER_OFFLINE: 'driver:offline',
+  DRIVER_SERVICE_SETTINGS: 'driver:service-settings',
   LOCATION_ERROR: 'location:error',
   TRIP_MESSAGE_SEND: 'trip:message:send',
   TRIP_MESSAGE: 'trip:message',
@@ -11,4 +12,5 @@ export const SOCKET_EVENTS = {
   TRIP_OFFER_CANCELLED: 'trip:offer_cancelled',
   TRIP_STATUS: 'trip:status',
   WALLET_UPDATED: 'wallet:updated',
+  NOTIFICATION: 'notification:new',
 } as const;

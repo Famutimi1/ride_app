@@ -5,8 +5,12 @@ PostgreSQL + Redis + Socket.io + Paystack.
 
 ## Start here
 - `AGENTS.md` — rules every contributor (human or AI) must follow
+- [Implementation audit and remaining work](/Users/mac/Desktop/ride_app/docs/ride-hailing-implementation-audit.md) — current rider/driver/backend inventory, incomplete interfaces, launch priorities, and verification results (10 October 2026)
+- [Gap implementation plan and progress](/Users/mac/Desktop/ride_app/docs/ride-hailing-gap-implementation-plan.md) — core-first sequence, approved decisions, completed code checks and outstanding work
 - `CLAUDE.md` — Claude-specific workflow notes
 - `docs/architecture/overview.md` — system design
+- [Money and database ownership guide](/Users/mac/Desktop/ride_app/docs/architecture/money-and-database-ownership-guide.md) — payment tables, step-by-step money flows, code examples, and verified limitations
+- [Trips, schedules, and courier ownership guide](/Users/mac/Desktop/ride_app/docs/architecture/trips-schedules-courier-ownership-guide.md) — UI-to-database walkthroughs, Redis, WebSockets, dispatch, delivery codes, returns, and troubleshooting examples
 - `docs/setup/local-development.md` — how to run this locally
 
 ## Docs map

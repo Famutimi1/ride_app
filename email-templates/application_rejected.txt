@@ -1,0 +1,17 @@
+Hi Ada, your driver services have been reviewed.
+
+Passenger rides: rejected.
+
+Courier deliveries: rejected.
+
+Open your application in Rakky Ride to review the decision and available next steps.
+
+Only approved and enabled services can receive new requests. Contact support in the app if you need help.
+
+View your driver services: https://dashboard.example.test/open-app?path=%2Fdriver-status
+
+Need help? mailto:support@example.test
+
+Rakky Ride · Lagos, Nigeria
+
+This is an automatic account notification.

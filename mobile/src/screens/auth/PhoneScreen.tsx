@@ -19,6 +19,7 @@ export function PhoneScreen() {
   const signInWithGoogleIdToken = useAuthStore((state) => state.signInWithGoogleIdToken);
   const googlePendingName = useAuthStore((state) => state.pending?.phoneVerificationToken ? state.pending.name : undefined);
   const [fullName, setFullName] = useState(googlePendingName ?? '');
+  const [email, setEmail] = useState('');
   const [localNumber, setLocalNumber] = useState('');
   const [accountType, setAccountType] = useState<RegistrationAccountType>('rider');
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -26,7 +27,8 @@ export function PhoneScreen() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const valid = fullName.trim().length >= 2 && localNumber.length === 10;
+  const emailValid = !email.trim() || (email.trim().length <= 160 && /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email.trim()));
+  const valid = fullName.trim().length >= 2 && localNumber.length === 10 && (Boolean(googlePendingName) || emailValid);
   const continueRegistration = async () => {
     if (!valid || loading) return;
     setLoading(true);
@@ -34,6 +36,7 @@ export function PhoneScreen() {
     try {
       await requestOtp(`+234${localNumber}`, {
         name: fullName.trim(),
+        email: googlePendingName ? undefined : email.trim().toLowerCase() || undefined,
         intent: 'register',
         accountType,
       });
@@ -69,7 +72,7 @@ export function PhoneScreen() {
       title="Create your account"
       subtitle={googlePendingName ? 'Google sign-in is connected. Verify your phone number to finish setting up your account.' : 'Choose how you want to use Rakky Ride. You can add driver access later.'}
       onBack={() => router.canGoBack() ? router.back() : router.replace('/welcome')}
-      scrollEnabled={false}
+      scrollEnabled
       footerPinned={false}
       footer={(
         <View className="gap-md">
@@ -114,6 +117,19 @@ export function PhoneScreen() {
           textContentType="name"
           maxLength={80}
         />
+
+        {!googlePendingName ? <Input
+          label="Email (optional)"
+          placeholder="For welcome emails and account updates"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          textContentType="emailAddress"
+          maxLength={160}
+          error={!emailValid ? 'Enter a valid email address, or leave it empty.' : undefined}
+        /> : <Text variant="caption" color="textMuted">Your welcome email will go to the email address from your Google account.</Text>}
 
         <View className="gap-[6px]">
           <Text variant="caption" color="textMuted" className="ml-[2px]">Phone number</Text>

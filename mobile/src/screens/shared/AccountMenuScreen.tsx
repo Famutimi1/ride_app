@@ -15,6 +15,7 @@ const SERVICE_ITEMS: readonly MenuItem[] = [
 ];
 
 const SUPPORT_ITEMS: readonly MenuItem[] = [
+  { id: 'notification-center', icon: '●', label: 'Notifications', detail: 'Trip, wallet, and account updates' },
   { id: 'safety', icon: '◇', label: 'Safety', detail: 'Trusted contacts and protection tools' },
   { id: 'support', icon: '?', label: 'Help & support', detail: 'Get help with your account or a trip' },
   { id: 'settings', icon: '⚙', label: 'Settings', detail: 'Privacy, notifications, and appearance' },
@@ -40,7 +41,7 @@ export function AccountMenuScreen() {
   if (!user) return null;
   const driverMode = user.role === 'driver' && driverApplication?.status === 'approved';
   const initials = user.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
-  const open = (section: string) => router.push({ pathname: '/account/[section]', params: { section } });
+  const open = (section: string) => section==='notification-center'?router.push('/notification-center'):router.push({ pathname: '/account/[section]', params: { section } });
   const close = () => router.canGoBack() ? router.back() : router.replace(driverMode ? '/driver-dashboard' : '/home');
   const switchMode = async () => {
     if (driverMode) { if (await setRole('rider')) router.replace('/home'); }

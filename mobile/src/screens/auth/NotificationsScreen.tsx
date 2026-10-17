@@ -8,8 +8,8 @@
  * commit on the very last screen is why Profile and Notifications both still live in
  * the logged-out (auth) group — the session only exists once we leave this screen.
  *
- * The toggles are local UI state for now (there's no notifications module yet); they
- * match the mockup and are ready to wire to a preferences endpoint later.
+ * The toggles are saved to the authenticated notification preferences API after
+ * profile completion, and push permission is requested only when the user opts in.
  */
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -17,6 +17,7 @@ import { View } from 'react-native';
 
 import { Button, Input, ListRow, Text, Toggle } from '@/components/common';
 import { useAuthStore } from '@/store/authStore';
+import { registerCurrentDevice, updateNotificationPreferences } from '@/services/notificationService';
 
 import { AuthScreenLayout } from './AuthScreenLayout';
 
@@ -51,6 +52,8 @@ export function NotificationsScreen() {
       // Session is born here: name (from Profile) + optional email → completeProfile,
       // which attaches the profile to the verified phone and signs the user in.
       await completeProfile({ name, email: email.trim() || undefined });
+      await updateNotificationPreferences({ pushEnabled: pushOn, promotionsEnabled: tipsOn }).catch(() => undefined);
+      if (pushOn) await registerCurrentDevice(true).catch(() => null);
       router.replace('/home');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not finish setup. Try again.');

@@ -20,7 +20,8 @@ export function LoginScreen() {
   const signInWithGoogleIdToken = useAuthStore((state) => state.signInWithGoogleIdToken);
   const [localNumber, setLocalNumber] = useState('');
   const [error, setError] = useState<string | undefined>();
-  const [loading, setLoading] = useState(false);
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const isValid = localNumber.length === 10;
 
@@ -30,8 +31,8 @@ export function LoginScreen() {
   };
 
   const onLogin = async () => {
-    if (!isValid || loading) return;
-    setLoading(true);
+    if (!isValid || phoneLoading || googleLoading) return;
+    setPhoneLoading(true);
     setError(undefined);
     try {
       await requestOtp(`+234${localNumber}`, { intent: 'login' });
@@ -39,14 +40,15 @@ export function LoginScreen() {
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not send the code. Try again.');
     } finally {
-      setLoading(false);
+      setPhoneLoading(false);
     }
   };
   const onGoogle = async (idToken?: string) => {
-    setLoading(true); setError(undefined);
+    if (googleLoading || phoneLoading) return;
+    setGoogleLoading(true); setError(undefined);
     try { const destination=idToken?await signInWithGoogleIdToken(idToken):await signInWithGoogle(); router.replace(destination==='phone'?'/phone':destination==='driver-dashboard'?'/driver-dashboard':destination==='driver-status'?'/driver-status':'/home'); }
     catch(reason){setError(reason instanceof Error?reason.message:'Google sign-in failed.');}
-    finally{setLoading(false);}
+    finally{setGoogleLoading(false);}
   };
 
   return (
@@ -59,8 +61,8 @@ export function LoginScreen() {
           <Button
             label="Continue"
             fullWidth
-            loading={loading}
-            disabled={!isValid}
+            loading={phoneLoading}
+            disabled={!isValid || googleLoading}
             onPress={onLogin}
           />
 
@@ -72,8 +74,8 @@ export function LoginScreen() {
 
           <GoogleAuthButton
             mode="signin"
-            loading={loading}
-            disabled={false}
+            loading={googleLoading}
+            disabled={phoneLoading}
             onPress={() => void onGoogle()}
             onCredential={(token) => void onGoogle(token)}
             onError={(reason) => setError(reason.message)}

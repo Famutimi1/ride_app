@@ -41,6 +41,6 @@ driverEarningsRouter.get('/summary',requireAuth,requireApprovedDriver,run(async(
     `SELECT COUNT(*)::text trips,COALESCE(SUM(fare_kobo),0)::text gross_kobo,COALESCE(SUM(commission_kobo),0)::text commission_kobo,
       COALESCE(SUM(CASE WHEN payment_method='wallet' THEN driver_earning_kobo ELSE -commission_kobo END),0)::text net_kobo,
       COUNT(*) FILTER(WHERE payment_method='cash')::text cash_trips,COUNT(*) FILTER(WHERE payment_method='wallet')::text wallet_trips
-     FROM trips WHERE driver_id=$1 AND status='completed' AND completed_at>=${since}`,[req.userId])).rows[0];
+     FROM trips WHERE driver_id=$1 AND status IN ('completed','returned') AND payment_status='settled' AND (CASE WHEN status='returned' THEN returned_at ELSE completed_at END)>=${since}`,[req.userId])).rows[0];
   return {range,trips:Number(row.trips),grossKobo:Number(row.gross_kobo),commissionKobo:Number(row.commission_kobo),netKobo:Number(row.net_kobo),cashTrips:Number(row.cash_trips),walletTrips:Number(row.wallet_trips)};
 }));

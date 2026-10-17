@@ -1,0 +1,11 @@
+Hi Ada, we received your Rakky Ride driver application.
+
+Our team will review your submitted details and documents. Check your application status in the app; we will notify you when a decision is available.
+
+View application status: https://dashboard.example.test/open-app?path=%2Fdriver-status
+
+Need help? mailto:support@example.test
+
+Rakky Ride · Lagos, Nigeria
+
+This is an automatic account notification.

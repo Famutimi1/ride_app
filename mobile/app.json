@@ -8,11 +8,11 @@
     "scheme": "rackyride",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/brand/rakky-ride-logo.png",
       "bundleIdentifier": "com.rackyride.app"
     },
     "android": {
       "package": "com.rackyride.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/brand/rakky-ride-logo.png"
       },
@@ -26,6 +26,9 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "expo-notifications",
+      "expo-image",
+      "expo-web-browser",
       "@react-native-google-signin/google-signin",
       [
         "expo-splash-screen",

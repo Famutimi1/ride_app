@@ -1,0 +1,13 @@
+Ada submitted a driver application.
+
+Account: 00000000-0000-4000-8000-000000000000
+
+Open the dashboard to review the documents and requested services.
+
+Review application: https://dashboard.example.test/admin/applications/00000000-0000-4000-8000-000000000000
+
+Need help? mailto:support@example.test
+
+Rakky Ride · Lagos, Nigeria
+
+This is an automatic account notification.

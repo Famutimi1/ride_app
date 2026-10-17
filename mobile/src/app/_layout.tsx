@@ -12,7 +12,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { cssInterop } from 'nativewind';
 import { useEffect } from 'react';
-import { View } from 'react-native';
+import { AppState, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -21,7 +21,12 @@ import { useIsSignedIn, useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
 import { LocationBootstrap } from '@/components/map';
 import { TripRecovery } from '@/components/trip/TripRecovery';
+import { DriverTrackingBootstrap } from '@/components/trip/DriverTrackingBootstrap';
+import { DriverServiceSettingsBootstrap } from '@/components/common/DriverServiceSettings';
 import { WalletBootstrap } from '@/components/common/WalletBootstrap';
+import { NotificationBootstrap, NotificationHost } from '@/components/notifications';
+import { Button, Text } from '@/components/common';
+import { subscribeSessionExpired } from '@/lib/apiClient';
 
 const StyledGestureHandlerRootView = cssInterop(GestureHandlerRootView, {
   className: 'style',
@@ -49,6 +54,7 @@ export default function RootLayout() {
   // theme preference (so a dark-mode user never flashes a white screen on launch).
   const authHasHydrated = useAuthStore((s) => s._hasHydrated);
   const hydrateAuth = useAuthStore((s) => s.hydrate);
+  const sessionError = useAuthStore((s) => s._sessionError);
   const uiHasHydrated = useUiStore((s) => s._hasHydrated);
   const isSignedIn = useIsSignedIn();
   const theme = useTheme();
@@ -56,6 +62,13 @@ export default function RootLayout() {
   const ready = (fontsLoaded || fontError) && authHasHydrated && uiHasHydrated;
 
   useEffect(() => { if (!authHasHydrated) void hydrateAuth(); }, [authHasHydrated, hydrateAuth]);
+  useEffect(() => subscribeSessionExpired(() => { void useAuthStore.getState().logout(); }), []);
+  useEffect(() => {
+    if (!sessionError) return;
+    const timer = setInterval(() => { void hydrateAuth(); }, 30_000);
+    const listener = AppState.addEventListener('change', (state) => { if (state === 'active') void hydrateAuth(); });
+    return () => { clearInterval(timer); listener.remove(); };
+  }, [hydrateAuth, sessionError]);
 
   // Hide the splash once fonts AND the session are in. If a font fails we still
   // proceed (the OS font fills in) rather than trapping the user on the splash.
@@ -70,6 +83,13 @@ export default function RootLayout() {
     return null;
   }
 
+  if (sessionError) return <View className="flex-1 items-center justify-center bg-background px-xl" style={nativeWindTheme[theme.scheme]}>
+    <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
+    <Text variant="h3">Reconnect to your account</Text>
+    <Text color="textMuted" className="mb-lg mt-md text-center">{sessionError}</Text>
+    <Button label="Retry connection" onPress={() => { void hydrateAuth(); }} />
+  </View>;
+
   return (
     // GestureHandlerRootView MUST wrap the whole app for react-native-gesture-handler
     // to work — bottom sheets / swipeable rows silently do nothing without it.
@@ -79,7 +99,9 @@ export default function RootLayout() {
         <SafeAreaProvider>
           {isSignedIn ? <LocationBootstrap /> : null}
           {isSignedIn ? <TripRecovery /> : null}
-          {isSignedIn ? <WalletBootstrap /> : null}
+          {isSignedIn ? <DriverTrackingBootstrap /> : null}
+          {isSignedIn ? <><WalletBootstrap /><DriverServiceSettingsBootstrap /></> : null}
+          {isSignedIn ? <NotificationBootstrap /> : null}
           {/* Match the status-bar text to the active theme: light glyphs on the dark
               background, dark glyphs on the light one. Driven by our theme (not "auto")
               so it tracks the in-app toggle, not just the OS setting. */}
@@ -96,6 +118,7 @@ export default function RootLayout() {
               <Stack.Screen name="(app)" />
             </Stack.Protected>
           </Stack>
+          {isSignedIn ? <NotificationHost /> : null}
         </SafeAreaProvider>
       </View>
     </StyledGestureHandlerRootView>

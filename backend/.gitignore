@@ -4,3 +4,5 @@ dist/
 *.log
 npm-debug.log*
 .DS_Store
+# Compatibility preview copy; the main review folder is ../email-templates/.
+docs/email-previews/

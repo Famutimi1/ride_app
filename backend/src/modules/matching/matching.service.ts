@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 import { env } from '../../config/env';
 import { ensureRedis } from '../../shared/config/redis';
 import { findNearbyDrivers } from '../location/location.service';
-import { getBalances } from '../payments/ledger.service';
+import { eligibleServiceDriverIds } from './serviceEligibility';
 
 export interface DriverCandidate {
   driverId: string;
@@ -10,17 +10,14 @@ export interface DriverCandidate {
 }
 
 export async function findEligibleDrivers(client: PoolClient, tripId: string, latitude: number, longitude: number, radiusM: number): Promise<DriverCandidate[]> {
-  const nearby = await findNearbyDrivers(latitude, longitude, radiusM / 1000);
+  const requested=(await client.query<{service_type:'ride'|'courier'}>('SELECT service_type FROM trips WHERE id=$1',[tripId])).rows[0];
+  if(!requested)return [];
+  const nearby = await findNearbyDrivers(latitude, longitude, radiusM / 1000, requested.service_type);
   if (!nearby.length) return [];
   const ids = nearby.map((driver) => driver.driverId);
-  const { rows } = await client.query<{ user_id: string }>(
-    `SELECT dp.user_id FROM driver_profiles dp
-     WHERE dp.user_id=ANY($1::uuid[]) AND dp.status='approved'
-       AND NOT EXISTS (SELECT 1 FROM trips t WHERE t.driver_id=dp.user_id AND t.status IN ('driver_assigned','driver_arrived','in_progress'))
-       AND NOT EXISTS (SELECT 1 FROM trip_offers o WHERE o.trip_id=$2 AND o.driver_id=dp.user_id)`,
-    [ids, tripId],
-  );
-  const eligible = new Set(rows.map((row) => row.user_id));
+  const offered=await client.query<{driver_id:string}>('SELECT driver_id FROM trip_offers WHERE trip_id=$1',[tripId]);
+  const eligible=await eligibleServiceDriverIds(ids,requested.service_type,client);
+  for(const row of offered.rows)eligible.delete(row.driver_id);
   const redis = await ensureRedis();
   const pipeline = redis.pipeline();
   for (const driver of nearby) {
@@ -35,8 +32,7 @@ export async function findEligibleDrivers(client: PoolClient, tripId: string, la
       ? [{ driverId: driver.driverId, distanceToPickupM: Math.round(driver.distanceKm * 1000) }]
       : [];
   });
-  const checked = await Promise.all(candidates.map(async (candidate) => ({ candidate, canGoOnline: (await getBalances(candidate.driverId)).canGoOnline })));
-  return checked.filter((item) => item.canGoOnline).map((item) => item.candidate);
+  return candidates;
 }
 
 export async function acquireOfferLock(driverId: string, tripId: string): Promise<boolean> {
@@ -64,3 +60,6 @@ async function releaseOwnedLock(key: string, value: string) {
 
 export const releaseOfferLock = (driverId: string, tripId: string) => releaseOwnedLock(`driver:offer:${driverId}`, tripId);
 export const releaseDriverTripLock = (driverId: string, tripId: string) => releaseOwnedLock(`driver:${driverId}:onTrip`, tripId);
+
+/** Shared supply eligibility for staff snapshots; this does not reserve a driver. */
+export const staffSupplyEligibility = eligibleServiceDriverIds;

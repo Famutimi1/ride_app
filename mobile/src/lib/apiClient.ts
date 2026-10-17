@@ -8,19 +8,50 @@ export const apiClient = create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-apiClient.interceptors.request.use(async (config) => {
+type SessionRequestConfig = InternalAxiosRequestConfig & { _retry?: boolean; _sessionGeneration?: number };
+apiClient.interceptors.request.use(async (config: SessionRequestConfig) => {
+  config._sessionGeneration ??= tokenStore.getSessionGeneration();
   const token = await tokenStore.getAccessToken();
+  if (config._sessionGeneration !== tokenStore.getSessionGeneration()) throw new Error('The signed-in account changed. Please retry.');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
 let refreshPromise: Promise<void> | null = null;
+const expiredListeners = new Set<() => void>();
+
+export class SessionExpiredError extends Error {
+  constructor() { super('Your session has expired. Please sign in again.'); }
+}
+
+export function isSessionRejected(error: unknown) {
+  return error instanceof SessionExpiredError || (isAxiosError(error) && error.response?.status === 401);
+}
+
+export function subscribeSessionExpired(listener: () => void) {
+  expiredListeners.add(listener);
+  return () => { expiredListeners.delete(listener); };
+}
 
 async function refresh() {
   const refreshToken = await tokenStore.getRefreshToken();
-  if (!refreshToken) throw new Error('missing_refresh_token');
-  const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, { refreshToken });
-  await tokenStore.setTokens(data.tokens);
+  if (!refreshToken) throw new SessionExpiredError();
+  try {
+    const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, { refreshToken }, { timeout: 10_000 });
+    if (!await tokenStore.setTokens(data.tokens, refreshToken)) throw new Error('The signed-in account changed during refresh.');
+  } catch (error) {
+    if (isSessionRejected(error) && await tokenStore.getRefreshToken() === refreshToken) {
+      await tokenStore.clear();
+      expiredListeners.forEach((listener) => listener());
+      throw new SessionExpiredError();
+    }
+    throw error;
+  }
+}
+
+export function refreshAccessToken() {
+  refreshPromise ??= refresh().finally(() => { refreshPromise = null; });
+  return refreshPromise;
 }
 
 function isPublicAuthPath(url?: string) {
@@ -34,7 +65,10 @@ function isPublicAuthPath(url?: string) {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const config = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    const config = error.config as SessionRequestConfig | undefined;
+    if (config?._sessionGeneration !== undefined && config._sessionGeneration !== tokenStore.getSessionGeneration()) {
+      throw new Error('The signed-in account changed. Please retry.');
+    }
     const refreshToken = await tokenStore.getRefreshToken();
     const shouldRefresh = error.response?.status === 401
       && config
@@ -45,11 +79,9 @@ apiClient.interceptors.response.use(
     if (shouldRefresh) {
       config._retry = true;
       try {
-        refreshPromise ??= refresh().finally(() => { refreshPromise = null; });
-        await refreshPromise;
+        await refreshAccessToken();
         return apiClient(config);
       } catch (refreshError) {
-        await tokenStore.clear();
         throw refreshError;
       }
     }

@@ -1,0 +1,13 @@
+Hi Ada,
+
+Your trip has been completed. Open Rakky Ride for the final fare, payment method and receipt.
+
+For your privacy, financial details, private messages and documents are available only inside your authenticated app.
+
+Open Rakky Ride: https://dashboard.example.test/open-app?path=%2Faccount%2Ftrips
+
+Need help? mailto:support@example.test
+
+Rakky Ride · Lagos, Nigeria
+
+This is an automatic account notification.

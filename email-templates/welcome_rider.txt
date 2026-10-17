@@ -1,0 +1,11 @@
+Hi Ada, your Rakky Ride account is ready.
+
+Choose a pickup and destination in the app to book your first ride. You can manage your trips and find support from your account.
+
+Book your first ride: https://dashboard.example.test/open-app?path=%2Fhome
+
+Need help? mailto:support@example.test
+
+Rakky Ride · Lagos, Nigeria
+
+This is an automatic account notification.

@@ -14,10 +14,10 @@ export function splitFare(fareKobo: number, commissionBps: number) {
   return { commissionKobo, driverEarningKobo: fareKobo - commissionKobo };
 }
 
-export async function getFareConfig(client: PoolClient, vehicleType = 'economy'): Promise<FareConfigRow> {
+export async function getFareConfig(client: PoolClient, vehicleType = 'economy', activeOnly = true): Promise<FareConfigRow> {
   const { rows } = await client.query<FareConfigRow>(
-    'SELECT * FROM fare_config WHERE vehicle_type=$1 AND is_active=true',
-    [vehicleType],
+    'SELECT * FROM fare_config WHERE vehicle_type=$1 AND (NOT $2::boolean OR is_active=true)',
+    [vehicleType, activeOnly],
   );
   if (!rows[0]) throw new ApiError(409, 'vehicle_type_unavailable');
   return rows[0];

@@ -37,27 +37,30 @@ export function TopUpSection() {
   const refresh=useWalletStore((state)=>state.refresh);const theme=useTheme();
   const callbackReference=returnedReference??trxref??null;
   const [amount,setAmount]=useState('');const [reference,setReference]=useState<string|null>(callbackReference);
-  const [status,setStatus]=useState<string|null>(callbackReference?'pending':null);const [busy,setBusy]=useState(false);
+  const [resolvedTarget,setResolvedTarget]=useState<'wallet'|'earnings'>(target);
+  const [status,setStatus]=useState<string|null>(callbackReference?'pending':null);const [busy,setBusy]=useState(false);const [error,setError]=useState<string|null>(null);
   const amountKobo=Number(amount)*100;
   useEffect(()=>{
     if(!reference||status==='succeeded'||status==='failed'||status==='mismatch'||status==='still_processing')return;
     let active=true;
-    const tick=async()=>{try{const result=await getTopup(reference);if(active){setStatus(result.status);if(result.status==='succeeded')void refresh();}}catch{}}
+    const tick=async()=>{try{const result=await getTopup(reference);if(active){setStatus(result.status);setResolvedTarget(result.target==='earnings'?'earnings':'wallet');if(result.status==='succeeded')void refresh();}}catch{}}
     void tick();const timer=setInterval(()=>void tick(),3000);
     const timeout=setTimeout(()=>{clearInterval(timer);if(active&&status==='pending')setStatus('still_processing');},60000);
     return()=>{active=false;clearInterval(timer);clearTimeout(timeout);};
   },[reference,status,refresh]);
   const begin=async()=>{
-    if(!Number.isSafeInteger(amountKobo)||amountKobo<=0)return Alert.alert('Enter an amount','Use a whole naira amount.');
-    setBusy(true);try{const payment=await createTopup(amountKobo,target);setReference(payment.reference);setStatus('pending');
+    setError(null);
+    if(!Number.isSafeInteger(amountKobo)||amountKobo<=0){setError('Enter a whole naira amount.');return;}
+    setBusy(true);try{const payment=await createTopup(amountKobo,target);setReference(payment.reference);setResolvedTarget(target);setStatus('pending');
       await WebBrowser.openBrowserAsync(payment.authorizationUrl);
-    }catch(error){Alert.alert('Top-up unavailable',apiErrorMessage(error));}finally{setBusy(false);}
+    }catch(reason){setError(apiErrorMessage(reason));}finally{setBusy(false);}
   };
-  return <><Text variant="h3">{target==='earnings'?'Pay cash commission':'Add money to your wallet'}</Text><Text color="textMuted" className="mt-sm">Pay securely with Paystack. Your balance updates only after we verify the payment.</Text>
+  return <><Text variant="h3">{resolvedTarget==='earnings'?'Pay cash commission':'Add money to your wallet'}</Text><Text color="textMuted" className="mt-sm">Pay securely with Paystack. Your balance updates only after we verify the payment.</Text>
     <View className="mt-lg flex-row gap-sm">{[1000,2000,5000].map((value)=><Pressable key={value} onPress={()=>setAmount(String(value))} className="rounded-full bg-primarySoft px-md py-sm"><Text color="primary">{formatNaira(value*100)}</Text></Pressable>)}</View>
     <TextInput accessibilityLabel="Top-up amount in naira" keyboardType="numeric" value={amount} onChangeText={setAmount} placeholder="Amount in naira" placeholderTextColor={theme.colors.textMuted} className="mt-md h-14 rounded-xl border border-borderStrong bg-surface px-md text-text outline-none" />
     <Button label={busy?'Opening Paystack…':'Continue to Paystack'} fullWidth className="mt-lg" disabled={busy} onPress={()=>void begin()} />
-    {status?<View className="mt-lg rounded-xl bg-surfaceMuted p-md"><Text variant="bodyMedium">{status==='succeeded'?'Payment confirmed':status==='pending'?'Confirming payment…':status==='still_processing'?'Still processing; your wallet will update when confirmed':status==='mismatch'?'Payment needs review':`Payment ${status}`}</Text><Text variant="caption" color="textMuted" className="mt-sm">Reference: {reference}</Text>{status!=='succeeded'?<Button label="Check again" variant="outline" className="mt-md" onPress={()=>{setStatus('pending');}} />:null}</View>:null}
+    {error?<Text color="danger" className="mt-sm">{error}</Text>:null}
+    {status?<View className="mt-lg rounded-xl bg-surfaceMuted p-md"><Text variant="bodyMedium">{status==='succeeded'?'Payment confirmed':status==='pending'?'Confirming payment…':status==='still_processing'?'Still processing; your balance will update when confirmed':status==='mismatch'?'Payment needs review':`Payment ${status}`}</Text><Text variant="caption" color="textMuted" className="mt-sm">Reference: {reference}</Text>{status!=='succeeded'?<Button label="Check again" variant="outline" className="mt-md" onPress={()=>{setStatus('pending');}} />:null}</View>:null}
   </>;
 }
 export function DriverWalletSection() {

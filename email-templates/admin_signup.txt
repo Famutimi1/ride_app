@@ -1,0 +1,15 @@
+Ada completed registration as a driver.
+
+Account: 00000000-0000-4000-8000-000000000000
+
+Registered: 17/10/2026, 09:00:00 (Lagos)
+
+A driver signup is not an approved driver application.
+
+View account: https://dashboard.example.test/admin/drivers/00000000-0000-4000-8000-000000000000
+
+Need help? mailto:support@example.test
+
+Rakky Ride · Lagos, Nigeria
+
+This is an automatic account notification.

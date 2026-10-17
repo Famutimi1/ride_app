@@ -32,3 +32,11 @@ never put a secret key there.
 On a physical phone, the development client automatically replaces a configured
 `localhost` API hostname with Metro's LAN hostname. The backend still uses the
 configured port, currently `4000`.
+
+Transactional email variables are server-only: `EMAIL_ENABLED`, `RESEND_API_KEY`,
+`RESEND_WEBHOOK_SECRET`, `EMAIL_FROM`, `EMAIL_REPLY_TO`, `EMAIL_ADMIN_RECIPIENTS`,
+`EMAIL_DASHBOARD_URL` and optional `EMAIL_LOGO_URL`. The dashboard origin also hosts
+the customer `/open-app` page; `EMAIL_APP_URL` is no longer needed. Optional dashboard
+settings `RAKKY_ANDROID_STORE_URL` and `RAKKY_IOS_STORE_URL` provide published store links. Sending defaults
+to disabled. See [email setup](../features/email-system.md) for verified-domain,
+public logo, app-link and webhook requirements.

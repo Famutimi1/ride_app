@@ -2,6 +2,8 @@ import type { PoolClient } from 'pg';
 import { ApiError } from '../../shared/errors';
 import type { TripRow } from '../trips/trip.types';
 import { getOrCreateEarningsAccount, getOrCreateWalletAccount, getSystemAccountId, postTransaction } from './ledger.service';
+import { createNotificationRecord } from '../notifications/notifications.service';
+import { walletNotification } from '../notifications/notificationTemplates';
 
 export async function holdTripFare(client: PoolClient, trip: TripRow): Promise<void> {
   if (trip.payment_method !== 'wallet') return;
@@ -40,4 +42,5 @@ export async function settleTrip(client: PoolClient, trip: TripRow, commissionKo
   const {transactionId}=await postTransaction(client,{type:trip.payment_method==='wallet'?'trip_settlement_wallet':'trip_commission_cash',
     idempotencyKey:`trip:${trip.id}:settle`,referenceType:'trip',referenceId:trip.id,entries});
   await client.query("UPDATE trips SET payment_status='settled',settle_tx_id=$2 WHERE id=$1",[trip.id,transactionId]);
+  if(trip.payment_method==='wallet')await createNotificationRecord(client,walletNotification({userId:trip.rider_id,eventKey:`trip:${trip.id}:wallet-settled:rider`,type:'ride_payment_settled',title:'Ride payment completed',body:`₦${(fare/100).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2})} was paid from your Rakky Ride wallet.`,referenceId:trip.id,tripId:trip.id}));
 }

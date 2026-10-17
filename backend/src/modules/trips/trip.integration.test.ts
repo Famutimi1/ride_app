@@ -18,7 +18,7 @@ async function setup() {
   const admin = new Pool({ connectionString: databaseUrl });
   await admin.query(`CREATE SCHEMA ${schema}`);
   const pool = new Pool({ connectionString: databaseUrl, options: `-c search_path=${schema},public` });
-  for (const file of ['001_auth.sql', '002_trip_system.sql', '003_payments_ledger.sql']) {
+  for (const file of ['001_auth.sql', '002_trip_system.sql', '003_payments_ledger.sql', '004_scheduled_trips.sql', '005_courier_trips.sql', '006_courier_returns.sql', '007_courier_return_columns.sql', '008_driver_courier_preference.sql', '009_courier_code_rotation.sql', '015_notifications.sql', '017_email_outbox.sql', '018_email_settings.sql', '016_driver_service_eligibility.sql']) {
     await pool.query(await readFile(resolve(process.cwd(), 'migrations', file), 'utf8'));
   }
   return { admin, pool };
@@ -38,6 +38,9 @@ test('Postgres trip guards resolve races and keep settlement idempotent', { skip
   try {
     const seed = await pool.connect();
     const { rider, drivers } = await seedUsers(seed);
+    assert.equal((await seed.query('SELECT accepts_courier FROM driver_profiles WHERE user_id=$1', [drivers[0]])).rows[0].accepts_courier, false);
+    await seed.query("UPDATE driver_profiles SET courier_service_status='approved',accepts_courier=true WHERE user_id=$1", [drivers[0]]);
+    assert.equal((await seed.query('SELECT accepts_courier FROM driver_profiles WHERE user_id=$1', [drivers[0]])).rows[0].accepts_courier, true);
     const trip = (await seed.query<TripRow>(
       `INSERT INTO trips(rider_id,payment_method,pickup_lat,pickup_lng,pickup_address,dropoff_lat,dropoff_lng,dropoff_address,estimated_distance_m,estimated_duration_s,fare_kobo,idempotency_key)
        VALUES($1,'cash',6.45,3.39,'Pickup',6.55,3.49,'Destination',12000,1800,500000,'race-test') RETURNING *`, [rider],
@@ -113,12 +116,45 @@ test('Postgres trip guards resolve races and keep settlement idempotent', { skip
       await walletClient.query('BEGIN');
       await releaseTripHold(walletClient,{...cancelledWalletTrip,payment_status:'held'});
       await walletClient.query('COMMIT');
+      await transitionTrip(walletClient, { tripId: cancelledWalletTrip.id, from: 'searching', to: 'cancelled', actorType: 'rider', actorId: rider, fields: { cancelled_at: new Date(), cancelled_by: 'rider', cancel_reason: 'Test cancellation' } });
       assert.equal((await pool.query('SELECT payment_status FROM trips WHERE id=$1',[cancelledWalletTrip.id])).rows[0].payment_status,'released');
       assert.equal(Number((await pool.query('SELECT balance_kobo FROM ledger_accounts WHERE id=$1',[wallet])).rows[0].balance_kobo),50000);
       assert.equal(Number((await pool.query("SELECT balance_kobo FROM ledger_accounts WHERE code='escrow_trips'")).rows[0].balance_kobo),0);
     } finally {walletClient.release();}
     await assert.rejects(pool.query("UPDATE ledger_entries SET amount_kobo=1 WHERE transaction_id IN (SELECT id FROM ledger_transactions WHERE reference_id=$1)", [trip.id]), /append-only/);
     await assert.rejects(pool.query("UPDATE trip_status_history SET metadata='{}' WHERE trip_id=$1", [trip.id]), /append-only/);
+    const scheduled = (await pool.query<TripRow>(
+      `INSERT INTO trips(rider_id,payment_method,pickup_lat,pickup_lng,pickup_address,dropoff_lat,dropoff_lng,dropoff_address,estimated_distance_m,estimated_duration_s,fare_kobo,idempotency_key,status,scheduled_at)
+       VALUES($1,'cash',6.45,3.39,'Pickup',6.55,3.49,'Destination',12000,1800,500000,'scheduled-test','scheduled',now()+interval '1 hour') RETURNING *`, [rider],
+    )).rows[0];
+    assert.equal(scheduled.status, 'scheduled');
+    const activationClient = await pool.connect();
+    try {
+      const activated = await transitionTrip(activationClient, { tripId: scheduled.id, from: 'scheduled', to: 'searching', actorType: 'system', fields: { requested_at: new Date() } });
+      assert.equal(activated.status, 'searching');
+      await transitionTrip(activationClient, { tripId: scheduled.id, from: 'searching', to: 'cancelled', actorType: 'rider', actorId: rider, fields: { cancelled_at: new Date(), cancelled_by: 'rider', cancel_reason: 'Test cancellation' } });
+      assert.equal((await pool.query('SELECT status FROM trips WHERE id=$1', [scheduled.id])).rows[0].status, 'cancelled');
+    } finally { activationClient.release(); }
+    const courierDetails = JSON.stringify({ description: 'Books', weightKg: 1, recipientName: 'Recipient', recipientPhone: '+2348012345678', pickupInstructions: null, dropoffInstructions: null });
+    await assert.rejects(pool.query(
+      `INSERT INTO trips(rider_id,payment_method,pickup_lat,pickup_lng,pickup_address,dropoff_lat,dropoff_lng,dropoff_address,estimated_distance_m,estimated_duration_s,fare_kobo,idempotency_key,service_type,courier_details,vehicle_type)
+       VALUES($1,'cash',6.45,3.39,'Pickup',6.55,3.49,'Destination',12000,1800,500000,'courier-cash-test','courier',$2,'courier')`, [rider, courierDetails],
+    ), /courier_details_required/);
+    const courier = (await pool.query<TripRow>(
+      `INSERT INTO trips(rider_id,payment_method,pickup_lat,pickup_lng,pickup_address,dropoff_lat,dropoff_lng,dropoff_address,estimated_distance_m,estimated_duration_s,fare_kobo,idempotency_key,service_type,courier_details,vehicle_type)
+       VALUES($1,'wallet',6.45,3.39,'Pickup',6.55,3.49,'Destination',12000,1800,500000,'courier-test','courier',$2,'courier') RETURNING *`, [rider, courierDetails],
+    )).rows[0];
+    assert.equal(courier.service_type, 'courier');
+    assert.equal(courier.courier_details?.recipientName, 'Recipient');
+    const returnClient = await pool.connect();
+    try {
+      await transitionTrip(returnClient, { tripId: courier.id, from: 'searching', to: 'driver_assigned', actorType: 'driver', actorId: drivers[0], fields: { driver_id: drivers[0], accepted_at: new Date() } });
+      await transitionTrip(returnClient, { tripId: courier.id, from: 'driver_assigned', to: 'driver_arrived', actorType: 'driver', actorId: drivers[0], fields: { arrived_at: new Date() } });
+      await transitionTrip(returnClient, { tripId: courier.id, from: 'driver_arrived', to: 'in_progress', actorType: 'driver', actorId: drivers[0], fields: { started_at: new Date() } });
+      await transitionTrip(returnClient, { tripId: courier.id, from: 'in_progress', to: 'returning', actorType: 'driver', actorId: drivers[0], fields: { delivery_issue_reason: 'Recipient unavailable' } });
+      const returned = await transitionTrip(returnClient, { tripId: courier.id, from: 'returning', to: 'returned', actorType: 'driver', actorId: drivers[0], fields: { returned_at: new Date(), delivery_verified_at: new Date() } });
+      assert.equal(returned.status, 'returned');
+    } finally { returnClient.release(); }
   } finally {
     await pool.end();
     await admin.query(`DROP SCHEMA ${schema} CASCADE`);

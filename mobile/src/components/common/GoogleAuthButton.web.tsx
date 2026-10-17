@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+import { renderGoogleButton } from '@/services/googleSignIn';
 
 import { Button } from './Button';
-import { renderGoogleButton } from '@/services/googleSignIn';
 
 interface GoogleAuthButtonProps {
   mode: 'signin' | 'signup';
@@ -14,18 +15,42 @@ interface GoogleAuthButtonProps {
 
 export function GoogleAuthButton({ mode, loading, disabled, onCredential, onError }: GoogleAuthButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const callbacks = useRef({ onCredential, onError });
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    callbacks.current = { onCredential, onError };
+  }, [onCredential, onError]);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container || loading || disabled) return;
-    void renderGoogleButton(container, mode, onCredential).catch((reason: unknown) => {
-      onError(reason instanceof Error ? reason : new Error('Google sign-in could not be loaded.'));
+    let disposed = false;
+    void renderGoogleButton(container, mode, (token) => {
+      if (!disposed) callbacks.current.onCredential(token);
+    }).catch((reason: unknown) => {
+      if (disposed) return;
+      setFailed(true);
+      callbacks.current.onError(reason instanceof Error ? reason : new Error('Google sign-in could not be loaded.'));
     });
-  }, [disabled, loading, mode, onCredential, onError]);
+    return () => {
+      disposed = true;
+      container.replaceChildren();
+    };
+  }, [attempt, disabled, loading, mode]);
 
-  if (loading || disabled) {
-    return <Button label={mode === 'signup' ? 'Sign up with Google' : 'Continue with Google'} variant="outline" fullWidth loading={loading} disabled />;
+  if (loading || disabled || failed) {
+    return (
+      <Button
+        label={failed ? 'Retry Google sign-in' : mode === 'signup' ? 'Sign up with Google' : 'Continue with Google'}
+        variant="outline"
+        fullWidth
+        loading={loading}
+        disabled={disabled}
+        onPress={() => { setFailed(false); setAttempt((value) => value + 1); }}
+      />
+    );
   }
 
-  return <div ref={containerRef} style={{ alignItems: 'center', display: 'flex', height: 52, justifyContent: 'center', width: '100%' }} />;
+  return <div ref={containerRef} style={{ alignItems: 'center', display: 'flex', minHeight: 52, justifyContent: 'center', width: '100%' }} />;
 }

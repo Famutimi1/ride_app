@@ -16,15 +16,33 @@ function endpoints(body: unknown): { pickup: Coordinate; dropoff: Coordinate } |
 }
 
 export const route = run(async (req) => { const points=endpoints(req.body);if(!points)throw new ApiError(400,'invalid_points');return getRoute(points.pickup,points.dropoff); });
-export const estimate = run((req) => trips.estimateTrip(req.body));
-export const create = run(async(req,res)=>{const result=await trips.createTrip(req.userId!,req.body,String(req.get('Idempotency-Key')??''));if(result.created){await Promise.all([enqueueDispatch(result.trip.id as string),enqueueSearchExpiry(result.trip.id as string)]);res.status(201);}return result;});
+export const estimate = run((req) => trips.quoteTrip(req.userId!, req.body));
+export const create = run(async (req, res) => {
+  const result = await trips.createTrip(req.userId!, req.body, String(req.get('Idempotency-Key') ?? ''));
+  let dispatchPending = false;
+  if (result.trip.status === 'searching') {
+    try { await Promise.all([enqueueDispatch(result.trip.id), enqueueSearchExpiry(result.trip.id)]); }
+    catch {
+      // The committed booking remains recoverable in Postgres. Do not present it as uncreated.
+      dispatchPending = true;
+      console.error('[trips] dispatch enqueue requires recovery', result.trip.id);
+    }
+  }
+  if (result.created) res.status(201);
+  return { ...result, dispatchPending };
+});
 export const active = run((req) => trips.getActiveTrip(req.userId!, req.authUser!.active_role));
+export const currentOffer = run((req) => trips.getCurrentOffer(req.userId!));
+export const scheduled = run((req) => trips.listScheduledTrips(req.userId!));
 export const detail = run((req) => trips.getTripForParticipant(req.userId!, tripId(req)));
+export const deliveryCode = run((req) => trips.getCourierDeliveryCode(req.userId!, tripId(req)));
+export const rotateDeliveryCode = run((req) => trips.rotateCourierDeliveryCode(req.userId!, tripId(req)));
 export const accept = run(async(req)=>{const id=tripId(req),value=await trips.acceptTrip(req.userId!,id);await removeTripJobs(id,req.userId!);return value;});
 export const decline = run(async(req)=>{const id=tripId(req),value=await trips.declineTrip(req.userId!,id);await removeTripJobs(id,req.userId!);await enqueueDispatch(id);return value;});
 export const arrived = run((req) => trips.markDriverArrived(req.userId!, tripId(req)));
 export const start = run((req) => trips.startTrip(req.userId!, tripId(req)));
-export const complete = run((req) => trips.completeTrip(req.userId!, tripId(req)));
+export const returnDelivery = run((req) => trips.returnCourierDelivery(req.userId!, tripId(req), req.body?.reason));
+export const complete = run((req) => trips.completeTrip(req.userId!, tripId(req), req.body?.deliveryCode));
 export const cancel = run(async(req)=>{const id=tripId(req),value=await trips.cancelTrip(req.userId!,id,req.body.reason);await removeTripJobs(id);return value;});
 export const rating = run((req) => trips.rateTrip(req.userId!, tripId(req), req.body.rating, req.body.comment));
-export const history = run((req) => trips.tripHistory(req.userId!, req.authUser!.active_role, req.query.cursor, req.query.limit));
+export const history = run((req) => trips.tripHistory(req.userId!, req.authUser!.active_role, req.query.cursor, req.query.limit, req.query.status, req.query.serviceType));

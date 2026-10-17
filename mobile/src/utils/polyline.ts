@@ -23,3 +23,9 @@ export function decodePolyline(encoded: string): MapCoordinate[] {
   }
   return points;
 }
+
+/** Include the selected addresses, which Google Directions may snap to nearby roads. */
+export function anchorPolyline(points: MapCoordinate[], start: MapCoordinate, end: MapCoordinate): MapCoordinate[] {
+  if (points.length < 2) return [];
+  return [start, ...points, end];
+}

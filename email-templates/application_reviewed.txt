@@ -1,0 +1,17 @@
+Hi Ada, your driver services have been reviewed.
+
+Passenger rides: approved.
+
+Courier deliveries: pending.
+
+Open your driver dashboard to see your approved services. Choose which requests to receive; restoring approval does not automatically switch requests on.
+
+Only approved and enabled services can receive new requests. Contact support in the app if you need help.
+
+View your driver services: https://dashboard.example.test/open-app?path=%2Fdriver-dashboard
+
+Need help? mailto:support@example.test
+
+Rakky Ride · Lagos, Nigeria
+
+This is an automatic account notification.

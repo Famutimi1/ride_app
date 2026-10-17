@@ -1,0 +1,13 @@
+Hi Ada, your account has been created.
+
+To apply to drive, complete your personal and vehicle details, upload your licence, vehicle registration and insurance, choose your services, and submit your application in the app.
+
+Registration does not grant driver approval. We will email you when your application is reviewed.
+
+Complete your application: https://dashboard.example.test/open-app?path=%2Fdriver-onboarding
+
+Need help? mailto:support@example.test
+
+Rakky Ride · Lagos, Nigeria
+
+This is an automatic account notification.
