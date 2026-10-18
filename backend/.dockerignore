@@ -1,0 +1,21 @@
+# Allow only the inputs required to build and run the backend. In particular,
+# no .env, private documents, local dependencies, Git data or credentials enter
+# the build context, including files added to this directory in the future.
+**
+!package.json
+!package-lock.json
+!tsconfig.json
+!src/
+!src/**
+!migrations/
+!migrations/**
+# Application tests need local fixtures/mobile dependencies, not production.
+src/**/*.test.ts
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/credentials*.json
+**/*service-account*.json
+**/google-services.json
+**/.private-uploads/**

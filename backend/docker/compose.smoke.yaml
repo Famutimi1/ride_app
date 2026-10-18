@@ -1,0 +1,82 @@
+# Disposable local integration stack. Production uses Coolify-managed data
+# resources; see ../docs/coolify-deployment.md. No real credentials are used here.
+services:
+  postgres:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: rakky_smoke
+      POSTGRES_PASSWORD: ${SMOKE_POSTGRES_PASSWORD:?Generate the smoke environment first}
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d rakky_smoke"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:8-alpine
+    environment:
+      REDIS_PASSWORD: ${SMOKE_REDIS_PASSWORD:?Generate the smoke environment first}
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory-policy
+      - noeviction
+      - --requirepass
+      - ${SMOKE_REDIS_PASSWORD:?Generate the smoke environment first}
+    healthcheck:
+      test: [CMD-SHELL, 'test "$$(REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping)" = PONG']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - redis-data:/data
+
+  migrate:
+    image: rakky-backend:smoke
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: [npm, run, migrate:deploy]
+    environment:
+      NODE_ENV: production
+      JWT_ACCESS_SECRET: ${SMOKE_JWT_ACCESS_SECRET:?Generate the smoke environment first}
+      DATABASE_URL: postgres://postgres:${SMOKE_POSTGRES_PASSWORD}@postgres:5432/rakky_smoke
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    image: rakky-backend:smoke
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      DATABASE_URL: postgres://postgres:${SMOKE_POSTGRES_PASSWORD}@postgres:5432/rakky_smoke
+      REDIS_URL: redis://:${SMOKE_REDIS_PASSWORD}@redis:6379
+      JWT_ACCESS_SECRET: ${SMOKE_JWT_ACCESS_SECRET:?Generate the smoke environment first}
+      EMAIL_ENABLED: "false"
+      ENABLE_ADMIN_MONEY_ACTIONS: "false"
+      ENABLE_LIVE_PAYMENTS: "false"
+    ports:
+      - "127.0.0.1:${SMOKE_HTTP_PORT:-4100}:4000"
+    volumes:
+      - private-documents:/app/.private-uploads
+    stop_grace_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  postgres-data:
+  redis-data:
+  private-documents:

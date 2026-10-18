@@ -6,6 +6,14 @@ Use Node >=22.13.0 and install dependencies from the lockfile with `npm ci`. Con
 
 `npm run build` compiles `dist/`; `npm start` runs the compiled backend. Required DB, Redis and workers must initialize before serving traffic. `/api/health/live` is liveness; `/api/health/ready` is dependency/worker/queue readiness. The legacy `/api/health` reports uptime only.
 
+Docker/Coolify: build with `docker build -t rakky-backend:release .`, run compiled
+migrations with `npm run migrate:deploy` in a one-off release container, and use
+Coolify's Dockerfile build pack with base directory `/backend`, port `4000`, and a
+persistent volume at `/app/.private-uploads`. Supply secrets as runtime environment
+variables. See the [step-by-step Docker/Coolify guide](docs/coolify-deployment.md).
+`npm run test:docker` checks the production image against disposable PostgreSQL and
+Redis containers; it requires a running Docker engine and Compose v2.
+
 `npm run verify` typechecks application and test-runner code, builds the backend, and runs isolated tests. The runner requires a local PostgreSQL test administrator and an existing `redis-server` executable. It creates a disposable test database and separate temporary Redis process; it refuses production/live/remote configurations. Backend session/socket tests also reuse the installed mobile compiler, Zustand and Socket.io client dependencies. Configure `TEST_DATABASE_ADMIN_URL` if the normal local DB credential cannot create a temporary database.
 
 The owner-approved migration 014 introduces session families and a fixed 12-hour staff-session limit. Staff must sign in again after applying it. Production deployment still needs approved hosting, durable private documents, restricted runtime DB permissions, restore/monitoring evidence and external provider verification. Keep admin money actions disabled until their separate authority and provider gates pass.
