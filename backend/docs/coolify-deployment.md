@@ -131,6 +131,19 @@ frontend variables. Do not put server secrets in the Dockerfile, Git, mobile
 `EXPO_PUBLIC_` values, or image layers. Do not upload your local development `.env`
 unchanged: its database addresses and provider settings may be inappropriate.
 
+In Coolify's Normal view, set **Build time** to **Not available during build**
+and **Runtime** to **Available in the container** for these backend variables.
+Older Coolify versions show equivalent build-time/runtime checkboxes. This backend
+does not need application secrets to compile. If Docker reports
+`SecretsUsedInArgOrEnv`, check for secrets still marked as build-time values.
+
+If a deployment fails with `tsc: not found`, verify the build stage uses
+`npm ci --include=dev`. TypeScript and its type definitions are development
+dependencies needed to compile the server, even when `NODE_ENV=production` or
+`NPM_CONFIG_OMIT=dev` is present during the build. The separate production-dependencies
+stage still omits them from the running image. Push the updated Dockerfile before
+deploying again.
+
 Keep `ENABLE_ADMIN_MONEY_ACTIONS=false`, `ENABLE_LIVE_PAYMENTS=false`, and
 `EMAIL_ENABLED=false` until the existing provider/rollout requirements are complete.
 This Docker work does not enable those services or change the app's financial rules.

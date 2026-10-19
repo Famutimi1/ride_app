@@ -3,7 +3,8 @@
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+# The compiler is needed even if the deployment platform injects NODE_ENV=production.
+RUN npm ci --include=dev
 COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
