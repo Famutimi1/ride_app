@@ -1,24 +1,18 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
-
-declare const __dirname: string;
-declare const require: (id: string) => unknown;
-
-// The build runs on Node 24, whose native TypeScript loader needs the extension.
-const { nativeBrandColors } = require('./src/constants/colors.ts') as typeof import('./src/constants/colors');
-
-const { resolve } = require('path') as { resolve: (...paths: string[]) => string };
-const { loadEnvFile } = require('process') as { loadEnvFile: (path: string) => void };
-
-// Dynamic app config is evaluated before Expo's usual client-env loading step.
-// Load the project-local file when present; EAS supplies cloud variables directly.
-try {
-  loadEnvFile(resolve(__dirname, '.env'));
-} catch (error) {
-  if ((error as { code?: string }).code !== 'ENOENT') throw error;
-}
+import { resolve } from 'node:path';
+import { loadEnvFile } from 'node:process';
+import { nativeBrandColors } from './src/constants/colors.ts';
 
 /** Inject the .env Google Maps key into native map configuration at build time. */
-export default ({ config }: ConfigContext): ExpoConfig => {
+export default ({ config, projectRoot }: ConfigContext): ExpoConfig => {
+  // Config may load as CommonJS locally or as a native ES module on EAS.
+  // Expo supplies the project root in both cases, even from a different cwd.
+  try {
+    loadEnvFile(resolve(projectRoot, '.env'));
+  } catch (error) {
+    if ((error as { code?: string }).code !== 'ENOENT') throw error;
+  }
+
   // Local builds use the ignored file in the mobile root. EAS file environment
   // variables resolve to a temporary path and can override it in cloud builds.
   const googleServicesFile = process.env.GOOGLE_SERVICES_JSON ?? './google-services.json';
