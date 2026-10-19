@@ -5,8 +5,9 @@ server and existing background workers run together in one backend container.
 PostgreSQL and Redis remain separate Coolify resources. No new application
 dependency or database schema is introduced by containerization.
 
-The files prepare deployment; they do not create a Coolify server, upload secrets,
-run production migrations or publish the API.
+The files prepare deployment; they do not create a Coolify server, upload secrets
+or publish the API. The default container startup now applies pending migrations
+before starting the API; building the image alone does not contact a database.
 
 Verified locally on October 18, 2026: Docker Desktop 4.95.0, Docker Engine 29.8.2
 and Docker Compose 5.6.0 on Apple Silicon. `npm run verify` passed all 174 backend
@@ -15,6 +16,12 @@ container check described below, including all 18 existing migrations and a
 second migration run. Its disposable containers, network and volumes were removed.
 The production Coolify server and external providers have not been deployed or
 verified by these local checks.
+
+Verified locally on October 19, 2026: automatic migration startup passed against
+an empty disposable database, including restart/re-run behavior, failed-migration
+startup rejection, readiness, private-volume persistence and SIGTERM shutdown.
+Application and test-runner TypeScript checks passed. These changes remain local
+until committed, pushed and deployed.
 
 ## 1. What was added
 
@@ -25,6 +32,8 @@ verified by these local checks.
   Git data, local `node_modules` and tests are excluded from the build context.
 - `npm run migrate:deploy`: runs the compiled migration runner without the
   development-only `tsx` package. It uses the existing SQL files and advisory lock.
+- `docker/start.sh`: applies pending compiled migrations before starting the API,
+  exits if migration fails, then replaces the shell with the API process.
 - `.env.production.example`: a credential-free checklist for Coolify runtime values.
 - `docker/compose.smoke.yaml` and `npm run test:docker`: a disposable, isolated
   container test using PostgreSQL 16, Redis 8 and generated test credentials.
@@ -32,8 +41,10 @@ verified by these local checks.
   This does not remove files already tracked in Git or erase any existing files.
 
 The runtime listens on port **4000**, runs as the existing Node image's non-root
-user (UID/GID **1000:1000**), and starts `node dist/index.js` directly so it receives
-SIGTERM. It does not run database migrations automatically on every restart.
+user (UID/GID **1000:1000**). Its startup script runs the existing compiled migration
+runner first, then uses `exec node dist/index.js` so the API receives SIGTERM.
+Previously applied filenames are skipped on restarts; simultaneous migration runs
+are serialized by the existing database advisory lock.
 
 ## 2. Install Docker locally and check the image
 
@@ -53,8 +64,9 @@ npm run test:docker
 The Docker test creates a unique Compose project and random credentials in memory.
 It does not load your backend `.env`, use your operational database, send SMS/email,
 or enable payments. Only a randomly selected loopback API port is published.
-It checks readiness/liveness, non-root execution, absence of `.env`/development
-dependencies in the image, migration re-runs, document-volume persistence through
+It checks first startup against an empty database, readiness/liveness, non-root
+execution, absence of `.env`/development dependencies in the image, migration re-runs,
+failure before API startup when migrations fail, document-volume persistence through
 container replacement, and clean SIGTERM shutdown. It removes its own temporary
 containers, networks and volumes at the end. The built image remains available as
 `rakky-backend:smoke` for inspection. Docker Compose v2 or later is supported.
@@ -80,8 +92,13 @@ repository root, the equivalent is `docker build -t rakky-backend:release ./back
    can destroy queue or live-trip state. Keep PostgreSQL/Redis ports private.
 5. Use a restricted PostgreSQL role for normal API operation. Use a separate
    migration/database-owner credential for schema changes, including permission
-   to install the existing `pgcrypto` extension. Runtime roles must not be able to
-   disable ledger/audit protections. Follow `production-release-runbook.md` for
+   to install the existing `pgcrypto` extension. Set `MIGRATION_DATABASE_URL` to
+   the schema-owner connection for automatic startup
+   migrations, and keep `DATABASE_URL` as the restricted API role. The startup script
+   removes `MIGRATION_DATABASE_URL` from the API process environment. For stronger
+   credential separation, use a separate release job and set
+   `RUN_MIGRATIONS_ON_START=false`. Runtime roles must not be able to disable
+   ledger/audit protections. Follow `production-release-runbook.md` for
    database privileges, backups and restore requirements.
 
 Start with one backend replica because private documents currently use a local
@@ -106,8 +123,10 @@ containing these files. Set:
   Options; Coolify does not apply that flag there.
 - Run one replica initially. Do not configure an extra watch/dev command.
 
-The Dockerfile supplies the install/build/start commands; do not set `npm run dev`
-as the production command. No host mapping of port 4000 is needed for the public
+The Dockerfile supplies the install/build/start commands; leave the custom start
+command empty so `docker/start.sh` can migrate before starting the API. Do not set
+`npm run dev` or override the command with `node dist/index.js`, which bypasses
+automatic migrations. No host mapping of port 4000 is needed for the public
 domain; Coolify's proxy routes to the internal port and forwards WebSockets.
 
 ## 5. Add runtime environment values
@@ -167,38 +186,42 @@ their corresponding files to be transferred separately into this storage; the
 Docker image intentionally does not contain local uploads. An empty new volume
 does not migrate those documents for you.
 
-## 7. Run the existing migrations as a separate release task
+## 7. Automatic database setup before API startup
 
-The image contains `migrations/` and the compiled runner. Run **one reviewed
-migration job** before putting a new schema-dependent API version into service.
-Do not use a Coolify pre-deploy command as the only migration mechanism: Coolify
-runs that in the previous container and skips it on the first deployment.
+The default image command runs `docker/start.sh` at container startup, after Coolify
+has supplied runtime environment variables and attached the private network:
 
-For a first deployment, build the image for the release commit on the deployment
-server (or use the image built by Coolify), then run a one-off container on the
-database's private network. A server-side environment file for this job should
-contain `NODE_ENV=production`, `DATABASE_URL` with the migration credential and
-the required strong `JWT_ACCESS_SECRET`. Keep that file outside the repository
-and readable only by the deployment administrator.
+1. Run `node dist/shared/config/migrate.js` against `MIGRATION_DATABASE_URL`, or
+   `DATABASE_URL` when no separate migration credential is configured.
+2. Apply only migration filenames missing from `schema_migrations`. Each SQL file
+   and its history entry are committed in one transaction. The existing advisory
+   lock serializes simultaneous runs and has a 10-second lock wait timeout.
+3. Exit with failure if a migration fails. The API and workers do not start against
+   an incomplete schema; Coolify must keep the failed container out of service.
+4. Remove the migration credential from the API process environment and start
+   `node dist/index.js` using `exec`.
 
-```bash
-docker run --rm \
-  --network YOUR_SHARED_PRIVATE_NETWORK \
-  --env-file /secure/path/rakky-migrations.env \
-  YOUR_RELEASE_IMAGE \
-  npm run migrate:deploy
-```
+No database URL or schema-changing command is used during `docker build`: an image
+can be cached, built offline, or built for a different environment. Database setup
+needs to happen when the container runs with that environment's credentials.
 
-Replace the network, environment-file path and image with actual server values.
-`YOUR_RELEASE_IMAGE` is the image/tag or image ID for the exact commit being
-deployed; it is not an image name to download from an unverified publisher.
-The existing runner applies only unapplied migration filenames and serializes
-concurrent migration attempts. On an existing database, back up and rehearse
-the migrations first. Migration 014 intentionally revokes existing staff sessions.
+For your first deployment, leave `RUN_MIGRATIONS_ON_START` unset or set it to `true`.
+The chosen migration credential must have schema-owner permissions, including
+permission to install the existing `pgcrypto` extension. If you use only
+`DATABASE_URL`, that role must have these migration permissions; use a separate
+`MIGRATION_DATABASE_URL` to keep the API role restricted.
 
-Keep the migration credential out of the long-running API's environment. Deploy
-the API with its normal restricted `DATABASE_URL` after the migration succeeds.
-No migration or production data change is executed by adding these Docker files.
+Existing data is not reset. Newly pending migrations still execute their SQL, so
+review them before deploying. Migration 014 revokes existing staff sessions. Schema
+changes are not undone by a Coolify application rollback; keep database backups
+and rehearse changes before releasing to an existing populated database.
+
+An external release job remains supported: set `RUN_MIGRATIONS_ON_START=false`, run
+`npm run migrate:deploy` in a one-off release container on the database's private
+network, then start the API only after that job succeeds. Coolify skips pre-deploy
+commands when no previous container exists, so they cannot bootstrap the first
+deployment on their own. Do not run both an unmanaged migration job and startup
+migrations unless they intentionally use the same migration history and lock.
 
 ## 8. Deploy and verify
 

@@ -6,11 +6,17 @@ Use Node >=22.13.0 and install dependencies from the lockfile with `npm ci`. Con
 
 `npm run build` compiles `dist/`; `npm start` runs the compiled backend. Required DB, Redis and workers must initialize before serving traffic. `/api/health/live` is liveness; `/api/health/ready` is dependency/worker/queue readiness. The legacy `/api/health` reports uptime only.
 
-Docker/Coolify: build with `docker build -t rakky-backend:release .`, run compiled
-migrations with `npm run migrate:deploy` in a one-off release container, and use
-Coolify's Dockerfile build pack with base directory `/backend`, port `4000`, and a
+Docker/Coolify: build with `docker build -t rakky-backend:release .`. The default
+container command applies pending migrations and starts the API only after they
+succeed. Migration history skips completed files, and a PostgreSQL advisory lock
+serializes concurrent migration runs. Use Coolify's Dockerfile build pack with
+base directory `/backend`, port `4000`, and a
 persistent volume at `/app/.private-uploads`. Supply secrets as runtime environment
 variables. See the [step-by-step Docker/Coolify guide](docs/coolify-deployment.md).
+`MIGRATION_DATABASE_URL` can provide a separate schema-owner credential; otherwise
+migrations use `DATABASE_URL`, which must have schema permissions. Set
+`RUN_MIGRATIONS_ON_START=false` only when an external release job applies migrations
+before the API is started. The local `npm start` command still starts only the API.
 `npm run test:docker` checks the production image against disposable PostgreSQL and
 Redis containers; it requires a running Docker engine and Compose v2.
 

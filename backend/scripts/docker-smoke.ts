@@ -52,7 +52,7 @@ async function main(): Promise<void> {
   try {
     await compose(['config', '--quiet']);
     started = true;
-    console.info('[docker] Build image, migrate disposable PostgreSQL, start Redis and API.');
+    console.info('[docker] Build image and verify the API automatically migrates empty PostgreSQL before startup.');
     await compose(['up', '--build', '--wait', '--wait-timeout', '180']);
     const base = `http://127.0.0.1:${port}`;
     assert.deepEqual(await (await fetch(`${base}/api/health/ready`, { signal: AbortSignal.timeout(5000) })).json(), { status: 'ready' });
@@ -78,7 +78,18 @@ async function main(): Promise<void> {
     const container = await compose(['ps', '--quiet', 'api'], true);
     await compose(['stop', '--timeout', '30', 'api']);
     assert.equal(await run(['inspect', '--format', '{{.State.ExitCode}}', container], environment, true), '0');
-    console.info('[docker] Passed: image isolation, readiness, compiled migrations, volume persistence and graceful shutdown.');
+    console.info('[docker] Verify a migration failure prevents the API from starting.');
+    let migrationRejected = false;
+    try {
+      await compose(['run', '--rm', '--no-deps', '-e', 'DATABASE_URL=postgres://postgres:invalid@127.0.0.1:1/missing', 'api'], true);
+    } catch (error) {
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /Database migration failed; API will not start/);
+      assert.doesNotMatch(error.message, /Backend ready/);
+      migrationRejected = true;
+    }
+    assert.ok(migrationRejected, 'The container must exit when migrations fail.');
+    console.info('[docker] Passed: automatic migrations, repeat migrations, migration failure, image isolation, readiness, volume persistence and graceful shutdown.');
   } finally {
     try {
       if (started) await compose(['down', '--volumes', '--remove-orphans', '--timeout', '30']);

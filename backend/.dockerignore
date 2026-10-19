@@ -9,6 +9,8 @@
 !src/**
 !migrations/
 !migrations/**
+!docker/
+!docker/start.sh
 # Application tests need local fixtures/mobile dependencies, not production.
 src/**/*.test.ts
 **/.env
