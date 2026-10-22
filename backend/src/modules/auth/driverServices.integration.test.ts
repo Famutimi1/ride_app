@@ -65,14 +65,25 @@ test('service enrollment, supply and assignment stay separate across passenger a
   };
   try {
     const migrations = (await readdir('migrations')).filter(name => /^\d+_.*\.sql$/.test(name)).sort();
-    for (const name of migrations.filter(name => !name.startsWith('016_'))) await db.query(await readFile(resolve('migrations', name), 'utf8'));
+    for (const name of migrations.filter(name => name < '016_')) await db.query(await readFile(resolve('migrations', name), 'utf8'));
     const legacy = (await db.query("INSERT INTO users(full_name,active_role) VALUES('Legacy driver','driver') RETURNING id")).rows[0].id as string;
     partners.push(legacy);
     await db.query("INSERT INTO driver_profiles(user_id,status,accepts_courier) VALUES($1,'approved',true)", [legacy]);
     const legacyPending=(await db.query("INSERT INTO users(full_name) VALUES('Legacy pending partner') RETURNING id")).rows[0].id as string;
     partners.push(legacyPending);
     await db.query("INSERT INTO driver_profiles(user_id,status) VALUES($1,'pending')",[legacyPending]);
-    await db.query(await readFile(resolve('migrations/016_driver_service_eligibility.sql'), 'utf8'));
+    const preEnumVehicles: Array<{ id: string; category: 'car' | 'motorcycle' }> = [];
+    for (const name of migrations.filter(name => name >= '016_')) {
+      if (name === '020_vehicle_category_enum.sql') {
+        for (const category of ['car', 'motorcycle'] as const) {
+          const id = (await db.query("INSERT INTO users(full_name) VALUES('Pre-enum vehicle fixture') RETURNING id")).rows[0].id as string;
+          partners.push(id);
+          await db.query('INSERT INTO driver_profiles(user_id,vehicle_category) VALUES($1,$2)', [id, category]);
+          preEnumVehicles.push({ id, category });
+        }
+      }
+      await db.query(await readFile(resolve('migrations', name), 'utf8'));
+    }
     const staff = (await db.query("INSERT INTO users(full_name,role) VALUES('Service reviewer','super_admin') RETURNING id")).rows[0].id as string;
     const review = async (id: string, decisions: Record<string, string>, vehicleCategory?: string) => {
       const version = (await db.query('SELECT updated_at::text AS version FROM driver_profiles WHERE user_id=$1', [id])).rows[0].version;
@@ -82,8 +93,8 @@ test('service enrollment, supply and assignment stay separate across passenger a
       const current = await settings(id);
       return inTransaction(client => services.submitServiceApplication(id, { services: requested, vehicleCategory, consentAccepted: true, consentVersion: services.SERVICE_CONSENT_VERSION, expectedVersion: current.version }, client));
     };
-    const makePartner = async (requested: Array<'ride' | 'courier'>, category: 'car' | 'motorcycle' = 'car', approve = true) => {
-      const id = (await db.query("INSERT INTO users(full_name,active_role) VALUES('Service fixture','driver') RETURNING id")).rows[0].id as string;
+    const makePartner = async (requested: Array<'ride' | 'courier'>, category: 'car' | 'motorcycle' = 'car', approve = true, role: 'user' | 'admin' | 'super_admin' = 'user') => {
+      const id = (await db.query("INSERT INTO users(full_name,active_role,role) VALUES('Service fixture','driver',$1) RETURNING id", [role])).rows[0].id as string;
       partners.push(id);
       await db.query("INSERT INTO driver_profiles(user_id,residential_address,vehicle_make,vehicle_model,vehicle_year,vehicle_color,plate_number) VALUES($1,'Lekki test address','Test','Vehicle',2020,'Silver',$2)", [id, `T-${partners.length}`]);
       const bytes = Buffer.from('%PDF-1.4\n% Isolated service evidence\n');
@@ -105,15 +116,34 @@ test('service enrollment, supply and assignment stay separate across passenger a
       return id;
     };
 
-    await t.test('migration preserves passenger compatibility without fabricating courier consent', async () => {
+    await t.test('vehicle category is a database enum and converting existing values preserves the vehicle rules', async () => {
+      const column = (await db.query(`SELECT data_type,udt_name,is_nullable FROM information_schema.columns
+        WHERE table_schema=current_schema() AND table_name='driver_profiles' AND column_name='vehicle_category'`)).rows[0];
+      assert.deepEqual(column, { data_type: 'USER-DEFINED', udt_name: 'vehicle_category', is_nullable: 'YES' });
+      const labels = (await db.query(`SELECT e.enumlabel FROM pg_enum e JOIN pg_type t ON t.oid=e.enumtypid
+        JOIN pg_namespace n ON n.oid=t.typnamespace WHERE n.nspname=current_schema() AND t.typname='vehicle_category' ORDER BY e.enumsortorder`)).rows.map(row => row.enumlabel);
+      assert.deepEqual(labels, ['car', 'motorcycle']);
+      for (const { id, category } of preEnumVehicles) {
+        assert.equal((await db.query('SELECT vehicle_category FROM driver_profiles WHERE user_id=$1', [id])).rows[0].vehicle_category, category);
+      }
+      assert.equal((await db.query('SELECT vehicle_category FROM driver_profiles WHERE user_id=$1', [legacy])).rows[0].vehicle_category, null);
+      await assert.rejects(db.query('UPDATE driver_profiles SET vehicle_category=$2 WHERE user_id=$1', [preEnumVehicles[0].id, 'bicycle']), { code: '22P02' });
+      await assert.rejects(db.query("UPDATE driver_profiles SET ride_service_status='pending' WHERE user_id=$1", [preEnumVehicles[1].id]), { code: '23514', constraint: 'passenger_vehicle_category' });
+    });
+
+    await t.test('unclassified legacy vehicles retain history but require review before new work', async () => {
       const value = await settings(legacy);
-      assert.equal(value.services.ride.enabled, true);
+      assert.equal(value.services.ride.enabled, false);
+      assert.equal(value.services.ride.status, 'approved');
+      assert.equal(value.vehicleReviewRequired, true);
       assert.equal(value.services.ride.consentAccepted, true);
       assert.equal(value.services.courier.enabled, false);
       const profile = (await db.query('SELECT * FROM driver_profiles WHERE user_id=$1', [legacy])).rows[0];
       assert.deepEqual(profile.service_consent_history, []);
       assert.equal(profile.service_review_details.legacyCourierPreference, true);
       assert.equal(profile.vehicle_category, null);
+      await assert.rejects(services.assertAnyServiceEnabled(legacy), { code: 'no_enabled_driver_services' });
+      await assert.rejects(preferences(legacy, true, false), { code: 'service_not_approved' });
       await saveDriverLocation({ driverId: legacy, ...point, timestamp: Date.now() });
     });
 
@@ -309,7 +339,7 @@ test('service enrollment, supply and assignment stay separate across passenger a
     await t.test('nearby maps and trip matching use the requested service', async () => {
       const passengers = (await findNearbyDrivers(point.latitude, point.longitude, 5)).map(item => item.driverId);
       const couriers = (await findNearbyDrivers(point.latitude, point.longitude, 5, 'courier')).map(item => item.driverId);
-      assert.ok(passengers.includes(legacy) && passengers.includes(rides) && passengers.includes(both));
+      assert.ok(!passengers.includes(legacy) && passengers.includes(rides) && passengers.includes(both));
       assert.ok(!passengers.includes(courierCar) && !passengers.includes(courierBike));
       assert.ok(couriers.includes(courierCar) && couriers.includes(courierBike) && couriers.includes(both));
       assert.ok(!couriers.includes(rides) && !couriers.includes(legacy));
@@ -317,7 +347,7 @@ test('service enrollment, supply and assignment stay separate across passenger a
       const courierTrip = await makeTrip('courier');
       const rideCandidates = await inTransaction(client => findEligibleDrivers(client, rideTrip, point.latitude, point.longitude, 5000));
       const courierCandidates = await inTransaction(client => findEligibleDrivers(client, courierTrip, point.latitude, point.longitude, 5000));
-      assert.ok(!rideCandidates.some(item => [courierCar, courierBike].includes(item.driverId)));
+      assert.ok(!rideCandidates.some(item => [legacy, courierCar, courierBike].includes(item.driverId)));
       assert.ok(courierCandidates.some(item => item.driverId === courierBike));
     });
 
@@ -343,7 +373,10 @@ test('service enrollment, supply and assignment stay separate across passenger a
     });
 
     await t.test('second-service review cannot remove the first service', async () => {
+      const vehicleColumns = 'user_id,vehicle_make,vehicle_model,vehicle_year,vehicle_color,plate_number,license_doc_url,vehicle_reg_doc_url,insurance_doc_url';
+      const before = (await db.query(`SELECT ${vehicleColumns} FROM driver_profiles WHERE user_id=$1`, [rides])).rows;
       await apply(rides, ['courier'], 'car');
+      assert.deepEqual((await settings(rides)).vehicle, { make: 'Test', model: 'Vehicle', year: 2020, color: 'Silver', registrationNumber: before[0].plate_number });
       assert.equal((await settings(rides)).services.ride.enabled, true);
       assert.equal((await services.eligibleServiceDriverIds([rides], 'ride')).has(rides), true);
       await review(rides, { courier: 'rejected' });
@@ -352,6 +385,27 @@ test('service enrollment, supply and assignment stay separate across passenger a
       await apply(rides, ['courier'], 'car');
       await review(rides, { courier: 'approved' });
       assert.equal((await settings(rides)).services.courier.enabled, true);
+      assert.deepEqual((await db.query(`SELECT ${vehicleColumns} FROM driver_profiles WHERE user_id=$1`, [rides])).rows, before);
+      await assert.rejects(db.query('INSERT INTO driver_profiles(user_id) VALUES($1)', [rides]), { code: '23505' });
+    });
+
+    await t.test('registered vehicle type cannot be changed through a pending or rejected service application', async () => {
+      const partner = await makePartner(['courier'], 'car', false);
+      await assert.rejects(apply(partner, ['courier'], 'motorcycle'), { code: 'approved_driver_material_requires_review' });
+      await review(partner, { courier: 'rejected' });
+      await assert.rejects(apply(partner, ['courier'], 'motorcycle'), { code: 'approved_driver_material_requires_review' });
+      assert.equal((await settings(partner)).vehicleCategory, 'car');
+      await assert.rejects(inTransaction(client => driver.saveVehicleInfo(courierBike, { make: 'Other', model: 'Vehicle', year: '2020', color: 'Black', registrationNumber: 'OTHER123' }, client)), { code: 'approved_driver_material_requires_review' });
+    });
+
+    await t.test('motorcycles can go online for courier only and cannot enable or recover passenger offers', async () => {
+      await services.assertAnyServiceEnabled(courierBike);
+      await assert.rejects(preferences(courierBike, true, true), { code: 'service_not_approved' });
+      await makeTrip('ride', courierBike);
+      assert.equal(await getCurrentOffer(courierBike), null);
+      await preferences(courierBike, false, false);
+      await assert.rejects(services.assertAnyServiceEnabled(courierBike), { code: 'no_enabled_driver_services' });
+      await preferences(courierBike, false, true);
     });
 
     await t.test('partial approval respects a preference turned off before review', async () => {
@@ -433,6 +487,71 @@ test('service enrollment, supply and assignment stay separate across passenger a
       assert.equal((await services.eligibleServiceDriverIds([legacy],'ride')).size,0);
       assert.equal((await settings(legacy)).vehicleCategory,null);
       assert.equal((await settings(legacy)).services.courier.status,'pending');
+    });
+
+    await t.test('admin and super-admin accounts can enroll, change requests, receive and accept offers without bypassing approval', async () => {
+      const { createApp } = await import('../../app.js');
+      const auth = await import('./auth.service.js');
+      const server = createApp().listen(0, '127.0.0.1');
+      await new Promise<void>(done => server.once('listening', done));
+      const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+      try {
+        for (const role of ['admin', 'super_admin'] as const) {
+          const id = await makePartner(['ride'], 'car', true, role);
+          const user = (await db.query('SELECT * FROM users WHERE id=$1', [id])).rows[0];
+          const tokens = await inTransaction(client => auth.issueTokenPair(user, 'isolated combined-account test', client));
+          const headers = { Authorization: `Bearer ${tokens.accessToken}`, 'Content-Type': 'application/json' };
+          const request = (path: string, method = 'GET', body?: unknown) => fetch(`${origin}${path}`, { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+          const me = await request('/auth/me');
+          assert.equal(me.status, 200);
+          const currentUser = await me.json() as { user: { id: string; platformRole: string }; activeRole: string };
+          assert.equal(currentUser.user.id, id); assert.equal(currentUser.activeRole, 'driver');
+          assert.equal(currentUser.user.platformRole, 'user', 'app sessions do not advertise dashboard privileges');
+          assert.equal((await request(`/admin/driver-applications/${id}`)).status, 403, 'app token cannot invoke staff endpoints');
+          assert.equal((await request('/wallet')).status, 200, 'same account retains customer wallet access');
+
+          for (const enabled of [false, true]) {
+            const current = await settings(id);
+            const response = await request('/driver/service-preferences', 'PUT', { acceptsRide: enabled, acceptsCourier: false, expectedVersion: current.version });
+            assert.equal(response.status, 200);
+            const saved = await settings(id);
+            assert.equal(saved.services.ride.status, 'approved'); assert.equal(saved.services.ride.enabled, enabled);
+            assert.equal((await services.eligibleServiceDriverIds([id], 'ride')).has(id), enabled);
+          }
+
+          const current = await settings(id);
+          const courier = await request('/driver/service-applications', 'POST', { services: ['courier'], vehicleCategory: 'car', consentAccepted: true, consentVersion: services.SERVICE_CONSENT_VERSION, expectedVersion: current.version });
+          assert.equal(courier.status, 200);
+          assert.equal((await settings(id)).services.courier.status, 'pending');
+          assert.equal((await settings(id)).services.ride.enabled, true);
+          await assert.rejects(preferences(id, true, true), { code: 'service_not_approved' });
+
+          const riderMode = await request('/auth/active-role', 'PATCH', { role: 'rider' });
+          assert.equal(riderMode.status, 200);
+          assert.equal((await services.eligibleServiceDriverIds([id], 'ride')).size, 0);
+          assert.equal((await request('/auth/active-role', 'PATCH', { role: 'driver' })).status, 200);
+          assert.equal((await db.query('SELECT role FROM users WHERE id=$1', [id])).rows[0].role, role);
+          const staffTokens = await inTransaction(client => auth.issueTokenPair(user, 'isolated staff test', client, 'staff'));
+          assert.equal((await fetch(`${origin}/admin/driver-applications/${id}`, { headers: { Authorization: `Bearer ${staffTokens.accessToken}` } })).status, 200, 'staff session retains existing dashboard access');
+
+          const dispatchPoint = { latitude: 7.3, longitude: 4.1 };
+          await saveDriverLocation({ driverId: id, ...dispatchPoint, timestamp: Date.now() });
+          const trip = await makeTrip('ride');
+          await db.query('UPDATE trips SET pickup_lat=$2,pickup_lng=$3 WHERE id=$1', [trip, dispatchPoint.latitude, dispatchPoint.longitude]);
+          const dispatched = await dispatchNext(trip, 0);
+          assert.deepEqual(dispatched, { kind: 'offered', driverId: id });
+          await acceptTrip(id, trip);
+          await preferences(id, false, false);
+          assert.equal((await db.query('SELECT status FROM trips WHERE id=$1', [trip])).rows[0].status, 'driver_assigned', 'turning requests off does not cancel accepted work');
+          await assert.rejects(inTransaction(client => auth.switchActiveRole(id, 'rider', client)), { code: 'active_trip_prevents_role_switch' });
+        }
+        const unapproved = await makePartner(['ride'], 'car', false, 'admin');
+        await assert.rejects(preferences(unapproved, true, false), { code: 'service_not_approved' });
+        await db.query('UPDATE users SET is_active=false WHERE id=$1', [unapproved]);
+        await assert.rejects(preferences(unapproved, false, false), { code: 'driver_account_required' });
+      } finally {
+        await new Promise<void>((done, reject) => server.close(error => error ? reject(error) : done()));
+      }
     });
 
     await t.test('offline, inactive and financially blocked partners are excluded', async () => {

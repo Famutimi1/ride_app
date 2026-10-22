@@ -1,0 +1,13 @@
+{
+  "generator": "Built-in image_gen",
+  "design": {
+    "file": "designs/register-page.png",
+    "reference": "../login-v1/designs/login-page.png",
+    "prompt": "Use case: ui-mockup. Design a complete polished mobile registration screen for Rakky Ride matching the supplied login reference's white, charcoal and deep green style, same soft clay 3D car. Portrait 390x844 proportions with no device frame. Form-first compact registration. Top row circular back chevron, small Rakky Ride wordmark. Under this, a compact heading row: left title 'Join Rakky Ride.' with subtitle 'A few details. Then you’re ready.' and on the right a SMALL clean stylized matte 3D green car about 85px wide, no large illustration or hero area. Three neatly labeled full-width rounded fields: 'Full name' placeholder 'Your full name'; 'Email (optional)' placeholder 'you@example.com'; 'Phone number' field containing Nigerian flag '+234' thin divider and placeholder '801 234 5678'. All fields about 50px high, soft silver-green fill. Below label 'I want to', two side-by-side equal-width selection cards 'Rider' and 'Driver', Rider selected in pale mint with green border and a small checkmark. Small helper 'You can add driving later.' Below a full-width green pill button 'Continue' with arrow. Small centered helper 'We’ll text you a verification code.' then subtle 'or' divider, white outlined official-style Google G button 'Sign up with Google'. Footer 'Already a member? Log in' green link. Fit all content with balanced breathing room and readable typography. Keep decoration small and concise copy. No extra fields, passwords, marketing paragraphs, fake trust claims or large images."
+  },
+  "artwork": {
+    "file": "car.png",
+    "reference": "designs/register-page.png",
+    "prompt": "Use case: background-extraction. Asset type: small mobile registration header illustration. From the supplied full-page Rakky Ride registration design, isolate ONLY the little green clay 3D car at the top right. Preserve its friendly rounded proportions, matte green paint, charcoal windows and tires, ivory headlights, soft clean stylized 3D material. Center the whole car large within a square transparent canvas with small clear margins and a soft subtle contact shadow. No city, pin, buildings, letters, text, UI, white rectangle, backdrop, logo or frame. Actual transparent alpha background. Car fully visible, no clipping. This will be displayed about 90px wide."
+  }
+}

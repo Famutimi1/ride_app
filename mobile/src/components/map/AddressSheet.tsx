@@ -1,22 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Animated, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Text } from '@/components/common';
+import { useTheme } from '@/constants/theme';
 import { autocompletePlaces, getPlaceDetails, getTripRoute, type PlacePrediction } from '@/services/mapsService';
 import { useMapStore, type MapLocation } from '@/store/mapStore';
 import { AddressSearchInput } from './AddressSearchInput';
+import { AddressIcon } from './AddressIcon';
 
 export type AddressField = 'pickup' | 'dropoff';
 type Field = AddressField;
 interface SearchResult { key: string; predictions: PlacePrediction[]; loading: boolean; error: string | null }
 interface MapSelection { field: AddressField; location: MapLocation; revision: number }
-interface AddressSheetProps { onClose: () => void; onFindRide: () => void; onPickupChosen?: () => void; onActiveFieldChange?: (field: AddressField) => void; mapSelection?: MapSelection | null; mapSelectionPending?: boolean; onMapSelectionApplied?: (revision: number) => void; submitLabel?: string; title?: string; pickupLabel?: string; dropoffLabel?: string }
+interface AddressSheetProps { onFindRide: () => void; onPickupChosen?: () => void; onActiveFieldChange?: (field: AddressField) => void; mapSelection?: MapSelection | null; mapSelectionPending?: boolean; onMapSelectionApplied?: (revision: number) => void; submitLabel?: string; title?: string; pickupLabel?: string; dropoffLabel?: string }
 
-export function AddressSheet({ onClose, onFindRide, onPickupChosen, onActiveFieldChange, mapSelection, mapSelectionPending = false, onMapSelectionApplied, submitLabel = 'Find Now', title = 'Plan your ride', pickupLabel = 'From', dropoffLabel = 'To' }: AddressSheetProps) {
+export function AddressSheet({ onFindRide, onPickupChosen, onActiveFieldChange, mapSelection, mapSelectionPending = false, onMapSelectionApplied, submitLabel = 'Find Now', title = 'Plan your ride', pickupLabel = 'From', dropoffLabel = 'To' }: AddressSheetProps) {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const mediumHeight = height * 0.6;
   const expandedHeight = height * 0.88;
   const [sheetHeight] = useState(() => new Animated.Value(mediumHeight));
   const [dragStart] = useState(() => ({ value: mediumHeight }));
+  useEffect(() => { sheetHeight.setValue(mediumHeight); }, [mediumHeight, sheetHeight]);
   const pickup = useMapStore((state) => state.pickupLocation);
   const dropoff = useMapStore((state) => state.dropoffLocation);
   const current = useMapStore((state) => state.currentLocation);
@@ -149,38 +155,58 @@ export function AddressSheet({ onClose, onFindRide, onPickupChosen, onActiveFiel
 
   return <Animated.View className="absolute bottom-0 left-0 right-0 rounded-t-[28px] bg-surface shadow-lg" style={{ height: sheetHeight }}>
     <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View {...panResponder.panHandlers} className="pb-sm pt-md">
-        <View className="items-center pb-md"><View className="h-1 w-12 rounded-full bg-borderStrong" /></View>
-        <View className="flex-row items-center px-xl"><Pressable onPress={onClose}><Text variant="h3">←</Text></Pressable><Text variant="h3" className="ml-lg">{title}</Text></View>
+      <View {...panResponder.panHandlers} style={styles.header}>
+        <View style={[styles.handle, { backgroundColor: colors.borderStrong }]} />
+        <Text variant="bodyMedium">{title}</Text>
       </View>
-      <ScrollView className="flex-1" keyboardShouldPersistTaps="handled" contentContainerClassName="px-xl pb-md">
-        <View className="relative gap-md">
-          <AddressSearchInput active={activeField === 'pickup'} label={pickupLabel} placeholder="Pickup location" value={displayedPickup} loading={searching && activeField === 'pickup'} onFocus={() => { setActiveField('pickup'); onActiveFieldChange?.('pickup'); }} onChangeText={(value) => changeQuery('pickup', value)} />
-          <AddressSearchInput
-            active={activeField === 'dropoff'}
-            label={dropoffLabel}
-            placeholder="Where are you going?"
-            value={dropoffText}
-            loading={searching && activeField === 'dropoff'}
-            rightAccessory={(
-              <Pressable accessibilityLabel="Swap pickup and destination" onPress={swap} style={{ transform: [{ translateY: -6 }] }} className="h-8 w-8 items-center justify-center rounded-full bg-primary shadow-sm">
-                <Text variant="bodyMedium" color="textInverse">⇅</Text>
-              </Pressable>
-            )}
-            onFocus={() => { setActiveField('dropoff'); onActiveFieldChange?.('dropoff'); }}
-            onChangeText={(value) => changeQuery('dropoff', value)}
-          />
+      <ScrollView className="flex-1" keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+        <View style={styles.fields}>
+          <AddressSearchInput kind="pickup" active={activeField === 'pickup'} label={pickupLabel} placeholder="Pickup location" value={displayedPickup} loading={searching && activeField === 'pickup'} onFocus={() => { setActiveField('pickup'); onActiveFieldChange?.('pickup'); }} onChangeText={(value) => changeQuery('pickup', value)} />
+          <AddressSearchInput kind="dropoff" active={activeField === 'dropoff'} label={dropoffLabel} placeholder="Where are you going?" value={dropoffText} loading={searching && activeField === 'dropoff'} onFocus={() => { setActiveField('dropoff'); onActiveFieldChange?.('dropoff'); }} onChangeText={(value) => changeQuery('dropoff', value)} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Swap pickup and destination" onPress={swap} style={[styles.swap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <AddressIcon name="swap" color="primary" />
+          </Pressable>
         </View>
 
-        {(activeField === 'pickup' && current) || predictions.length || error ? <View className="mt-sm bg-surface">
-          {activeField === 'pickup' && current ? <Pressable onPress={() => { selectionVersion.current += 1; void selectLocation('pickup', current); }} className="flex-row gap-md border-b border-border p-md"><Text color="primary">◎</Text><Text variant="bodyMedium">Use current location</Text></Pressable> : null}
-          {predictions.map((item) => <Pressable key={item.placeId} onPress={() => void choosePrediction(item)} className="border-b border-border px-md py-sm"><Text variant="bodyMedium">{item.primaryText}</Text><Text variant="caption" color="textMuted" numberOfLines={1}>{item.secondaryText}</Text></Pressable>)}
-          {error ? <Text variant="caption" color="textMuted" className="p-md">{error}</Text> : null}
-        </View> : null}
-
-        {error && pickup && dropoff ? <Pressable onPress={() => void selectLocation('dropoff', dropoff)} className="self-end py-sm"><Text variant="caption" color="primary">Retry route</Text></Pressable> : null}
+        {activeField === 'pickup' && current ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Use current location for pickup" onPress={() => { selectionVersion.current += 1; void selectLocation('pickup', current); }} style={[styles.currentLocation, { borderBottomColor: colors.border }]}>
+            <View style={[styles.resultIcon, { backgroundColor: colors.primarySoft }]}><AddressIcon name="locate" color="primary" size={17} /></View>
+            <Text variant="button" color="primary" style={styles.resultCopy}>Use current location</Text>
+          </Pressable>
+        ) : null}
+        {predictions.length ? <Text variant="caption" color="textMuted" style={styles.resultsLabel}>Suggestions</Text> : null}
+        {predictions.map(item => (
+          <Pressable key={item.placeId} accessibilityRole="button" accessibilityLabel={`${item.primaryText}, ${item.secondaryText}`} onPress={() => void choosePrediction(item)} style={[styles.resultRow, { borderBottomColor: colors.border }]}>
+            <View style={[styles.resultIcon, { backgroundColor: colors.primarySoft }]}><AddressIcon name="pin" size={16} /></View>
+            <View style={styles.resultCopy}>
+              <Text variant="button" numberOfLines={2}>{item.primaryText}</Text>
+              <Text variant="caption" color="textMuted" numberOfLines={1}>{item.secondaryText}</Text>
+            </View>
+          </Pressable>
+        ))}
+        {searching ? <Text accessibilityLiveRegion="polite" variant="caption" color="textMuted" style={styles.status}>Searching addresses…</Text> : null}
+        {error ? <Text accessibilityRole="alert" variant="caption" color="textMuted" style={styles.status}>{error}</Text> : null}
+        {error && pickup && dropoff ? <Pressable accessibilityRole="button" onPress={() => void selectLocation('dropoff', dropoff)} style={styles.retry}><Text variant="caption" color="primary">Retry route</Text></Pressable> : null}
       </ScrollView>
-      <View className="border-t border-border px-xl pb-xl pt-md"><Button label={mapSelectionPending ? 'Choosing location…' : loadingRoute ? 'Mapping route…' : submitLabel} fullWidth loading={loadingRoute || mapSelectionPending} disabled={!pickup || !dropoff || pickupEdited || dropoffEdited || loadingPlace || loadingRoute || mapSelectionPending} onPress={onFindRide} /></View>
+      <View style={[styles.footer, { borderTopColor: colors.border, paddingBottom: Math.max(16, insets.bottom) }]}>
+        <Button label={mapSelectionPending ? 'Choosing location…' : loadingRoute ? 'Mapping route…' : submitLabel} fullWidth loading={loadingRoute || mapSelectionPending} disabled={!pickup || !dropoff || pickupEdited || dropoffEdited || loadingPlace || loadingRoute || mapSelectionPending} onPress={onFindRide} className="rounded-xl" />
+      </View>
     </KeyboardAvoidingView>
   </Animated.View>;
 }
+
+const styles = StyleSheet.create({
+  header: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 16, gap: 18 },
+  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center' },
+  content: { paddingHorizontal: 16, paddingBottom: 16 },
+  fields: { gap: 12 },
+  swap: { position: 'absolute', right: 0, top: 46, width: 48, height: 48, borderRadius: 24, borderWidth: 1, alignItems: 'center', justifyContent: 'center', elevation: 2 },
+  currentLocation: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  resultIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  resultCopy: { flex: 1, minWidth: 0, gap: 2 },
+  resultsLabel: { marginTop: 16, marginBottom: 4 },
+  resultRow: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  status: { paddingVertical: 12 },
+  retry: { alignSelf: 'flex-end', minHeight: 48, justifyContent: 'center' },
+  footer: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingTop: 12 },
+});

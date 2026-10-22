@@ -20,13 +20,13 @@ import type { AppColors } from '@/constants/colors';
 import type { TypographyVariant } from '@/constants/typography';
 
 const VARIANT_CLASSES: Record<TypographyVariant, string> = {
-  h1: '!font-inter-bold !text-h1 font-bold',
-  h2: '!font-inter-bold !text-h2 font-bold',
+  h1: '!font-inter-semibold !text-h1 font-semibold',
+  h2: '!font-inter-semibold !text-h2 font-semibold',
   h3: '!font-inter-semibold !text-h3 font-semibold',
   body: '!font-inter-regular !text-body font-normal',
   bodyMedium: '!font-inter-medium !text-body font-medium',
   caption: '!font-inter-regular !text-caption font-normal',
-  button: '!font-inter-medium !text-button font-medium',
+  button: '!font-inter-semibold !text-button font-semibold',
 };
 
 const COLOR_CLASSES: Record<keyof AppColors, string> = {

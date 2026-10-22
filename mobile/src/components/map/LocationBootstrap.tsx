@@ -6,6 +6,7 @@ import { nativeWindTheme, useTheme } from '@/constants/theme';
 import { getCurrentCoordinate, getForegroundLocationPermission, getRecentCoordinate, requestForegroundLocation } from '@/services/locationService';
 import { reverseGeocode } from '@/services/mapsService';
 import { useMapStore } from '@/store/mapStore';
+import { useAuthStore } from '@/store/authStore';
 
 const EXPLAINER_SEEN_KEY = 'location-permission-explainer-seen-v2';
 
@@ -13,6 +14,7 @@ const EXPLAINER_SEEN_KEY = 'location-permission-explainer-seen-v2';
  * this component persists whether our explanatory screen has been presented. */
 export function LocationBootstrap() {
   const theme = useTheme();
+  const driver = useAuthStore(state => state.session?.user.role === 'driver');
   const [visible, setVisible] = useState(false);
   const checking = useRef(false);
   const mounted = useRef(true);
@@ -90,7 +92,7 @@ export function LocationBootstrap() {
     <View className="flex-1 items-center justify-center px-xl" style={[nativeWindTheme[theme.scheme], { backgroundColor: theme.colors.overlay }]}><View className="w-full rounded-2xl p-xl" style={{ backgroundColor: theme.colors.surface }}>
       <View className="mb-lg h-14 w-14 items-center justify-center rounded-full bg-primarySoft"><Text variant="h2" color="primary">◎</Text></View>
       <Text variant="h2">Use your current location</Text>
-      <Text color="textMuted" className="mt-sm">Ride uses your location to center nearby cars and fill your pickup address. You can still enter an address manually.</Text>
+      <Text color="textMuted" className="mt-sm">{driver ? 'Rakky Ride uses your location for nearby requests and pickup navigation. Go online on Driver home when you’re ready to work.' : 'Rakky Ride uses your location to show nearby cars and fill your pickup address. You can still enter an address manually.'}</Text>
       <View className="mt-xl"><Button label="Allow location" fullWidth onPress={() => void request()} /></View>
       <Pressable onPress={() => void skip()} className="mt-md items-center py-sm"><Text color="textMuted">Not now</Text></Pressable>
     </View></View>

@@ -1,3 +1,4 @@
+import type { NotificationRole } from './notificationAudience';
 import type { TripRow, TripStatus } from '../trips/trip.types';
 import type { CreateNotificationInput } from './notifications.types';
 
@@ -11,12 +12,12 @@ export function tripStatusNotifications(trip: TripTarget, status: TripStatus): C
   const riderCategory = trip.scheduled_at && (status === 'searching' || (status === 'cancelled' && !trip.driver_id)) ? 'scheduled_reminders' : 'trip_updates';
   const rider = (type: string, title: string, body: string, priority: 'normal' | 'high' = 'normal') => result.push({
     userId: trip.rider_id, type, category: riderCategory, priority,
-    eventKey: `trip:${trip.id}:${type}:rider`, title, body, data: { tripId: trip.id, status }, deepLink: tripLink('rider'),
+    eventKey: `trip:${trip.id}:${type}:rider`, title, body, data: { tripId: trip.id, status, audience: 'rider' }, deepLink: tripLink('rider'),
   });
   const driver = (type: string, title: string, body: string, priority: 'normal' | 'high' = 'normal') => {
     if (!trip.driver_id) return;
     result.push({ userId: trip.driver_id, type, category: 'trip_updates', priority,
-      eventKey: `trip:${trip.id}:${type}:driver`, title, body, data: { tripId: trip.id, status }, deepLink: tripLink('driver') });
+      eventKey: `trip:${trip.id}:${type}:driver`, title, body, data: { tripId: trip.id, status, audience: 'driver' }, deepLink: tripLink('driver') });
   };
 
   if (status === 'searching' && trip.scheduled_at) rider('scheduled_ride_starting', 'Your scheduled ride is starting soon', 'We are finding a driver for your scheduled pickup.', 'high');
@@ -52,15 +53,16 @@ export function driverOfferNotification(input: {
     eventKey: `trip:${input.tripId}:offer:${input.driverId}`,
     title: courier ? 'New courier offer' : 'New ride offer',
     body: `Pickup is ${Math.max(1, Math.round(input.distanceToPickupM / 100)) / 10} km away · ₦${Math.round(input.fareKobo / 100).toLocaleString('en-NG')}`,
-    data: { tripId: input.tripId, serviceType: input.serviceType, kind: 'ride_offer' },
+    data: { tripId: input.tripId, serviceType: input.serviceType, kind: 'ride_offer', audience: 'driver' },
     deepLink: '/driver-dashboard',
     expiresAt: input.expiresAt,
   };
 }
 
 export function walletNotification(input: {
-  userId: string; eventKey: string; type: string; title: string; body: string; referenceId: string; tripId?: string; priority?: 'normal' | 'high';
+  userId: string; eventKey: string; type: string; title: string; body: string; referenceId: string; tripId?: string; audience?: NotificationRole; priority?: 'normal' | 'high';
 }): CreateNotificationInput {
+  const audience = input.audience ?? (input.type.startsWith('withdrawal_') ? 'driver' : 'rider');
   return {
     userId: input.userId,
     type: input.type,
@@ -69,8 +71,8 @@ export function walletNotification(input: {
     eventKey: input.eventKey,
     title: input.title,
     body: input.body,
-    data: { referenceId: input.referenceId, ...(input.tripId ? { tripId: input.tripId } : {}) },
-    deepLink: '/account/driver-wallet',
+    data: { audience, referenceId: input.referenceId, ...(input.tripId ? { tripId: input.tripId } : {}) },
+    deepLink: audience === 'driver' ? '/account/driver-wallet' : '/account/payment',
   };
 }
 
@@ -87,12 +89,12 @@ export function driverApplicationNotification(input: {
     eventKey: `driver-application:${input.userId}:${input.status}:${input.version ?? 'current'}`,
     title: approved ? 'Your service application was reviewed' : rejected ? 'Driver application needs attention' : 'Driver application submitted',
     body: approved ? 'Open your dashboard to see approved services and choose which requests to receive.' : rejected ? (input.reason?.trim() || 'Review your application details and submit again.') : 'We will notify you when the review is complete.',
-    data: { status: input.status },
+    data: { status: input.status, audience: 'driver' },
     deepLink: approved ? '/driver-dashboard' : '/driver-status',
   };
 }
 
 export function careNotification(input:{userId:string;kind:'support'|'safety';careId:string;status:string;version:number}):CreateNotificationInput{
   const safety=input.kind==='safety';
-  return{userId:input.userId,type:`${input.kind}_${input.status}`,category:safety?'safety_security':'support',priority:safety?'high':'normal',eventKey:`care:${input.kind}:${input.careId}:${input.status}:${input.version}`,title:safety?'Safety update available':'Support case updated',body:safety?'Open Rakky Ride to review an important safety update.':`Your support case is now ${input.status.replaceAll('_',' ')}.`,data:{careId:input.careId,status:input.status},deepLink:'/account/support'};
+  return{userId:input.userId,type:`${input.kind}_${input.status}`,category:safety?'safety_security':'support',priority:safety?'high':'normal',eventKey:`care:${input.kind}:${input.careId}:${input.status}:${input.version}`,title:safety?'Safety update available':'Support case updated',body:safety?'Open Rakky Ride to review an important safety update.':`Your support case is now ${input.status.replaceAll('_',' ')}.`,data:{careId:input.careId,status:input.status,audience:'shared'},deepLink:'/account/support'};
 }

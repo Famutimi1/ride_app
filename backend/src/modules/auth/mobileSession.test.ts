@@ -36,6 +36,7 @@ interface AuthState {
   _sessionError: string | null;
   _hasHydrated: boolean;
   updateProfile: (input: { name: string }) => Promise<void>;
+  setRole: (role: 'rider' | 'driver') => Promise<boolean>;
 }
 
 test('mobile service settings cannot cross accounts or overwrite a newer version', async t => {
@@ -102,11 +103,11 @@ function harness(overrides: Record<string, unknown> = {}) {
     '@/services/socket': { resetSocket: () => undefined },
     '@/services/locationService': { stopAllDriverLocationUpdates: async () => undefined, markDriverOffline: async () => undefined, stopDriverBackgroundUpdates: async () => undefined },
     '@/store/walletStore': { useWalletStore: { getState: () => ({ reset: () => undefined }) } },
-    '@/store/mapStore': { useMapStore: { getState: () => ({ clearUserLocation: () => undefined }) } },
+    '@/store/mapStore': { useMapStore: { getState: () => ({ clearUserLocation: () => undefined, clearTripMap: () => undefined }) } },
     '@/store/tripStore': { useTripStore: { getState: () => ({ clear: () => undefined }) } },
     '@/store/courierDraftStore': { useCourierDraftStore: { getState: () => ({ clearDraft: () => undefined }) } },
     '@/services/notificationService': { currentDeviceRegistrationId: async () => null, revokeCurrentDevice: async () => undefined },
-    '@/store/notificationStore': { useNotificationStore: { getState: () => ({ reset: () => undefined }) } },
+    '@/store/notificationStore': { useNotificationStore: { getState: () => ({ reset: () => undefined, setContext: () => undefined }) } },
   };
   Object.assign(mocks, overrides);
   function load(path: string): Record<string, unknown> {
@@ -136,6 +137,45 @@ function harness(overrides: Record<string, unknown> = {}) {
     load,
   };
 }
+
+test('a confirmed mode switch clears mode-specific caches and cannot be undone by an older profile response', async () => {
+  const cleared: string[] = [];
+  let finishProfile!: (value: unknown) => void;
+  const h = harness({
+    '@/services/authService': {
+      getMe: async () => ({ user: { id: 'account', name: 'Account' }, activeRole: 'rider', driverStatus: 'approved' }),
+      switchActiveRole: async () => ({ activeRole: 'driver' }),
+      saveProfile: () => new Promise(resolve => { finishProfile = resolve; }),
+    },
+    '@/store/tripStore': { useTripStore: { getState: () => ({ clear: () => { cleared.push('trip'); } }) } },
+    '@/store/walletStore': { useWalletStore: { getState: () => ({ reset: () => { cleared.push('wallet'); } }) } },
+    '@/store/mapStore': { useMapStore: { getState: () => ({ clearTripMap: () => { cleared.push('map'); } }) } },
+    '@/store/courierDraftStore': { useCourierDraftStore: { getState: () => ({ clearDraft: () => { cleared.push('courier'); } }) } },
+  });
+  await h.tokens.setTokens({ accessToken: 'access', refreshToken: 'refresh' }); await h.auth().hydrate();
+  cleared.length = 0;
+  const oldProfile = h.auth().updateProfile({ name: 'Updated' });
+  assert.equal(await h.auth().setRole('driver'), true);
+  assert.ok(['trip', 'wallet', 'map', 'courier'].every(key => cleared.includes(key)));
+  finishProfile({ user: { id: 'account', name: 'Updated' }, activeRole: 'rider' });
+  await assert.rejects(oldProfile);
+  assert.equal((h.auth().session as { user: { role: string } }).user.role, 'driver');
+});
+
+test('mode changes wait for the backend and duplicate submissions cannot race', async () => {
+  let finish!: (value: unknown) => void;
+  let requests = 0;
+  const h = harness({ '@/services/authService': {
+    getMe: async () => ({ user: { id: 'account', name: 'Account' }, activeRole: 'rider', driverStatus: 'approved' }),
+    switchActiveRole: () => { requests += 1; return new Promise(resolve => { finish = resolve; }); },
+  } });
+  await h.tokens.setTokens({ accessToken: 'access', refreshToken: 'refresh' }); await h.auth().hydrate();
+  const first = h.auth().setRole('driver');
+  assert.equal((h.auth().session as { user: { role: string } }).user.role, 'rider');
+  assert.equal(await h.auth().setRole('rider'), false); assert.equal(requests, 1);
+  finish({ activeRole: 'driver' }); assert.equal(await first, true);
+  assert.equal((h.auth().session as { user: { role: string } }).user.role, 'driver');
+});
 
 test('mobile refresh preserves sessions on outages and cannot restore credentials after logout', async (t) => {
   await t.test('concurrent HTTP/socket callers rotate once', async () => {

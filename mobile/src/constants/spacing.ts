@@ -1,20 +1,20 @@
 /**
- * spacing.ts — the Spacing and Radii scales from the mockup.
+ * spacing.ts — shared spacing and radii for compact, readable layouts.
  *
  * Using a fixed scale (rather than arbitrary numbers like `padding: 13`) keeps
  * every screen visually consistent and makes global tweaks a one-line change.
  * Reference these via `useTheme()` → `spacing.lg`, `radius.md`.
  */
 
-// Mockup "Spacing (px)" row: 4 · 8 · 12 · 16 · 24 · 32 · 48
+// Keep small gaps comfortable; tighten page gutters and large section gaps.
 export const spacing = {
   xs: 4,
   sm: 8,
   md: 12,
   lg: 16,
-  xl: 24,
-  '2xl': 32,
-  '3xl': 48,
+  xl: 20,
+  '2xl': 28,
+  '3xl': 40,
 } as const;
 
 // Compact radii for controls and content containers. Full remains reserved for

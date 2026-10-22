@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
+import { notificationAudience } from './notificationAudience';
 
 const mobileRequire=createRequire(resolve('../mobile/package.json'));
 const compiler=mobileRequire('typescript') as {
@@ -15,11 +16,15 @@ interface Service {
   getNotificationPermission:()=>Promise<Permission>;
   requestNotificationPermission:()=>Promise<Permission>;
   registerCurrentDevice:(request:boolean)=>Promise<string|null>;
+  currentDeviceRegistrationId:()=>Promise<string|null>;
+  revokeCurrentDevice:()=>Promise<void>;
   notificationPermissionMessage:(permission:Permission)=>string;
 }
-function harness(options:{platform?:string;native?:boolean;expoGo?:boolean;isDevice?:boolean;loadFails?:boolean;initial?:Permission;answer?:Permission}={}){
+function harness(options:{platform?:string;native?:boolean;expoGo?:boolean;isDevice?:boolean;loadFails?:boolean;initial?:Permission;answer?:Permission;deviceId?:string}={}){
   let permission=options.initial??{granted:false,canAskAgain:true,status:'undetermined'};
   const calls:string[]=[];
+  const storedValues=new Map<string,string>();
+  if(options.deviceId)storedValues.set('rakky-notification-device-registration-id',options.deviceId);
   const native={
     AndroidImportance:{MAX:5,HIGH:4,DEFAULT:3,LOW:2},
     IosAuthorizationStatus:{PROVISIONAL:3,EPHEMERAL:4},
@@ -30,12 +35,21 @@ function harness(options:{platform?:string;native?:boolean;expoGo?:boolean;isDev
     getExpoPushTokenAsync:async()=>{calls.push('token');return{data:'ExponentPushToken[test-only-token]'};},
   };
   const mocks:Record<string,unknown>={
+    '@/utils/notificationAudience': { notificationAudience },
     'expo-constants':{__esModule:true,default:{executionEnvironment:options.expoGo?'storeClient':'bare',expoConfig:{extra:{eas:{projectId:'test-project'}},version:'test'}}},
     'expo-device':{isDevice:options.isDevice??true},
     'expo-modules-core':{requireOptionalNativeModule:()=>options.native===false?null:{}},
-    'expo-secure-store':{getItemAsync:async()=>null,setItemAsync:async()=>undefined},
+    // Web has no native storage methods. Calling one must fail this regression test.
+    'expo-secure-store':options.platform==='web'?{}:{
+      getItemAsync:async(key:string)=>storedValues.get(key)??null,
+      setItemAsync:async(key:string,value:string)=>{storedValues.set(key,value);},
+      deleteItemAsync:async(key:string)=>{storedValues.delete(key);},
+    },
     'react-native':{Platform:{OS:options.platform??'android'}},
-    '@/lib/apiClient':{apiClient:{post:async()=>{calls.push('register');return{data:{deviceId:'test-device'}};}}},
+    '@/lib/apiClient':{apiClient:{
+      post:async()=>{calls.push('register');return{data:{deviceId:'test-device'}};},
+      delete:async(path:string)=>{calls.push(`revoke:${path}`);},
+    }},
   };
   const source=readFileSync(resolve('../mobile/src/services/notificationService.ts'),'utf8');
   const code=compiler.transpileModule(source,{compilerOptions:{module:compiler.ModuleKind.CommonJS,target:compiler.ScriptTarget.ES2022}}).outputText;
@@ -47,6 +61,25 @@ function harness(options:{platform?:string;native?:boolean;expoGo?:boolean;isDev
   }});
   return{service:exports as unknown as Service,calls};
 }
+
+test('browser logout cleanup skips native push storage and revocation',async()=>{
+  const{service,calls}=harness({platform:'web'});
+  assert.equal(await service.currentDeviceRegistrationId(),null);
+  await service.revokeCurrentDevice();
+  assert.deepEqual(calls,[]);
+});
+
+test('native logout cleanup still revokes and removes the saved push registration',async(t)=>{
+  for(const platform of ['android','ios'])await t.test(platform,async()=>{
+    const{service,calls}=harness({platform,deviceId:'saved-device'});
+    assert.equal(await service.currentDeviceRegistrationId(),'saved-device');
+    await service.revokeCurrentDevice();
+    assert.deepEqual(calls,['revoke:/notifications/devices/saved-device']);
+    assert.equal(await service.currentDeviceRegistrationId(),null);
+    await service.revokeCurrentDevice();
+    assert.equal(calls.length,1);
+  });
+});
 
 test('notification permission distinguishes unsupported environments from blocked OS permission',async(t)=>{
   for(const scenario of [

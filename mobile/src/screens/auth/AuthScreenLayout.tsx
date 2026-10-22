@@ -60,7 +60,7 @@ export function AuthScreenLayout({
           {onBack && <BackButton onPress={onBack} />}
 
           <View className="flex-row items-center gap-md">
-            <BrandLogo size={56} />
+            <BrandLogo size={44} />
             <Text variant="bodyMedium">Rakky Ride</Text>
           </View>
 

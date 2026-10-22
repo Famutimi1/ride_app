@@ -1,173 +1,195 @@
-/**
- * WelcomeScreen — the onboarding carousel: the app's front door for logged-out
- * users (route: "/welcome"). This is screen 1 in the design mockup.
- *
- * It's a horizontally-paged carousel (swipe or let it be — the dots track the
- * page). Each slide has an illustration slot on top and a heading + subtitle
- * below. A fixed footer holds the page dots, the "Get Started" CTA, and a "Log in"
- * link — those stay put while the slides swipe behind them.
- */
+/** Three short benefit-led pages, based on the generated full-page design studies. */
+import { Image, type ImageSource } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { cssInterop } from 'nativewind';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
   ScrollView,
+  StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandLogo, Button, Text } from '@/components/common';
-
-import { HeroIllustration } from './HeroIllustration';
-
-const StyledSafeAreaView = cssInterop(SafeAreaView, { className: 'style' });
+import { useTheme } from '@/constants/theme';
 
 type Slide = {
   key: string;
   title: string;
-  subtitle: string;
-  image: React.ComponentProps<typeof HeroIllustration>['source'];
+  description: string;
+  image: ImageSource;
+  imageLabel: string;
 };
 
 const SLIDES: Slide[] = [
   {
-    key: 'anywhere',
-    title: 'Get a ride anytime,\nanywhere',
-    subtitle: 'Fast, reliable and safe rides\nat your fingertips.',
-    image: require('@/assets/images/onboarding-ride.svg'),
+    key: 'ride',
+    title: 'Your next ride,\nmade easy.',
+    description: 'Choose your destination. We’ll take care of the journey.',
+    image: require('@/assets/images/onboarding-v3/ride.png'),
+    imageLabel: 'A soft 3D green car with a location pin and little city buildings',
   },
   {
-    key: 'track',
-    title: 'Track your driver\nin real time',
-    subtitle: 'Watch your ride approach on a live map, every second of the way.',
-    image: require('@/assets/images/onboarding-track.svg'),
+    key: 'delivery',
+    title: 'Small package.\nBig possibilities.',
+    description: 'Send parcels across the city, without the extra hassle.',
+    image: require('@/assets/images/onboarding-v3/delivery.png'),
+    imageLabel: 'Two soft 3D parcels with green ribbons and a curved delivery arrow',
   },
   {
-    key: 'pay',
-    title: 'Pay whichever\nway you like',
-    subtitle: 'Cash, card or in-app wallet — settle up however suits you.',
-    image: require('@/assets/images/onboarding-pay.svg'),
-  },
-  {
-    key: 'ready',
-    title: 'Ready when\nyou are',
-    subtitle: 'Create your account and take your first trip in minutes.',
-    image: require('@/assets/images/onboarding-ready.svg'),
+    key: 'payment',
+    title: 'Pay your way.',
+    description: 'Choose cash, card, or wallet when you book.',
+    image: require('@/assets/images/onboarding-v3/payment.png'),
+    imageLabel: 'Simple 3D green and ivory payment cards with a mint confirmation check',
   },
 ];
 
 export function WelcomeScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const { height, width } = useWindowDimensions();
-  const isTallScreen = height >= 800;
-
+  const insets = useSafeAreaInsets();
+  const availableHeight = height - insets.top - insets.bottom;
+  const frameWidth = Math.min(width, 460);
+  const pageWidth = frameWidth - 48;
+  const illustrationHeight = Math.max(180, Math.min(290, availableHeight * 0.34));
+  const [copyHeight, setCopyHeight] = useState(164);
+  const pageHeight = Math.max(availableHeight - 252, illustrationHeight + copyHeight + 20);
+  const pager = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
+  const currentIndex = useRef(0);
+  const lastSlide = index === SLIDES.length - 1;
 
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const next = Math.round(e.nativeEvent.contentOffset.x / width);
-    if (next !== index && next >= 0 && next < SLIDES.length) {
+  useEffect(() => {
+    pager.current?.scrollTo({ x: currentIndex.current * pageWidth, animated: false });
+  }, [pageWidth]);
+
+  const selectSlide = (next: number) => {
+    currentIndex.current = next;
+    setIndex(next);
+    pager.current?.scrollTo({ x: next * pageWidth, animated: true });
+  };
+
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const next = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
+    if (next >= 0 && next < SLIDES.length && next !== currentIndex.current) {
+      currentIndex.current = next;
       setIndex(next);
     }
   };
 
+  const glow = `data:image/svg+xml;utf8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="320" viewBox="0 0 400 320"><defs><radialGradient id="halo"><stop stop-color="${colors.primarySoft}"/><stop offset="1" stop-color="${colors.background}" stop-opacity="0"/></radialGradient></defs><ellipse cx="200" cy="160" rx="200" ry="160" fill="url(#halo)"/></svg>`,
+  )}`;
+
   return (
-    <StyledSafeAreaView edges={['top', 'bottom']} className="flex-1 bg-background">
-      <View className="flex-1 justify-between">
-        {/* Horizontal Carousel */}
-        <ScrollView
-          className="flex-1"
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          scrollEventThrottle={16}
-          onScroll={onScroll}
-        >
-          {SLIDES.map((item) => (
-            <View
-              key={item.key}
-              className="w-screen flex-1 justify-start px-xl pt-[63px]"
-            >
-              <View className="h-[210px] w-full items-center justify-center">
-                {item.key === 'anywhere' ? <BrandLogo size={200} /> : <HeroIllustration source={item.image} />}
-              </View>
-
-              <View className="mt-md gap-sm">
-                <Text variant="caption" color="primary" className="tracking-[2px]">RAKKY RIDE</Text>
-                <Text
-                  variant="h2"
-                  className={isTallScreen
-                    ? '!font-inter-bold !text-[28px] !leading-[34px] tracking-[-0.3px]'
-                    : '!font-inter-bold !text-[20px] !leading-[23px] tracking-[-0.2px]'}
-                >
-                  {item.title}
-                </Text>
-                <Text
-                  variant="body"
-                  color="textMuted"
-                  className={isTallScreen ? '!text-[16px] !leading-[24px]' : '!text-[14px] !leading-[20px]'}
-                >
-                  {item.subtitle}
-                </Text>
-              </View>
+    <SafeAreaView edges={['top', 'bottom']} style={[styles.screen, { backgroundColor: colors.background }]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.outerContent}>
+        <View style={{ width: frameWidth, minHeight: availableHeight, paddingHorizontal: 24, paddingBottom: 16 }}>
+          <View style={styles.header}>
+            <View style={styles.brand}>
+              <BrandLogo size={36} />
+              <Text variant="bodyMedium">Rakky Ride</Text>
             </View>
-          ))}
-        </ScrollView>
-
-        {/* Fixed footer: pagination dots + primary CTA + log-in link */}
-        <View className="mb-[68px] w-full px-[20px]">
-          {/* Pagination dots (centered row) */}
-          <View className="mb-2xl flex-row items-center justify-center gap-[12px]">
-            {SLIDES.map((s, i) => {
-              const active = i === index;
-              return (
-                <View
-                  key={s.key}
-                  className={`h-[7px] w-[7px] rounded-full ${active ? 'bg-primary' : 'bg-border'}`}
-                />
-              );
-            })}
+            <Pressable accessibilityRole="button" accessibilityLabel="Skip onboarding" onPress={() => router.push('/phone')} style={styles.skip}>
+              <Text variant="caption" color="textMuted">Skip</Text>
+            </Pressable>
           </View>
 
-          {/* Get Started CTA */}
-          <Button
-            label="Get Started"
-            size="lg"
-            fullWidth
-            className="h-[40px] rounded-[9px]"
-            onPress={() => router.push('/phone')}
-          />
-
-          {/* Already have an account? Log in */}
-          <View className="mt-lg flex-row items-center justify-center gap-[6px]">
-            <Text
-              variant="caption"
-              color="textMuted"
-              className={isTallScreen ? '!text-[14px] !leading-[20px]' : '!text-[12px] !leading-[18px]'}
-            >
-              Already have an account?
-            </Text>
-            <Pressable
-              accessibilityRole="link"
-              onPress={() => router.push('/login')}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text
-                variant="caption"
-                color="primary"
-                className={isTallScreen
-                  ? '!text-[14px] !font-medium !leading-[20px]'
-                  : '!text-[12px] !font-medium !leading-[18px]'}
+          <ScrollView
+            ref={pager}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onScroll={onScroll}
+            style={{ width: pageWidth, height: pageHeight, flexGrow: 0 }}
+          >
+            {SLIDES.map((slide, slideIndex) => (
+              <View
+                key={slide.key}
+                accessibilityElementsHidden={slideIndex !== index}
+                importantForAccessibility={slideIndex === index ? 'auto' : 'no-hide-descendants'}
+                aria-hidden={slideIndex !== index}
+                style={{ width: pageWidth, height: pageHeight, justifyContent: 'center' }}
               >
-                Log in
-              </Text>
+                <View style={[styles.artwork, { height: illustrationHeight }]}>
+                  <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+                    <Image source={{ uri: glow }} contentFit="fill" style={StyleSheet.absoluteFill} />
+                  </View>
+                  <Image
+                    source={slide.image}
+                    accessibilityLabel={slide.imageLabel}
+                    contentFit="contain"
+                    style={{ width: '100%', maxWidth: 340, height: '100%' }}
+                  />
+                </View>
+                <View
+                  onLayout={({ nativeEvent }) => setCopyHeight((previous) => Math.max(previous, Math.ceil(nativeEvent.layout.height)))}
+                  style={styles.copy}
+                >
+                  <View style={styles.headline}>
+                    <Text variant="h1" accessibilityRole="header" style={styles.centerText}>{slide.title}</Text>
+                  </View>
+                  <Text variant="body" color="textMuted" style={[styles.centerText, { maxWidth: 320 }]}>{slide.description}</Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+
+          <View style={styles.pagination}>
+            {SLIDES.map((slide, slideIndex) => (
+              <Pressable
+                key={slide.key}
+                accessibilityRole="button"
+                accessibilityLabel={`Show welcome slide ${slideIndex + 1}`}
+                accessibilityState={{ selected: slideIndex === index }}
+                onPress={() => selectSlide(slideIndex)}
+                style={styles.dotTarget}
+              >
+                <View style={{ height: 7, width: slideIndex === index ? 22 : 7, borderRadius: 8, backgroundColor: slideIndex === index ? colors.primary : colors.border }} />
+              </Pressable>
+            ))}
+          </View>
+          <View style={{ marginTop: 12 }}>
+            <Button
+              label={lastSlide ? 'Get Started' : 'Next'}
+              accessibilityLabel={lastSlide ? 'Get Started' : 'Next welcome slide'}
+              size="lg"
+              fullWidth
+              className="!rounded-full"
+              rightIcon={<Text variant="button" color="textInverse">→</Text>}
+              onPress={() => lastSlide ? router.push('/phone') : selectSlide(index + 1)}
+            />
+          </View>
+          <View style={styles.login}>
+            <Text variant="caption" color="textMuted">Already a member?</Text>
+            <Pressable accessibilityRole="link" onPress={() => router.push('/login')} style={styles.loginLink}>
+              <Text variant="button" color="primary">Log in</Text>
             </Pressable>
           </View>
         </View>
-      </View>
-    </StyledSafeAreaView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  outerContent: { flexGrow: 1, alignItems: 'center' },
+  header: { height: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  skip: { minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' },
+  artwork: { alignItems: 'center', justifyContent: 'center' },
+  copy: { minHeight: 164, paddingTop: 20, paddingBottom: 8, gap: 12, alignItems: 'center' },
+  headline: { minHeight: 72, justifyContent: 'center' },
+  centerText: { textAlign: 'center' },
+  pagination: { height: 56, paddingTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  dotTarget: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  login: { minHeight: 52, paddingTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  loginLink: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
+});

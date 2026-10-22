@@ -4,6 +4,7 @@ import { ApiError } from '../../shared/errors';
 import { ensureRedis } from '../../shared/config/redis';
 import { emitServiceSettingsChanged } from '../../websocket/notifications';
 import { queueApplicationSubmitted } from '../notifications/email.service';
+import { APP_ACCOUNT_ROLES, isAppAccountRole } from '../auth/auth.types';
 
 export type DriverService = 'ride' | 'courier';
 export type ServiceStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'suspended';
@@ -17,6 +18,11 @@ export const SERVICE_DESCRIPTIONS = {
 export interface ServiceProfile {
   status: 'none' | 'pending' | 'approved' | 'rejected';
   vehicle_category: 'car' | 'motorcycle' | null;
+  vehicle_make?: string | null;
+  vehicle_model?: string | null;
+  vehicle_year?: number | null;
+  vehicle_color?: string | null;
+  plate_number?: string | null;
   ride_service_status: ServiceStatus;
   courier_service_status: ServiceStatus;
   accepts_ride: boolean;
@@ -28,7 +34,7 @@ export interface ServiceProfile {
 
 export async function lockServiceProfile(userId: string, client: PoolClient, options: { allowInactive?: boolean } = {}): Promise<ServiceProfile> {
   const user = (await client.query<{ role: string; is_active: boolean }>('SELECT role,is_active FROM users WHERE id=$1 FOR UPDATE', [userId])).rows[0];
-  if (!user || user.role !== 'user' || (!user.is_active && !options.allowInactive)) throw new ApiError(403, 'driver_account_required');
+  if (!user || !isAppAccountRole(user.role) || (!user.is_active && !options.allowInactive)) throw new ApiError(403, 'driver_account_required');
   const profile = (await client.query<ServiceProfile>('SELECT * FROM driver_profiles WHERE user_id=$1 FOR UPDATE', [userId])).rows[0];
   if (!profile) throw new ApiError(409, 'personal_info_required');
   return profile;
@@ -51,13 +57,24 @@ function serviceConsent(profile: ServiceProfile, service: DriverService) {
 }
 
 function settings(profile: ServiceProfile) {
+  const vehicleReviewRequired = profile.vehicle_category === null
+    && (profile.status === 'approved' || [profile.ride_service_status, profile.courier_service_status].some(status => status === 'approved' || status === 'suspended'));
+  const enabled = (service: DriverService) => profile.status === 'approved'
+    && (service === 'ride' ? profile.vehicle_category === 'car' && profile.ride_service_status === 'approved' && profile.accepts_ride
+      : profile.vehicle_category !== null && profile.courier_service_status === 'approved' && profile.accepts_courier)
+    && hasConsent(profile, service);
   return {
     version: profile.service_settings_version,
     vehicleCategory: profile.vehicle_category,
     requestedVehicleCategory: profile.service_review_details.requestedVehicleCategory??null,
+    vehicleReviewRequired,
+    vehicle: profile.vehicle_make || profile.vehicle_model || profile.plate_number ? {
+      make: profile.vehicle_make ?? null, model: profile.vehicle_model ?? null, year: profile.vehicle_year ?? null,
+      color: profile.vehicle_color ?? null, registrationNumber: profile.plate_number ?? null,
+    } : null,
     services: {
-      ride: { status: profile.ride_service_status, enabled: profile.accepts_ride, ...serviceConsent(profile,'ride'), review: profile.service_review_details.ride ?? null },
-      courier: { status: profile.courier_service_status, enabled: profile.accepts_courier, ...serviceConsent(profile,'courier'), review: profile.service_review_details.courier ?? null },
+      ride: { status: profile.ride_service_status, enabled: enabled('ride'), ...serviceConsent(profile,'ride'), review: profile.service_review_details.ride ?? null },
+      courier: { status: profile.courier_service_status, enabled: enabled('courier'), ...serviceConsent(profile,'courier'), review: profile.service_review_details.courier ?? null },
     },
     consent: { version: SERVICE_CONSENT_VERSION, descriptions: SERVICE_DESCRIPTIONS },
   };
@@ -66,7 +83,7 @@ function settings(profile: ServiceProfile) {
 export async function getServiceSettings(userId: string, client: PoolClient) {
   const profile = (await client.query<ServiceProfile>('SELECT * FROM driver_profiles WHERE user_id=$1', [userId])).rows[0];
   return profile ? settings(profile) : {
-    version: 0, vehicleCategory: null, requestedVehicleCategory:null,
+    version: 0, vehicleCategory: null, requestedVehicleCategory:null, vehicle: null, vehicleReviewRequired: false,
     services: { ride: { status: 'none' as const, enabled: false, consentAccepted: false, consentBasis:'missing',consentRecord:null,review: null }, courier: { status: 'none' as const, enabled: false, consentAccepted: false, consentBasis:'missing',consentRecord:null,review: null } },
     consent: { version: SERVICE_CONSENT_VERSION, descriptions: SERVICE_DESCRIPTIONS },
   };
@@ -85,9 +102,9 @@ export async function submitServiceApplication(userId: string, input: Record<str
   const category = input.vehicleCategory;
   if (category !== 'car' && category !== 'motorcycle') throw new ApiError(400, 'choose_vehicle_category');
   if (category === 'motorcycle' && input.services.includes('ride')) throw new ApiError(400, 'motorcycle_courier_only');
-  if (profile.status === 'approved' && profile.vehicle_category !== null && profile.vehicle_category !== category) throw new ApiError(409, 'approved_driver_material_requires_review');
+  if (profile.vehicle_category !== null && profile.vehicle_category !== category) throw new ApiError(409, 'approved_driver_material_requires_review');
   // Unknown legacy vehicles cannot be self-reclassified while keeping passenger approval.
-  // Staff must confirm a legacy category. Until then retain only its existing passenger compatibility.
+  // Staff must confirm a legacy category before it can receive new work.
   const awaitingClassification = profile.status === 'approved' && profile.vehicle_category === null;
   const services = input.services as DriverService[];
   const details: Record<string, unknown> = { ...profile.service_review_details, requestedVehicleCategory: category };
@@ -122,7 +139,7 @@ export async function setServicePreferences(userId: string, input: Record<string
     const prior=details[service];
     details[service]={...(prior&&typeof prior==='object'?prior:{}),requestedPreference:enabled};
     const status = service === 'ride' ? profile.ride_service_status : profile.courier_service_status;
-    const validVehicle = service === 'ride' ? profile.vehicle_category === 'car' || (profile.vehicle_category === null && profile.service_review_details.legacyPassengerApproval === true) : profile.vehicle_category !== null;
+    const validVehicle = service === 'ride' ? profile.vehicle_category === 'car' : profile.vehicle_category !== null;
     if (enabled && (profile.status !== 'approved' || status !== 'approved' || !hasConsent(profile, service) || !validVehicle)) throw new ApiError(403, 'service_not_approved');
   }
   await client.query(`UPDATE driver_profiles SET accepts_ride=$2,accepts_courier=$3,service_review_details=$4,service_settings_version=service_settings_version+1,updated_at=clock_timestamp() WHERE user_id=$1`, [userId, input.acceptsRide, input.acceptsCourier,JSON.stringify(details)]);
@@ -146,9 +163,9 @@ export async function eligibleServiceDriverIds(driverIds: string[], service: Dri
   if (!driverIds.length) return new Set();
   const { rows } = await client.query<{ user_id: string }>(`SELECT d.user_id FROM driver_profiles d JOIN users u ON u.id=d.user_id
     JOIN payment_settings s ON s.id=true LEFT JOIN ledger_accounts a ON a.owner_user_id=d.user_id AND a.kind='driver_earnings'
-    WHERE d.user_id=ANY($1::uuid[]) AND u.is_active=true AND u.role='user' AND u.active_role='driver' AND driver_service_enabled(d,$2)
+    WHERE d.user_id=ANY($1::uuid[]) AND u.is_active=true AND u.role=ANY($3::user_role[]) AND u.active_role='driver' AND driver_service_enabled(d,$2)
     AND COALESCE(a.balance_kobo,0)>-s.cash_debt_limit_kobo AND COALESCE(a.is_frozen,false)=false
-    AND NOT EXISTS(SELECT 1 FROM trips t WHERE t.driver_id=d.user_id AND t.status IN ('driver_assigned','driver_arrived','in_progress','returning'))`, [driverIds, service]);
+    AND NOT EXISTS(SELECT 1 FROM trips t WHERE t.driver_id=d.user_id AND t.status IN ('driver_assigned','driver_arrived','in_progress','returning'))`, [driverIds, service, APP_ACCOUNT_ROLES]);
   return new Set(rows.map(row => row.user_id));
 }
 

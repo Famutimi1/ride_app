@@ -5,6 +5,7 @@ import { requireOptionalNativeModule } from 'expo-modules-core';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import type { Href } from 'expo-router';
+import { notificationAudience, type NotificationRole } from '@/utils/notificationAudience';
 import { apiClient } from '@/lib/apiClient';
 
 const INSTALLATION_KEY='rakky-notification-installation-id';
@@ -104,30 +105,42 @@ export async function requestNotificationPermission(vibration=true):Promise<Noti
 export async function registerCurrentDevice(requestPermission=false,vibration=true){if(Platform.OS==='web')return null;const Notifications=await getNotificationsModule();if(!Notifications)return null;await configureNotificationChannels(vibration);const permission=requestPermission?await requestNotificationPermission(vibration):await getNotificationPermission();if(!permission.granted||!Device.isDevice)return null;const projectId=Constants.expoConfig?.extra?.eas?.projectId??Constants.easConfig?.projectId;if(typeof projectId!=='string'||!projectId)throw new Error('Expo project ID is not configured.');const token=(await Notifications.getExpoPushTokenAsync({projectId})).data;const response=await apiClient.post<{deviceId:string}>('/notifications/devices',{expoPushToken:token,platform:Platform.OS,deviceIdentifier:await installationId(),appVersion:Constants.expoConfig?.version??'unknown'});await SecureStore.setItemAsync(DEVICE_REGISTRATION_KEY,response.data.deviceId);return response.data.deviceId;}
 
 export async function revokeDevice(deviceId:string){await apiClient.delete(`/notifications/devices/${deviceId}`);}
-export async function currentDeviceRegistrationId(){return SecureStore.getItemAsync(DEVICE_REGISTRATION_KEY);}
-export async function revokeCurrentDevice(){const id=await SecureStore.getItemAsync(DEVICE_REGISTRATION_KEY);if(!id)return;await revokeDevice(id);await SecureStore.deleteItemAsync(DEVICE_REGISTRATION_KEY);}
+export async function currentDeviceRegistrationId():Promise<string|null>{
+  if(Platform.OS==='web')return null;
+  return SecureStore.getItemAsync(DEVICE_REGISTRATION_KEY);
+}
+export async function revokeCurrentDevice(){
+  if(Platform.OS==='web')return;
+  const id=await currentDeviceRegistrationId();
+  if(!id)return;
+  await revokeDevice(id);
+  await SecureStore.deleteItemAsync(DEVICE_REGISTRATION_KEY);
+}
 export async function getNotificationPreferences(){return(await apiClient.get<NotificationPreferences>('/notifications/preferences')).data;}
 export async function updateNotificationPreferences(input:Partial<NotificationPreferences>){return(await apiClient.patch<NotificationPreferences>('/notifications/preferences',input)).data;}
-export async function getNotifications(cursor?:string){return(await apiClient.get<{notifications:AppNotification[];nextCursor:string|null}>('/notifications',{params:{cursor}})).data;}
-export async function getUnreadNotificationCount(){return(await apiClient.get<{count:number}>('/notifications/unread-count')).data.count;}
-export async function markNotificationRead(id:string){return(await apiClient.post<AppNotification>(`/notifications/${id}/read`)).data;}
-export async function markNotificationOpened(id:string){return(await apiClient.post<AppNotification>(`/notifications/${id}/opened`)).data;}
-export async function markAllNotificationsRead(){return(await apiClient.post<{updated:number}>('/notifications/read-all')).data;}
+export async function getNotifications(cursor?:string,role?:NotificationRole){return(await apiClient.get<{notifications:AppNotification[];nextCursor:string|null}>('/notifications',{params:{cursor,role}})).data;}
+export async function getUnreadNotificationCount(role?:NotificationRole){return(await apiClient.get<{count:number}>('/notifications/unread-count',{params:{role}})).data.count;}
+export async function markNotificationRead(id:string,role?:NotificationRole){return(await apiClient.post<AppNotification>(`/notifications/${id}/read`,undefined,{params:{role}})).data;}
+export async function markNotificationOpened(id:string,role?:NotificationRole){return(await apiClient.post<AppNotification>(`/notifications/${id}/opened`,undefined,{params:{role}})).data;}
+export async function markAllNotificationsRead(role?:NotificationRole){return(await apiClient.post<{updated:number}>('/notifications/read-all',undefined,{params:{role}})).data;}
 
 const categories:NotificationCategory[]=['trip_updates','driver_offers','scheduled_reminders','wallet_updates','safety_security','support','promotions'];
 export function notificationFromNative(notification:ExpoNotifications.Notification):AppNotification|null{const content=notification.request.content,data=content.data as Record<string,unknown>;const id=typeof data.notificationId==='string'?data.notificationId:notification.request.identifier;if(!content.title||!content.body)return null;const category=typeof data.category==='string'&&categories.includes(data.category as NotificationCategory)?data.category as NotificationCategory:'trip_updates';const priority:NotificationPriority=data.priority==='high'||data.priority==='low'?data.priority:'normal';return{id,userId:'',type:typeof data.type==='string'?data.type:'push',category,priority,eventKey:id,title:content.title,body:content.body,data,deepLink:typeof data.deepLink==='string'?data.deepLink:null,expiresAt:null,readAt:null,openedAt:null,deliveredAt:new Date().toISOString(),deliveryStatus:'delivered',createdAt:new Date().toISOString()};}
 
-export function notificationDestination(notification:Pick<AppNotification,'type'|'category'|'data'>):Href{
-  if(notification.type==='ride_offer')return'/driver-dashboard';
-  if(notification.category==='scheduled_reminders')return'/schedule';
-  if(['driver_assigned','driver_arrived','trip_started','courier_returning'].includes(notification.type))return'/ongoing-trip';
-  if(['trip_completed','courier_returned'].includes(notification.type)||notification.data.status==='completed'||notification.data.status==='returned')return'/trip-complete';
-  if(notification.type.startsWith('withdrawal_'))return{pathname:'/account/[section]',params:{section:'driver-wallet'}};
-  if(notification.category==='wallet_updates')return{pathname:'/account/[section]',params:{section:'payment'}};
-  if(notification.type.startsWith('driver_application_'))return'/driver-status';
-  if(notification.category==='support')return{pathname:'/account/[section]',params:{section:'support'}};
-  if(notification.category==='safety_security')return{pathname:'/account/[section]',params:{section:'safety'}};
-  if(notification.type==='trip_cancelled')return'/home';
-  return'/notification-center';
+export function notificationDestination(notification: Pick<AppNotification, 'type' | 'category' | 'data'> & Partial<Pick<AppNotification, 'eventKey' | 'deepLink' | 'title'>>): Href {
+  const audience = notificationAudience(notification);
+  const tripId = typeof notification.data.tripId === 'string' ? notification.data.tripId : null;
+  if (notification.type === 'ride_offer' || notification.type === 'offer_expired') return '/driver-dashboard';
+  if (notification.type.startsWith('driver_application_')) return '/driver-status';
+  if (notification.category === 'support') return { pathname: '/account/[section]', params: { section: 'support' } };
+  if (notification.category === 'safety_security') return { pathname: '/account/[section]', params: { section: 'safety' } };
+  if (notification.category === 'wallet_updates') return { pathname: '/account/[section]', params: { section: audience === 'driver' ? 'driver-wallet' : 'payment' } };
+  if (notification.type === 'trip_cancelled' || notification.type === 'no_drivers_found') return audience === 'driver' ? '/driver-dashboard' : '/home';
+  if (['trip_completed', 'courier_returned'].includes(notification.type) || ['completed', 'returned'].includes(String(notification.data.status))) {
+    if (tripId) return { pathname: '/trip-receipt', params: { tripId } };
+    return { pathname: '/account/[section]', params: { section: audience === 'driver' ? 'driver-trips' : 'trips' } };
+  }
+  if (notification.category === 'scheduled_reminders') return '/schedule';
+  if (notification.category === 'trip_updates') return audience === 'driver' ? '/driver-trip' : '/ongoing-trip';
+  return '/notification-center';
 }
-

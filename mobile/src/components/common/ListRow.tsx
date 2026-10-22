@@ -32,7 +32,7 @@ export interface ListRowProps {
 export function ListRow({ label, value, icon, right, onPress, className }: ListRowProps) {
   const content = (
     <View
-      className={['flex-row items-center gap-md py-md', className].filter(Boolean).join(' ')}
+      className={['min-h-11 flex-row items-center gap-md py-sm', className].filter(Boolean).join(' ')}
     >
       {icon != null ? (
         <View className="h-9 w-9 items-center justify-center rounded-full bg-primarySoft">

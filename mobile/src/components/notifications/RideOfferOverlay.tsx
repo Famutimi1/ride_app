@@ -4,8 +4,10 @@ import { useRouter } from 'expo-router';
 import { Button, Text } from '@/components/common';
 import { nativeWindTheme, useTheme } from '@/constants/theme';
 import { useTripStore } from '@/store/tripStore';
+import { useAuthStore } from '@/store/authStore';
+import { driverServiceEnabled } from '@/utils/driverServices';
 
-export function RideOfferOverlay(){const router=useRouter(),theme=useTheme();const offer=useTripStore(state=>state.offer),acceptOffer=useTripStore(state=>state.acceptOffer),declineOffer=useTripStore(state=>state.declineOffer),loading=useTripStore(state=>state.loading),error=useTripStore(state=>state.error);const[now,setNow]=useState(0);
+export function RideOfferOverlay(){const router=useRouter(),theme=useTheme();const driver=useAuthStore(state=>state.session?.user.role==='driver'&&state.driverApplication?.status==='approved');const services=useAuthStore(state=>state.driverServices);const offer=useTripStore(state=>driver&&services&&state.offer&&driverServiceEnabled(services,state.offer.serviceType??'ride')?state.offer:null),acceptOffer=useTripStore(state=>state.acceptOffer),declineOffer=useTripStore(state=>state.declineOffer),loading=useTripStore(state=>state.loading),error=useTripStore(state=>state.error);const[now,setNow]=useState(0);
   useEffect(()=>{if(!offer)return;const timer=setInterval(()=>setNow(Date.now()),250);return()=>clearInterval(timer);},[offer]);
   const receivedAt=offer?.receivedAt??now,serverAtReceipt=offer?.serverNow?new Date(offer.serverNow).getTime():receivedAt,effectiveNow=Math.max(now,receivedAt);const remaining=offer?Math.max(0,Math.ceil((new Date(offer.expiresAt).getTime()-(serverAtReceipt+effectiveNow-receivedAt))/1000)):0;
   const accept=async()=>{try{await acceptOffer();router.replace('/driver-trip');}catch{}};

@@ -18,10 +18,12 @@ test('trip templates target the correct participant and route', () => {
   assert.equal(arrival[0].type, 'driver_arrived');
   assert.equal(arrival[0].priority, 'high');
   assert.equal(arrival[0].deepLink, '/ongoing-trip');
+  assert.equal(arrival[0].data?.audience, 'rider');
 
   const completed = tripStatusNotifications(trip, 'completed');
   assert.deepEqual(completed.map((item) => item.userId), ['rider-1', 'driver-1']);
   assert.equal(new Set(completed.map((item) => item.eventKey)).size, 2);
+  assert.deepEqual(completed.map(item => item.data?.audience), ['rider', 'driver']);
 });
 
 test('scheduled activation produces a scheduled reminder', () => {
@@ -46,11 +48,19 @@ test('wallet and driver application templates use stable event keys', () => {
   const wallet = walletNotification({ userId: 'user-1', eventKey: 'topup:ref:success', type: 'topup_succeeded', title: 'Done', body: 'Done', referenceId: 'ref' });
   assert.equal(wallet.category, 'wallet_updates');
   assert.equal(wallet.eventKey, 'topup:ref:success');
+  assert.equal(wallet.data?.audience, 'rider');
+  assert.equal(wallet.deepLink, '/account/payment');
+  const earnings = walletNotification({ userId: 'user-1', eventKey: 'topup:earnings:success', type: 'topup_succeeded', title: 'Done', body: 'Done', referenceId: 'ref', audience: 'driver' });
+  assert.equal(earnings.data?.audience, 'driver');
+  assert.equal(earnings.deepLink, '/account/driver-wallet');
+  const withdrawal = walletNotification({ userId: 'user-1', eventKey: 'withdrawal:ref:success', type: 'withdrawal_succeeded', title: 'Done', body: 'Done', referenceId: 'ref' });
+  assert.equal(withdrawal.data?.audience, 'driver');
   const review = driverApplicationNotification({ userId: 'user-1', status: 'rejected', reason: 'Document is unreadable', version: 'audit-1' });
   assert.equal(review.category, 'support');
   assert.equal(review.priority, 'high');
   assert.match(review.body, /unreadable/);
   assert.match(review.eventKey, /audit-1$/);
+  assert.equal(review.data?.audience, 'driver');
 });
 
 test('push delivery enforces the master and category preferences', () => {
@@ -78,5 +88,6 @@ test('care alerts keep lock-screen text generic',()=>{
   assert.doesNotMatch(safety.body,/address|phone|incident details/i);
   const support=careNotification({userId:'user-1',kind:'support',careId:'case-2',status:'waiting_customer',version:3});
   assert.equal(support.category,'support');
+  assert.equal(support.data?.audience,'shared');
   assert.match(support.body,/waiting customer/);
 });

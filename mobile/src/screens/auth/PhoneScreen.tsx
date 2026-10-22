@@ -1,12 +1,13 @@
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, Input, Text } from '@/components/common';
+import { BackButton, BrandLogo, Button, Input, Text } from '@/components/common';
 import { GoogleAuthButton } from '@/components/common/GoogleAuthButton';
+import { useTheme } from '@/constants/theme';
 import { useAuthStore, type RegistrationAccountType } from '@/store/authStore';
-
-import { AuthScreenLayout } from './AuthScreenLayout';
 
 function normalizeLocalNumber(raw: string): string {
   return raw.replace(/\D/g, '').replace(/^0/, '').slice(0, 10);
@@ -14,6 +15,7 @@ function normalizeLocalNumber(raw: string): string {
 
 export function PhoneScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const requestOtp = useAuthStore((state) => state.requestOtp);
   const signInWithGoogle = useAuthStore((state) => state.signInWithGoogle);
   const signInWithGoogleIdToken = useAuthStore((state) => state.signInWithGoogleIdToken);
@@ -22,7 +24,6 @@ export function PhoneScreen() {
   const [email, setEmail] = useState('');
   const [localNumber, setLocalNumber] = useState('');
   const [accountType, setAccountType] = useState<RegistrationAccountType>('rider');
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -30,7 +31,7 @@ export function PhoneScreen() {
   const emailValid = !email.trim() || (email.trim().length <= 160 && /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email.trim()));
   const valid = fullName.trim().length >= 2 && localNumber.length === 10 && (Boolean(googlePendingName) || emailValid);
   const continueRegistration = async () => {
-    if (!valid || loading) return;
+    if (!valid || loading || googleLoading) return;
     setLoading(true);
     setError(undefined);
     try {
@@ -67,126 +68,191 @@ export function PhoneScreen() {
     }
   };
 
+  const busy = loading || googleLoading;
+
   return (
-    <AuthScreenLayout
-      title="Create your account"
-      subtitle={googlePendingName ? 'Google sign-in is connected. Verify your phone number to finish setting up your account.' : 'Choose how you want to use Rakky Ride. You can add driver access later.'}
-      onBack={() => router.canGoBack() ? router.back() : router.replace('/welcome')}
-      scrollEnabled
-      footerPinned={false}
-      footer={(
-        <View className="gap-md">
-          <Button label="Continue" fullWidth loading={loading} disabled={!valid || googleLoading} onPress={continueRegistration} />
-
-          {!googlePendingName ? (
-            <>
-              <View className="flex-row items-center gap-md">
-                <View className="h-px flex-1 bg-border" />
-                <Text variant="caption" color="textMuted">or</Text>
-                <View className="h-px flex-1 bg-border" />
+    <SafeAreaView edges={['top', 'bottom']} style={[styles.screen, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.content}>
+            <View style={styles.header}>
+              <BackButton onPress={() => router.canGoBack() ? router.back() : router.replace('/welcome')} />
+              <View style={styles.brand}>
+                <BrandLogo size={32} />
+                <Text variant="bodyMedium">Rakky Ride</Text>
               </View>
-
-              <GoogleAuthButton
-                mode="signup"
-                loading={googleLoading}
-                disabled={loading}
-                onPress={() => void continueWithGoogle()}
-                onCredential={(token) => void continueWithGoogle(token)}
-                onError={(reason) => setError(reason.message)}
-              />
-            </>
-          ) : null}
-
-          <View className="flex-row justify-center gap-xs">
-            <Text variant="caption" color="textMuted">Already have an account?</Text>
-            <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.replace('/login')}>
-              <Text variant="caption" color="primary">Log in</Text>
-            </Pressable>
-          </View>
-        </View>
-      )}
-    >
-      <View className="gap-md">
-        <Input
-          label="Full name"
-          placeholder="Enter your full name"
-          value={fullName}
-          onChangeText={setFullName}
-          autoCapitalize="words"
-          autoComplete="name"
-          textContentType="name"
-          maxLength={80}
-        />
-
-        {!googlePendingName ? <Input
-          label="Email (optional)"
-          placeholder="For welcome emails and account updates"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          textContentType="emailAddress"
-          maxLength={160}
-          error={!emailValid ? 'Enter a valid email address, or leave it empty.' : undefined}
-        /> : <Text variant="caption" color="textMuted">Your welcome email will go to the email address from your Google account.</Text>}
-
-        <View className="gap-[6px]">
-          <Text variant="caption" color="textMuted" className="ml-[2px]">Phone number</Text>
-          <View className="flex-row gap-sm">
-            <View className="h-[52px] flex-row items-center gap-xs rounded-md border border-borderStrong bg-surfaceMuted px-md">
-              <Text>🇳🇬</Text><Text variant="bodyMedium">+234</Text>
             </View>
-            <View className="flex-1">
+
+            <View style={styles.intro}>
+              <View style={styles.introCopy}>
+                <Text variant="h2" accessibilityRole="header">{googlePendingName ? 'One last step.' : 'Join Rakky Ride.'}</Text>
+                <Text variant="body" color="textMuted">
+                  {googlePendingName ? 'Verify your phone to finish signing up.' : 'A few details. Then you’re ready.'}
+                </Text>
+              </View>
+              <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden>
+                <Image source={require('@/assets/images/register-v1/car.png')} contentFit="contain" style={styles.car} />
+              </View>
+            </View>
+
+            <View style={styles.form}>
               <Input
-                accessibilityLabel="Phone number"
+                label="Full name"
+                placeholder="Your full name"
+                value={fullName}
+                onChangeText={setFullName}
+                autoCapitalize="words"
+                autoComplete="name"
+                textContentType="name"
+                maxLength={80}
+                editable={!busy}
+                containerClassName="!rounded-2xl"
+              />
+
+              {!googlePendingName ? (
+                <Input
+                  label="Email (optional)"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  keyboardType="email-address"
+                  textContentType="emailAddress"
+                  maxLength={160}
+                  editable={!busy}
+                  containerClassName="!rounded-2xl"
+                  error={!emailValid ? 'Enter a valid email address, or leave it empty.' : undefined}
+                />
+              ) : (
+                <View style={[styles.googleConnected, { backgroundColor: colors.primarySoft }]}>
+                  <Text variant="caption" color="primary">✓ Google account connected</Text>
+                </View>
+              )}
+
+              <Input
+                label="Phone number"
                 placeholder="801 234 5678"
                 value={localNumber}
                 onChangeText={(value) => { setLocalNumber(normalizeLocalNumber(value)); setError(undefined); }}
                 keyboardType="phone-pad"
                 autoComplete="tel"
                 textContentType="telephoneNumber"
+                returnKeyType="done"
+                onSubmitEditing={() => void continueRegistration()}
                 maxLength={10}
-                error={error}
+                editable={!busy}
+                containerClassName="!rounded-2xl"
+                leftIcon={(
+                  <View style={[styles.countryCode, { borderRightColor: colors.border }]}>
+                    <Text>🇳🇬</Text>
+                    <Text variant="bodyMedium">+234</Text>
+                  </View>
+                )}
               />
+
+              <View style={styles.accountType}>
+                <Text variant="caption" color="textMuted">I want to join as a</Text>
+                <View accessibilityRole="radiogroup" accessibilityLabel="Account type" style={styles.accountOptions}>
+                  <AccountOption label="Rider" selected={accountType === 'rider'} disabled={busy} onPress={() => setAccountType('rider')} />
+                  <AccountOption label="Driver" selected={accountType === 'driver'} disabled={busy} onPress={() => setAccountType('driver')} />
+                </View>
+                <Text variant="caption" color="textMuted">
+                  {accountType === 'rider' ? 'You can add driving later.' : 'Driver setup follows phone verification.'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.actions}>
+              {error ? <Text variant="caption" color="danger" accessibilityRole="alert" accessibilityLiveRegion="polite">{error}</Text> : null}
+              <Button
+                label="Continue"
+                size="lg"
+                className="!rounded-full"
+                fullWidth
+                loading={loading}
+                disabled={!valid || googleLoading}
+                rightIcon={<Text variant="button" color="textInverse">→</Text>}
+                onPress={continueRegistration}
+              />
+              <Text variant="caption" color="textMuted" style={styles.centerText}>We’ll text you a verification code.</Text>
+
+              {!googlePendingName ? (
+                <>
+                  <View style={styles.divider}>
+                    <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                    <Text variant="caption" color="textMuted">or</Text>
+                    <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                  </View>
+                  <GoogleAuthButton
+                    mode="signup"
+                    loading={googleLoading}
+                    disabled={loading}
+                    onPress={() => void continueWithGoogle()}
+                    onCredential={(token) => void continueWithGoogle(token)}
+                    onError={(reason) => setError(reason.message)}
+                  />
+                </>
+              ) : null}
+            </View>
+
+            <View style={styles.login}>
+              <Text variant="caption" color="textMuted">Already a member?</Text>
+              <Pressable accessibilityRole="link" style={styles.loginLink} onPress={() => router.replace('/login')}>
+                <Text variant="button" color="primary">Log in</Text>
+              </Pressable>
             </View>
           </View>
-        </View>
-
-        <View className="gap-[6px]">
-          <Text variant="caption" color="textMuted" className="ml-[2px]">Account type</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Select account type"
-            accessibilityState={{ expanded: accountMenuOpen }}
-            onPress={() => setAccountMenuOpen((open) => !open)}
-            className="h-[52px] flex-row items-center rounded-md border border-borderStrong bg-surfaceMuted px-lg active:opacity-70"
-          >
-            <View className="h-8 w-8 items-center justify-center rounded-full bg-primarySoft"><Text color="primary">{accountType === 'rider' ? '◎' : '🚘'}</Text></View>
-            <Text variant="bodyMedium" className="ml-md flex-1">{accountType === 'rider' ? 'Rider' : 'Driver'}</Text>
-            <Text color="icon">⌄</Text>
-          </Pressable>
-          {accountMenuOpen ? (
-            <View className="overflow-hidden rounded-md border border-border bg-surface shadow-md">
-              <AccountOption label="Rider" detail="Book rides and manage trips" selected={accountType === 'rider'} onPress={() => { setAccountType('rider'); setAccountMenuOpen(false); }} />
-              <AccountOption label="Driver" detail="Apply to drive after phone verification" selected={accountType === 'driver'} onPress={() => { setAccountType('driver'); setAccountMenuOpen(false); }} />
-            </View>
-          ) : null}
-        </View>
-
-        <View className="rounded-xl bg-primarySoft p-md">
-          <Text variant="caption" color="primary">We&apos;ll text a six-digit code to verify your phone number.</Text>
-        </View>
-      </View>
-    </AuthScreenLayout>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
-function AccountOption({ label, detail, selected, onPress }: { label: string; detail: string; selected: boolean; onPress: () => void }) {
+function AccountOption({ label, selected, disabled, onPress }: { label: string; selected: boolean; disabled: boolean; onPress: () => void }) {
+  const { colors } = useTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={onPress} className={`flex-row items-center border-b border-border px-lg py-md active:opacity-70 ${selected ? 'bg-primarySoft' : 'bg-surface'}`}>
-      <View className={`h-5 w-5 items-center justify-center rounded-full border ${selected ? 'border-primary' : 'border-borderStrong'}`}>{selected ? <View className="h-3 w-3 rounded-full bg-primary" /> : null}</View>
-      <View className="ml-md flex-1"><Text variant="bodyMedium">{label}</Text><Text variant="caption" color="textMuted">{detail}</Text></View>
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: selected, disabled }}
+      aria-checked={selected}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.accountOption, {
+        backgroundColor: selected ? colors.primarySoft : colors.surfaceMuted,
+        borderColor: selected ? colors.primary : colors.borderStrong,
+        opacity: pressed || disabled ? 0.6 : 1,
+      }]}
+    >
+      <Text variant="bodyMedium" color={selected ? 'primary' : 'text'}>{label}</Text>
+      <View style={[styles.radio, { borderColor: selected ? colors.primary : colors.borderStrong, backgroundColor: selected ? colors.primary : colors.background }]}>
+        {selected ? <Text variant="caption" color="textInverse">✓</Text> : null}
+      </View>
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  scrollContent: { flexGrow: 1, alignItems: 'center' },
+  content: { width: '100%', maxWidth: 460, paddingHorizontal: 24, paddingBottom: 16 },
+  header: { height: 64, flexDirection: 'row', alignItems: 'center', gap: 16 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  intro: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 24 },
+  introCopy: { flex: 1, gap: 8 },
+  car: { width: 88, height: 88 },
+  form: { gap: 14 },
+  countryCode: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingRight: 12, marginRight: 4, borderRightWidth: 1 },
+  accountType: { gap: 8 },
+  accountOptions: { flexDirection: 'row', gap: 12 },
+  accountOption: { flex: 1, minHeight: 52, borderRadius: 16, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  googleConnected: { borderRadius: 12, padding: 12 },
+  actions: { gap: 14, marginTop: 22 },
+  centerText: { textAlign: 'center' },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  dividerLine: { height: 1, flex: 1 },
+  login: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 12 },
+  loginLink: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
+});

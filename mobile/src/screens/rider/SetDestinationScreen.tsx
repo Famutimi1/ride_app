@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '@/components/common';
 import { AddressSheet, AppMap, type AppMapHandle, type AppMapMarker } from '@/components/map';
+import { AddressIcon } from '@/components/map/AddressIcon';
 import type { AddressField } from '@/components/map/AddressSheet';
 import { getCurrentCoordinate, LocationUnavailableError, openDeviceLocationSettings, openLocationSettings, requestForegroundLocation, type AppPermissionState } from '@/services/locationService';
 import { reverseGeocode } from '@/services/mapsService';
@@ -158,24 +158,25 @@ export function SetDestinationScreen() {
         onRegionChangeComplete={setRegion} onUserRegionChangeComplete={adjustMapLocation} mapPadding={{ top: 48, right: 28, bottom: 48, left: 28 }} />
     </View>
     <SafeAreaView edges={['top']} className="absolute left-lg right-lg top-0 flex-row items-center justify-between pt-sm">
-      <Pressable onPress={goBack} className="h-12 w-12 items-center justify-center rounded-full bg-surface shadow-md"><Text variant="h3">←</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Back to previous page" onPress={goBack} className="h-12 w-12 items-center justify-center rounded-full bg-surface shadow-md"><AddressIcon name="back" size={20} /></Pressable>
     </SafeAreaView>
     {!previewingTrip ? <View pointerEvents="none" style={{ position: 'absolute', left: '50%', top: '20%', marginLeft: -20, marginTop: -57, width: 40, height: 57, alignItems: 'center' }}>
       <View style={{ width: 38, height: 38, borderRadius: 19, borderWidth: 3, borderColor: colors.mapMarkerOutline, backgroundColor: colors.mapPicker, alignItems: 'center', justifyContent: 'center', elevation: 6 }}>
-        <SymbolView name={{ ios: 'pencil', android: 'edit', web: 'edit' }} size={17} tintColor={colors.mapMarkerOutline} />
+        <AddressIcon name="edit" size={17} color="mapMarkerOutline" />
       </View>
       <View style={{ width: 3, height: 13, backgroundColor: colors.mapPicker }} />
       <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.mapPicker }} />
     </View> : null}
     {!previewingTrip && showMapHint ? <View pointerEvents="none" className="absolute right-lg top-[7%] items-end">
-      <View className="rounded-full bg-surface px-sm py-xs shadow-sm"><Text variant="caption" color="textMuted" className="!text-[12px]">Drag map to adjust {activeMapField === 'pickup' ? 'pickup' : 'destination'}</Text></View>
+      <View className="rounded-full bg-surface px-sm py-xs shadow-sm"><Text variant="caption" color="textMuted">Drag map to adjust {activeMapField === 'pickup' ? 'pickup' : 'destination'}</Text></View>
     </View> : null}
     <Pressable onPress={() => current ? mapRef.current?.animateToRegion({ ...current, latitudeDelta: 0.018, longitudeDelta: 0.014 }) : void enableLocation()}
       accessibilityRole="button" accessibilityLabel="Center map on my location"
-      className="absolute right-lg top-[32%] h-11 w-11 items-center justify-center rounded-xl bg-surface shadow-md"><SymbolView name={{ ios: 'location.north.fill', android: 'navigation', web: 'navigation' }} size={21} tintColor={colors.mapRider} /></Pressable>
+      style={{ top: '40%', transform: [{ translateY: -72 }] }}
+      className="absolute right-lg h-12 w-12 items-center justify-center rounded-full bg-surface shadow-md"><AddressIcon name="locate" size={18} /></Pressable>
     {(permission === 'denied' || permission === 'restricted') ? <View className="absolute left-lg right-lg top-[18%] rounded-lg bg-surface p-md shadow-md"><Text variant="caption">Location is off. Search your pickup manually or enable it for faster pickup.</Text><Pressable onPress={() => void enableLocation()}><Text variant="caption" color="primary" className="mt-xs">Enable location</Text></Pressable></View> : null}
     {permission === 'blocked' ? <View className="absolute left-lg right-lg top-[18%] rounded-lg bg-surface p-md shadow-md"><Text variant="caption">Location access is blocked. You can still search manually.</Text><Pressable onPress={openLocationSettings}><Text variant="caption" color="primary" className="mt-xs">Open settings</Text></Pressable></View> : null}
     {locationError ? <View className="absolute left-lg right-lg top-[18%] rounded-lg bg-surface p-md shadow-md"><Text variant="caption">{locationError} You can also tap From and search for your pickup address.</Text><View className="mt-sm flex-row gap-md"><Pressable accessibilityRole="button" onPress={() => void enableLocation()}><Text variant="caption" color="primary">Try again</Text></Pressable>{locationServicesDisabled ? <Pressable accessibilityRole="button" onPress={() => void openDeviceLocationSettings().catch(() => showLocationError('Open device settings and turn on location, or enter your pickup address manually.'))}><Text variant="caption" color="primary">Location settings</Text></Pressable> : null}</View></View> : null}
-    <AddressSheet onClose={goBack} onFindRide={() => { setPreviewingTrip(true); if (service === 'courier') router.push('/courier-review'); else router.push({ pathname: '/ride-selection', params: scheduledAt ? { scheduledAt } : {} }); }} onPickupChosen={pickupChosen} onActiveFieldChange={changeActiveMapField} mapSelection={mapSelection} mapSelectionPending={mapSelectionPending} onMapSelectionApplied={(revision) => { if (revision === mapSelectionRevision.current) setMapSelectionPending(false); }} submitLabel={service === 'courier' ? 'Review delivery' : scheduledAt ? 'Choose a ride' : 'Find Now'} title={service === 'courier' ? 'Plan your delivery' : undefined} pickupLabel={service === 'courier' ? 'Collect from' : undefined} dropoffLabel={service === 'courier' ? 'Deliver to' : undefined} />
+    <AddressSheet onFindRide={() => { setPreviewingTrip(true); if (service === 'courier') router.push('/courier-review'); else router.push({ pathname: '/ride-selection', params: scheduledAt ? { scheduledAt } : {} }); }} onPickupChosen={pickupChosen} onActiveFieldChange={changeActiveMapField} mapSelection={mapSelection} mapSelectionPending={mapSelectionPending} onMapSelectionApplied={(revision) => { if (revision === mapSelectionRevision.current) setMapSelectionPending(false); }} submitLabel={service === 'courier' ? 'Review delivery' : scheduledAt ? 'Choose a ride' : 'Find Now'} title={service === 'courier' ? 'Plan your delivery' : undefined} pickupLabel={service === 'courier' ? 'Collect from' : undefined} dropoffLabel={service === 'courier' ? 'Deliver to' : undefined} />
   </View>;
 }

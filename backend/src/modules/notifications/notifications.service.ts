@@ -1,4 +1,5 @@
 import type { PoolClient } from 'pg';
+import { notificationAudience, notificationAudienceSql, notificationRole, type NotificationRole } from './notificationAudience';
 import { db, inTransaction } from '../../shared/config/db';
 import { ApiError } from '../../shared/errors';
 import { emitUserNotification } from '../../websocket/notifications';
@@ -21,7 +22,7 @@ sound_enabled AS "soundEnabled",vibration_enabled AS "vibrationEnabled"`;
 function present(row: NotificationRow): NotificationRecord {
   const { sendPush: _sendPush, ...data } = row.data ?? {};
   return { id: row.id, userId: row.user_id, type: row.type, category: row.category, priority: row.priority,
-    eventKey: row.event_key, title: row.title, body: row.body, data, deepLink: row.deep_link,
+    eventKey: row.event_key, title: row.title, body: row.body, data: { ...data, audience: notificationAudience({ ...row, data, eventKey: row.event_key, deepLink: row.deep_link }) }, deepLink: row.deep_link,
     expiresAt: row.expires_at?.toISOString() ?? null, readAt: row.read_at?.toISOString() ?? null,
     openedAt:row.opened_at?.toISOString()??null,deliveredAt:row.delivered_at?.toISOString()??null,
     deliveryStatus: row.delivery_status, createdAt: row.created_at.toISOString() };
@@ -47,7 +48,7 @@ export async function createNotificationRecord(client: NotificationDbClient, inp
      SELECT existing.*,false AS is_new FROM notifications existing
       WHERE existing.user_id=$1 AND existing.event_key=$5 AND NOT EXISTS(SELECT 1 FROM inserted)
      LIMIT 1`,
-    [input.userId,input.type,input.category,input.priority??'normal',input.eventKey,input.title.trim().slice(0,120),input.body.trim().slice(0,240),cleanData(input.data,sendPush),input.deepLink??null,input.expiresAt??null],
+    [input.userId,input.type,input.category,input.priority??'normal',input.eventKey,input.title.trim().slice(0,120),input.body.trim().slice(0,240),cleanData({ ...input.data, audience: notificationAudience(input) },sendPush),input.deepLink??null,input.expiresAt??null],
   );
   if (!rows[0]) throw new Error('notification_creation_failed');
   if(rows[0].is_new)await queueActivityEmail(client,input);
@@ -134,13 +135,29 @@ export async function revokeDeviceToken(userId:string,token:string){await db.que
 export async function revokeDeviceIfPresent(client:NotificationDbClient,userId:string,id:unknown){if(typeof id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))return;await client.query(`UPDATE push_devices SET enabled=false,revoked_at=COALESCE(revoked_at,now()),revocation_reason=COALESCE(revocation_reason,'session_logout'),updated_at=now() WHERE id=$1 AND user_id=$2`,[id,userId]);}
 export async function revokeAllDevices(client:NotificationDbClient,userId:string,reason='account_deactivated'){await client.query(`UPDATE push_devices SET enabled=false,revoked_at=COALESCE(revoked_at,now()),revocation_reason=COALESCE(revocation_reason,$2),updated_at=now() WHERE user_id=$1 AND enabled=true`,[userId,reason]);}
 
-export async function listNotifications(userId:string,cursor?:string,limitValue?:number){const limit=Math.min(50,Math.max(1,Number(limitValue)||20));let before:Date|null=null,beforeId:string|null=null;if(cursor){const separator=cursor.lastIndexOf('|'),dateValue=separator<0?cursor:cursor.slice(0,separator);before=new Date(dateValue);beforeId=separator<0?null:cursor.slice(separator+1);if(!Number.isFinite(before.getTime())||(beforeId!==null&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(beforeId)))throw new ApiError(400,'invalid_notification_cursor');}
-  const {rows}=await db.query<NotificationRow>(`SELECT * FROM notifications WHERE user_id=$1 AND ($2::timestamptz IS NULL OR ($3::uuid IS NULL AND created_at<$2) OR ($3::uuid IS NOT NULL AND (created_at,id)<($2,$3::uuid))) ORDER BY created_at DESC,id DESC LIMIT $4`,[userId,before,beforeId,limit+1]);
+export async function listNotifications(userId:string,cursor?:string,limitValue?:number,role?:NotificationRole){notificationRole(role);const limit=Math.min(50,Math.max(1,Number(limitValue)||20));let before:Date|null=null,beforeId:string|null=null;if(cursor){const separator=cursor.lastIndexOf('|'),dateValue=separator<0?cursor:cursor.slice(0,separator);before=new Date(dateValue);beforeId=separator<0?null:cursor.slice(separator+1);if(!Number.isFinite(before.getTime())||(beforeId!==null&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(beforeId)))throw new ApiError(400,'invalid_notification_cursor');}
+  const {rows}=await db.query<NotificationRow>(`SELECT * FROM notifications WHERE user_id=$1 AND ($5::text IS NULL OR (${notificationAudienceSql}) IN ($5,'shared')) AND ($2::timestamptz IS NULL OR ($3::uuid IS NULL AND created_at<$2) OR ($3::uuid IS NOT NULL AND (created_at,id)<($2,$3::uuid))) ORDER BY created_at DESC,id DESC LIMIT $4`,[userId,before,beforeId,limit+1,role??null]);
   const hasMore=rows.length>limit,items=rows.slice(0,limit),last=items.at(-1);return{notifications:items.map(present),nextCursor:hasMore&&last?`${last.created_at.toISOString()}|${last.id}`:null};}
 
-export async function unreadCount(userId:string){const row=(await db.query<{count:string}>('SELECT COUNT(*)::text count FROM notifications WHERE user_id=$1 AND read_at IS NULL',[userId])).rows[0];return{count:Number(row.count)};}
-export async function markRead(userId:string,id:string){const {rows}=await db.query<NotificationRow>('UPDATE notifications SET read_at=COALESCE(read_at,now()),updated_at=now() WHERE id=$1 AND user_id=$2 RETURNING *',[id,userId]);if(!rows[0])throw new ApiError(404,'notification_not_found');return present(rows[0]);}
-export async function markOpened(userId:string,id:string){const {rows}=await db.query<NotificationRow>('UPDATE notifications SET opened_at=COALESCE(opened_at,now()),read_at=COALESCE(read_at,now()),updated_at=now() WHERE id=$1 AND user_id=$2 RETURNING *',[id,userId]);if(!rows[0])throw new ApiError(404,'notification_not_found');return present(rows[0]);}
-export async function markAllRead(userId:string){const result=await db.query('UPDATE notifications SET read_at=COALESCE(read_at,now()),updated_at=now() WHERE user_id=$1 AND read_at IS NULL',[userId]);return{updated:result.rowCount??0};}
+export async function unreadCount(userId:string,role?:NotificationRole){
+  notificationRole(role);
+  const row=(await db.query<{count:string}>(`SELECT COUNT(*)::text count FROM notifications WHERE user_id=$1 AND read_at IS NULL AND ($2::text IS NULL OR (${notificationAudienceSql}) IN ($2,'shared'))`,[userId,role??null])).rows[0];
+  return{count:Number(row.count)};
+}
+export async function markRead(userId:string,id:string,role?:NotificationRole){
+  notificationRole(role);
+  const {rows}=await db.query<NotificationRow>(`UPDATE notifications SET read_at=COALESCE(read_at,now()),updated_at=now() WHERE id=$1 AND user_id=$2 AND ($3::text IS NULL OR (${notificationAudienceSql}) IN ($3,'shared')) RETURNING *`,[id,userId,role??null]);
+  if(!rows[0])throw new ApiError(404,'notification_not_found');return present(rows[0]);
+}
+export async function markOpened(userId:string,id:string,role?:NotificationRole){
+  notificationRole(role);
+  const {rows}=await db.query<NotificationRow>(`UPDATE notifications SET opened_at=COALESCE(opened_at,now()),read_at=COALESCE(read_at,now()),updated_at=now() WHERE id=$1 AND user_id=$2 AND ($3::text IS NULL OR (${notificationAudienceSql}) IN ($3,'shared')) RETURNING *`,[id,userId,role??null]);
+  if(!rows[0])throw new ApiError(404,'notification_not_found');return present(rows[0]);
+}
+export async function markAllRead(userId:string,role?:NotificationRole){
+  notificationRole(role);
+  const result=await db.query(`UPDATE notifications SET read_at=COALESCE(read_at,now()),updated_at=now() WHERE user_id=$1 AND read_at IS NULL AND ($2::text IS NULL OR (${notificationAudienceSql}) IN ($2,'shared'))`,[userId,role??null]);
+  return{updated:result.rowCount??0};
+}
 
 export async function createTripNotifications(client: PoolClient, inputs: CreateNotificationInput[]) {return Promise.all(inputs.map(input=>createNotificationRecord(client,input)));}

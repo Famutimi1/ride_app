@@ -5,7 +5,7 @@ export interface WalletEntry {id:string;transactionId:string;direction:'debit'|'
 export interface PayoutAccount {id:string;bank_code:string;bank_name:string;account_last4:string;account_name:string;created_at:string}
 export interface Withdrawal {id:string;amount_kobo:number;fee_kobo:number;status:string;requested_at:string;completed_at:string|null;bank_name?:string;account_last4?:string}
 export interface EarningsSummary {range:string;trips:number;grossKobo:number;commissionKobo:number;netKobo:number;cashTrips:number;walletTrips:number}
-export const formatNaira=(kobo:number)=>`₦${Math.trunc(kobo/100).toLocaleString('en-NG')}${Math.abs(kobo%100)===0?'':`.${String(Math.abs(kobo%100)).padStart(2,'0')}`}`;
+export const formatNaira=(kobo:number)=>`${kobo<0?'−':''}₦${Math.trunc(Math.abs(kobo)/100).toLocaleString('en-NG')}${Math.abs(kobo%100)===0?'':`.${String(Math.abs(kobo%100)).padStart(2,'0')}`}`;
 export const getWallet=()=>apiClient.get<WalletBalance>('/wallet').then((response)=>response.data);
 export const getWalletTransactions=(account:'wallet'|'earnings',cursor?:string)=>apiClient.get<{items:WalletEntry[];nextCursor:string|null}>('/wallet/transactions',{params:{account,cursor}}).then((response)=>response.data);
 export const createTopup=(amountKobo:number,target:'wallet'|'earnings')=>apiClient.post<{reference:string;authorizationUrl:string}>('/payments/topups',{amountKobo,target}).then((response)=>response.data);

@@ -1,111 +1,81 @@
-import { useEffect, useState } from 'react';
-import { AppState, Modal, Pressable, ScrollView, Switch, useWindowDimensions, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AppState, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button } from './Button';
 import { Text } from './Text';
+import { RideIcon } from './RideIcon';
+import { DriverServicesView } from './DriverServiceManagement';
 import { useAuthStore } from '@/store/authStore';
 import { apiErrorMessage } from '@/lib/apiClient';
-import { applyForDriverServices, getDriverServiceSettings, type DriverService, type DriverServiceSettings } from '@/services/driverService';
+import type { DriverService, DriverServiceSettings } from '@/services/driverService';
 import { useTripStore } from '@/store/tripStore';
 import { getSocket, SOCKET_EVENTS } from '@/services/socket';
-import { nativeWindTheme, useTheme } from '@/constants/theme';
+import { useTheme } from '@/constants/theme';
+import { driverServiceAvailable, driverServiceEnabled } from '@/utils/driverServices';
+
+export { DriverServicesView } from './DriverServiceManagement';
 
 export function DriverServiceSettingsBootstrap() {
   const userId = useAuthStore(state => state.session?.user.id);
+  const role = useAuthStore(state => state.session?.user.role);
   const refresh = useAuthStore(state => state.refreshDriverApplication);
   useEffect(() => {
     if (!userId) return;
-    const reload = () => { void refresh().then(()=>{const current=useAuthStore.getState().driverServices,offer=useTripStore.getState().offer;if(current&&offer&&!current.services[offer.serviceType??'ride'].enabled)useTripStore.getState().setOffer(null);}).catch(() => {}); };
+    const reload = () => { void refresh().then(()=>{const current=useAuthStore.getState().driverServices,offer=useTripStore.getState().offer;if(current&&offer&&!driverServiceEnabled(current,offer.serviceType??'ride'))useTripStore.getState().setOffer(null);}).catch(() => {}); };
     const socket = getSocket();
     reload();
     socket.on('connect', reload);
     socket.on(SOCKET_EVENTS.DRIVER_SERVICE_SETTINGS, reload);
     const listener = AppState.addEventListener('change', state => { if (state === 'active') reload(); });
     return () => { socket.off('connect', reload); socket.off(SOCKET_EVENTS.DRIVER_SERVICE_SETTINGS, reload); listener.remove(); };
-  }, [userId, refresh]);
+  }, [userId, role, refresh]);
   return null;
 }
 
-export function DriverServicePreferences() {
+export function DriverServicePreferences({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
-  const theme = useTheme();
-  const wide = useWindowDimensions().width >= 700;
   const settings = useAuthStore(state => state.driverServices);
   const refresh = useAuthStore(state => state.refreshDriverServices);
   const save = useAuthStore(state => state.saveDriverServicePreferences);
   const withdrawConsent = useAuthStore(state => state.withdrawDriverServiceConsent);
   const [withdrawing, setWithdrawing] = useState<DriverService | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inFlight = useRef(false);
   useEffect(() => { void refresh().catch(() => setError('Could not load your services.')); }, [refresh]);
   const toggle = async (service: DriverService) => {
-    if (!settings || saving || refreshing) return;
-    setSaving(true); setError(null);
-    try { await save(service === 'ride' ? !settings.services.ride.enabled : settings.services.ride.enabled, service === 'courier' ? !settings.services.courier.enabled : settings.services.courier.enabled); }
+    const current = useAuthStore.getState().driverServices;
+    if (!current || inFlight.current || !driverServiceAvailable(current, service)) return;
+    inFlight.current = true;
+    setSaving(true); setError(null); setNotice('');
+    try { await save(service === 'ride' ? !driverServiceEnabled(current, 'ride') : driverServiceEnabled(current, 'ride'), service === 'courier' ? !driverServiceEnabled(current, 'courier') : driverServiceEnabled(current, 'courier')); }
     catch (reason) { setError(apiErrorMessage(reason)); }
-    finally { setSaving(false); }
+    finally { inFlight.current = false; setSaving(false); }
   };
-  const ride = settings?.services.ride.enabled;
-  const courier = settings?.services.courier.enabled;
-  const mode = ride && courier ? 'Rides and deliveries' : ride ? 'Passenger rides only' : courier ? 'Courier deliveries only' : 'Not accepting requests';
   const reload = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setRefreshing(true);
     try { await refresh(); setError(null); }
     catch { setError('Could not load your services.'); }
-    finally { setRefreshing(false); }
+    finally { inFlight.current = false; setRefreshing(false); }
   };
   const withdraw = async () => {
-    if (!withdrawing || saving) return;
+    if (!withdrawing || inFlight.current) return;
+    inFlight.current = true;
     setSaving(true); setError(null);
     try {
       await withdrawConsent(withdrawing);
       setNotice(`${withdrawing === 'ride' ? 'Passenger' : 'Courier'} consent withdrawn. New requests are off.`);
       setWithdrawing(null);
     } catch (reason) { setError(apiErrorMessage(reason)); }
-    finally { setSaving(false); }
+    finally { inFlight.current = false; setSaving(false); }
   };
-  return <View className="mt-md rounded-xl border border-border p-md">
-    <Text variant="bodyMedium">Your services</Text><Text variant="caption" color="textMuted" className="mt-xs">{settings ? mode : 'Loading services…'}</Text>
-    <View style={{ flexDirection: wide ? 'row' : 'column', gap: 12 }} className="mt-md">
-    {settings ? (['ride', 'courier'] as const).map(service => {
-      const state = settings.services[service];
-      const available = state.status === 'approved' && state.consentAccepted;
-      return <View key={service} style={{ flex: wide ? 1 : undefined, minWidth: 0 }} className="rounded-xl bg-surfaceMuted p-md">
-        <View className="flex-row items-center justify-between gap-md">
-          <View className="flex-1"><Text variant="bodyMedium">{service === 'ride' ? 'Passenger rides' : 'Courier deliveries'}</Text>
-            <Text variant="caption" color={state.status === 'suspended' || state.status === 'rejected' ? 'danger' : state.status === 'approved' ? 'success' : 'textMuted'}>{state.status === 'none' ? 'Not requested' : state.status === 'pending' ? 'Under review' : state.status === 'approved' ? 'Approved' : state.status === 'suspended' ? 'Suspended' : 'Rejected'} · Requests {state.enabled ? 'on' : 'off'}</Text>
-          </View>
-          <View className="min-h-[48px] justify-center"><Switch accessibilityLabel={service === 'ride' ? 'Receive passenger ride requests' : 'Receive courier requests'} value={state.enabled} disabled={saving || refreshing || !available} onValueChange={() => void toggle(service)} trackColor={{ false: theme.colors.borderStrong, true: theme.colors.primary }} thumbColor={theme.colors.surface} /></View>
-        </View>
-        <Text variant="caption" color="textMuted" className="mt-sm">{state.status === 'suspended' ? 'New requests are blocked until staff restore this service. Restored requests stay off until you enable them.' : state.status === 'approved' && !state.consentAccepted ? 'Service consent required' : state.status === 'none' ? 'Apply to provide this service' : state.status === 'approved' ? 'Choose whether to receive new requests.' : state.status === 'pending' ? 'We will update this status when your review is complete.' : 'Review the decision and submit a new application.'}</Text>
-        {state.review?.reason ? <Text variant="caption" color="textMuted" className="mt-sm">Review reason: {state.review.reason}</Text> : null}
-        {state.consentAccepted ? <Button label={`Withdraw ${service === 'ride' ? 'passenger' : 'courier'} consent`} variant="ghost" disabled={saving || refreshing} onPress={() => { setError(null); setWithdrawing(service); }} /> : null}
-      </View>;
-    }) : null}
-    </View>
-    <Text variant="caption" color="textMuted" className="mt-md">These choices affect new requests. Finish any job you have already accepted.</Text>
-    {notice ? <Text variant="caption" accessibilityLiveRegion="polite" color="success" className="mt-sm">{notice}</Text> : null}
-    {error ? <><Text variant="caption" color="danger" className="mt-sm">{error}</Text><Button label="Reload services" variant="ghost" onPress={() => void refresh().then(() => setError(null)).catch(() => setError('Could not load your services.'))} /></> : null}
-    <Button label="Refresh service status" variant="ghost" loading={refreshing} disabled={saving} onPress={() => void reload()} />
-    <Button label="Manage service applications" variant="ghost" disabled={saving} onPress={() => router.push('/driver-onboarding')} />
-    <Modal visible={withdrawing !== null} transparent animationType="fade" onRequestClose={() => { if (!saving) setWithdrawing(null); }}>
-      <View style={[nativeWindTheme[theme.scheme], { backgroundColor: theme.colors.overlay }]} className="flex-1 items-center justify-center p-lg">
-        <View accessibilityViewIsModal style={{ maxWidth: 560, maxHeight: '85%' }} className="w-full rounded-2xl bg-surface p-xl">
-          <ScrollView keyboardShouldPersistTaps="handled">
-            <Text variant="h3">Withdraw {withdrawing === 'ride' ? 'passenger' : 'courier'} consent?</Text>
-            <Text className="mt-md">This stops new requests for this service. To receive them again, explicitly select the service and accept its consent in Manage service applications.</Text>
-            <Text color="textMuted" className="mt-sm">For a temporary break, cancel and turn requests off instead. An accepted job still needs to be completed.</Text>
-            {error ? <Text color="danger" className="mt-md">{error}</Text> : null}
-            <Button label="Withdraw consent" variant="destructive" loading={saving} className="mt-lg" onPress={() => void withdraw()} />
-            <Button label="Keep consent" variant="outline" disabled={saving} className="mt-sm" onPress={() => setWithdrawing(null)} />
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  </View>;
+  return <DriverServicesView compact={compact} settings={settings} saving={saving} refreshing={refreshing} error={error} notice={notice} expanded={expanded} withdrawing={withdrawing}
+    onManage={() => { if (!inFlight.current) setExpanded(value => !value); }} onToggle={service => void toggle(service)} onReload={() => void reload()} onApplications={service => { if (inFlight.current) return; setExpanded(false); router.push({ pathname: '/driver-onboarding', params: service ? { service } : {} }); }}
+    onWithdrawStart={service => { if (inFlight.current || !useAuthStore.getState().driverServices?.services[service].consentAccepted) return; setError(null); setWithdrawing(service); }} onWithdrawCancel={() => { if (!inFlight.current) setWithdrawing(null); }} onWithdrawConfirm={() => void withdraw()} />;
 }
 
 interface ChoiceProps {
@@ -114,67 +84,96 @@ interface ChoiceProps {
   onChange: (category: 'car' | 'motorcycle', services: DriverService[]) => void;
   allowed?: DriverService[];
   lockedCategory?: boolean;
+  disabled?: boolean;
+  layout?: 'default' | 'onboarding';
 }
 
-export function DriverServiceChoices({ category, services, onChange, allowed = ['ride', 'courier'], lockedCategory = false }: ChoiceProps) {
+export function DriverServiceChoices({ category, services, onChange, allowed = ['ride', 'courier'], lockedCategory = false, disabled = false, layout = 'default' }: ChoiceProps) {
+  const { colors } = useTheme();
+  const onboarding = layout === 'onboarding';
   const choices: { title: string; detail: string; services: DriverService[] }[] = [
     { title: 'Passenger rides', detail: 'Take passengers in your approved car.', services: ['ride'] },
-    { title: 'Courier deliveries', detail: 'Deliver sealed packages using your car or motorcycle.', services: ['courier'] },
-    { title: 'Both services', detail: 'Apply for both. Choose which requests you receive after approval.', services: ['ride', 'courier'] },
+    { title: 'Courier deliveries', detail: 'Deliver packages by car or motorcycle.', services: ['courier'] },
+    { title: 'Both services', detail: 'Passenger rides and courier deliveries.', services: ['ride', 'courier'] },
   ];
-  return <View className="gap-md">
-    <Text variant="bodyMedium">Which vehicle will you use?</Text>
-    <View className="flex-row gap-md">{(['car', 'motorcycle'] as const).map(value => <View key={value} className="flex-1"><Button label={value === 'car' ? 'Car' : 'Motorcycle'} variant={category === value ? 'primary' : 'outline'} disabled={lockedCategory && category !== value} onPress={() => onChange(value, value === 'motorcycle' ? ['courier'] : [])} /></View>)}</View>
-    <Text variant="bodyMedium" className="mt-md">What work would you like to do?</Text>
-    {choices.filter(choice => choice.services.every(service => allowed.includes(service)) && (category !== 'motorcycle' || !choice.services.includes('ride'))).map(choice => {
-      const selected = choice.services.length === services.length && choice.services.every(service => services.includes(service));
-      return <Pressable key={choice.title} accessibilityRole="radio" accessibilityState={{ checked: selected }} disabled={!category} onPress={() => category && onChange(category, choice.services)} className={`rounded-xl border p-lg ${selected ? 'border-primary bg-primarySoft' : 'border-border bg-surface'} ${!category ? 'opacity-60' : ''}`}><Text variant="bodyMedium" color={selected ? 'primary' : 'text'}>{selected ? '✓ ' : ''}{choice.title}</Text><Text variant="caption" color="textMuted" className="mt-xs">{choice.detail}</Text></Pressable>;
-    })}
-    {category === 'motorcycle' ? <Text variant="caption" color="textMuted">Motorcycles provide courier deliveries only.</Text> : null}
-  </View>;
+  return (
+    <View style={choiceStyles.section}>
+      <Text variant={onboarding ? 'button' : 'bodyMedium'}>{lockedCategory ? 'Your registered vehicle' : onboarding ? 'Your vehicle type' : 'Choose your vehicle first'}</Text>
+      <View accessibilityRole="radiogroup" accessibilityLabel="Vehicle type" style={choiceStyles.vehicleOptions}>
+        {(['car', 'motorcycle'] as const).filter(value => !lockedCategory || value === category).map(value => {
+          const selected = category === value;
+          const unavailable = disabled || (lockedCategory && !selected);
+          return (
+            <Pressable key={value} accessibilityRole="radio" accessibilityLabel={value === 'car' ? 'Car' : 'Motorcycle'} accessibilityState={{ checked: selected, disabled: unavailable }} aria-checked={selected} disabled={unavailable}
+              onPress={() => onChange(value, category === value ? services : value === 'motorcycle' ? ['courier'] : [])}
+              style={[choiceStyles.vehicleCard, onboarding && choiceStyles.onboardingVehicle, { borderColor: selected ? colors.primary : onboarding ? colors.border : colors.borderStrong, backgroundColor: selected ? colors.primarySoft : colors.surface, opacity: unavailable ? 0.5 : 1 }]}
+            >
+              <View style={choiceStyles.vehicleHeading}>
+                {onboarding ? <><RideIcon name={value === 'car' ? 'vehicle' : 'motorcycle'} size={24} color={selected ? 'primary' : 'icon'} /><ChoiceIndicator selected={selected} /></> : <Text variant="bodyMedium" color={selected ? 'primary' : 'text'}>{selected ? '✓ ' : ''}{value === 'car' ? 'Car' : 'Motorcycle'}</Text>}
+              </View>
+              {onboarding ? <Text variant="button">{value === 'car' ? 'Car' : 'Motorcycle'}</Text> : <Text variant="caption" color="textMuted">{value === 'car' ? 'Rides & deliveries' : 'Deliveries only'}</Text>}
+            </Pressable>
+          );
+        })}
+      </View>
+      {(!onboarding || lockedCategory) ? <Text variant="caption" color="textMuted">One vehicle per account. {lockedCategory ? 'Contact support to request a vehicle replacement.' : 'The same vehicle and documents cover all your services.'}</Text> : null}
+      {category ? <><Text variant={onboarding ? 'button' : 'bodyMedium'} style={choiceStyles.workLabel}>What would you like to do?</Text>
+      <View accessibilityRole="radiogroup" accessibilityLabel="Driver services" style={choiceStyles.serviceOptions}>
+        {choices.filter(choice => choice.services.every(service => allowed.includes(service)) && (category !== 'motorcycle' || !choice.services.includes('ride'))).map(choice => {
+          const selected = choice.services.length === services.length && choice.services.every(service => services.includes(service));
+          return (
+            <Pressable key={choice.title} accessibilityRole="radio" accessibilityLabel={choice.title} accessibilityState={{ checked: selected, disabled: disabled || !category }} aria-checked={selected} disabled={disabled || !category} onPress={() => category && onChange(category, choice.services)}
+              style={[choiceStyles.serviceCard, onboarding && choiceStyles.onboardingService, { borderColor: selected ? colors.primary : colors.border, backgroundColor: selected ? colors.primarySoft : colors.surface, opacity: disabled || !category ? 0.6 : 1 }]}
+            >
+              {onboarding ? <View style={choiceStyles.serviceIcon}>{choice.services.length === 2 ? <View style={choiceStyles.bothIcons}><RideIcon name="passenger" size={18} color={selected ? 'primary' : 'icon'} /><RideIcon name="package" size={18} color={selected ? 'primary' : 'icon'} /></View> : <RideIcon name={choice.services[0] === 'ride' ? 'passenger' : 'package'} size={24} color={selected ? 'primary' : 'icon'} />}</View> : null}
+              <View style={choiceStyles.serviceCopy}>
+                <Text variant={onboarding ? 'button' : 'bodyMedium'} color={!onboarding && selected ? 'primary' : 'text'}>{choice.title}</Text>
+                <Text variant="caption" color="textMuted">{choice.detail}</Text>
+              </View>
+              <ChoiceIndicator selected={selected} />
+            </Pressable>
+          );
+        })}
+      </View>
+      {(!onboarding || category === 'motorcycle') ? <Text variant="caption" color="textMuted">{category === 'motorcycle' ? 'Motorcycles are eligible for courier deliveries only.' : 'After approval, choose which requests you receive.'}</Text> : null}</> : null}
+    </View>
+  );
 }
 
-export function DriverServiceConsent({ settings, services, accepted, onChange }: { settings: DriverServiceSettings; services: DriverService[]; accepted: boolean; onChange: (value: boolean) => void }) {
-  return <View className="gap-sm">
-    {services.map(service => <Text key={service} variant="caption" color="textMuted">{settings.consent.descriptions[service]}</Text>)}
-    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: accepted }} onPress={() => onChange(!accepted)} className="flex-row items-center rounded-xl bg-surfaceMuted p-md"><Text color={accepted ? 'primary' : 'text'}>{accepted ? '☑' : '☐'}</Text><Text variant="caption" className="ml-sm flex-1">I choose these services and understand the request preferences above.</Text></Pressable>
-  </View>;
+function ChoiceIndicator({ selected }: { selected: boolean }) {
+  const { colors } = useTheme();
+  return <View style={[choiceStyles.indicator, { borderColor: selected ? colors.primary : colors.borderStrong, backgroundColor: selected ? colors.primary : colors.background }]}>{selected ? <Text variant="caption" color="textInverse">✓</Text> : null}</View>;
 }
 
-/** Approved partners add services here without repeating registration or material uploads. */
-export function DriverServiceEnrollmentScreen() {
-  const router = useRouter();
-  const refresh = useAuthStore(state => state.refreshDriverServices);
-  const [settings, setSettings] = useState<DriverServiceSettings | null>(null);
-  const [category, setCategory] = useState<'car' | 'motorcycle' | null>(null);
-  const [services, setServices] = useState<DriverService[]>([]);
-  const [accepted, setAccepted] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
-  const load = () => getDriverServiceSettings().then(value => { setSettings(value); setCategory(value.vehicleCategory); });
-  useEffect(() => { void load().catch(() => setError('Could not load service applications.')); }, []);
-  const allowed = (['ride', 'courier'] as const).filter(service => settings && (settings.services[service].status !== 'pending'||!settings.services[service].consentAccepted) && settings.services[service].status !== 'suspended' && (settings.services[service].status !== 'approved' || !settings.services[service].consentAccepted));
-  const hasApproval=settings&&(['ride','courier'] as const).some(service=>settings.services[service].status==='approved');
-  const submit = async () => {
-    if (!settings || !category || !services.length || !accepted) return;
-    setBusy(true); setError(null);
-    try {
-      await applyForDriverServices({ services, vehicleCategory: category, consentVersion: settings.consent.version, consentAccepted: true, expectedVersion: settings.version });
-      await refresh(); await load(); setSubmitted(true);
-    } catch (reason) { setError(apiErrorMessage(reason)); await load().catch(() => {}); }
-    finally { setBusy(false); }
-  };
-  return <SafeAreaView className="flex-1 bg-background"><ScrollView contentContainerClassName="p-xl gap-lg">
-    <Text variant="h2">Your service applications</Text>
-    <Text color="textMuted">{hasApproval?'Your existing approved service stays available while we review another service.':'Complete your service selection so we can review the work you want to provide.'}</Text>
-    {settings ? (['ride', 'courier'] as const).map(service => <View key={service} className="rounded-xl bg-surfaceMuted p-md"><Text variant="bodyMedium">{service === 'ride' ? 'Passenger rides' : 'Courier deliveries'} · {settings.services[service].status}</Text>{settings.services[service].review?.reason ? <Text variant="caption" color="textMuted">{settings.services[service].review?.reason}</Text> : null}</View>) : null}
-    {submitted ? <Text color="success">Your selection was saved. New services require approval before you can enable requests.</Text> : settings && allowed.length ? <>
-      <DriverServiceChoices category={category} services={services} allowed={allowed} lockedCategory={settings.vehicleCategory !== null} onChange={(vehicle, selected) => { setCategory(vehicle); setServices(selected); setAccepted(false); }} />
-      {services.length ? <DriverServiceConsent settings={settings} services={services} accepted={accepted} onChange={setAccepted} /> : null}
-      <Button label="Submit service selection" loading={busy} disabled={!category || !services.length || !accepted} onPress={() => void submit()} />
-    </> : settings ? <Text color="textMuted">There are no additional services available to apply for right now.</Text> : null}
-    {error ? <><Text color="danger">{error}</Text><Button label="Reload" variant="outline" onPress={() => void load().catch(() => setError('Could not load service applications.'))} /></> : null}
-    <Button label={hasApproval?'Back to dashboard':'Back to application status'} variant="outline" onPress={() => router.replace(hasApproval?'/driver-dashboard':'/driver-status')} />
-  </ScrollView></SafeAreaView>;
+export function DriverServiceConsent({ settings, services, accepted, onChange, disabled = false }: { settings: DriverServiceSettings; services: DriverService[]; accepted: boolean; disabled?: boolean; onChange: (value: boolean) => void }) {
+  const { colors } = useTheme();
+  return (
+    <View style={choiceStyles.section}>
+      {services.map(service => <Text key={service} variant="caption" color="textMuted">{settings.consent.descriptions[service]}</Text>)}
+      <Pressable accessibilityRole="checkbox" accessibilityLabel="Accept service selection consent" accessibilityState={{ checked: accepted, disabled }} aria-checked={accepted} disabled={disabled} onPress={() => onChange(!accepted)} style={[choiceStyles.consent, { backgroundColor: colors.surfaceMuted, borderColor: accepted ? colors.primary : colors.border }]}>
+        <View style={[choiceStyles.checkbox, { borderColor: accepted ? colors.primary : colors.borderStrong, backgroundColor: accepted ? colors.primary : colors.background }]}>{accepted ? <Text variant="caption" color="textInverse">✓</Text> : null}</View>
+        <Text variant="caption" style={choiceStyles.serviceCopy}>I choose these services and understand the request preferences above.</Text>
+      </Pressable>
+    </View>
+  );
 }
+
+const choiceStyles = StyleSheet.create({
+  section: { gap: 12 },
+  vehicleOptions: { flexDirection: 'row', gap: 12 },
+  vehicleCard: { flex: 1, minWidth: 0, borderWidth: 1, borderRadius: 18, padding: 12, gap: 8 },
+  vehicleHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4, flexWrap: 'wrap' },
+  workLabel: { marginTop: 8 },
+  serviceOptions: { gap: 12 },
+  serviceCard: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 18, padding: 16, gap: 12, minHeight: 80 },
+  serviceCopy: { flex: 1, gap: 5 },
+  onboardingVehicle: { borderRadius: 12, minHeight: 80, gap: 8 },
+  onboardingService: { borderRadius: 12, padding: 14, minHeight: 78 },
+  serviceIcon: { width: 28, alignItems: 'center' },
+  bothIcons: { flexDirection: 'row', gap: 2 },
+  indicator: { width: 22, height: 22, borderWidth: 1, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  consent: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 16, borderWidth: 1, borderRadius: 16 },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+});
+
+export { DriverServiceEnrollmentScreen } from '@/screens/driver/DriverServiceEnrollmentScreen';

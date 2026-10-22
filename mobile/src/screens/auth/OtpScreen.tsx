@@ -1,219 +1,85 @@
-/**
- * OtpScreen — verifies the 6-digit code (route: "/otp"). Screen 3 in the mockup.
- *
- * UI trick: instead of six fiddly text fields, we render six read-only "boxes" and
- * lay ONE invisible TextInput over them. Tapping the boxes focuses that hidden
- * input; whatever digits it holds get painted into the boxes. This is the least
- * buggy way to do OTP entry in React Native (no ref juggling, backspace just works).
- *
- * On the 6th digit we auto-submit. A correct code either sends new users to the
- * profile step or drops returning users straight home; a wrong one clears and re-asks.
- */
 import { Redirect, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { cssInterop } from 'nativewind';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { TextInput } from 'react-native';
 
-import { Button, Text } from '@/components/common';
 import { useAuthStore } from '@/store/authStore';
+import { OtpVerificationView } from './OtpVerificationView';
 
 const CODE_LENGTH = 6;
 const RESEND_SECONDS = 60;
 
-const StyledSafeAreaView = cssInterop(SafeAreaView, { className: 'style' });
-
-/** 30 → "00:30". A tiny mm:ss formatter for the resend countdown. */
-function formatCountdown(totalSeconds: number): string {
-  const mm = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
-  const ss = String(totalSeconds % 60).padStart(2, '0');
-  return `${mm}:${ss}`;
-}
-
+/** One input retains paste, backspace and OS SMS autofill across all six boxes. */
 export function OtpScreen() {
   const router = useRouter();
-  const { height } = useWindowDimensions();
-  const isTallScreen = height >= 800;
-
-  const phone = useAuthStore((s) => s.pending?.phone);
-  const intent = useAuthStore((s) => s.pending?.intent);
-  const verifyOtp = useAuthStore((s) => s.verifyOtp);
-  const requestOtp = useAuthStore((s) => s.requestOtp);
-
+  const phone = useAuthStore(state => state.pending?.phone);
+  const intent = useAuthStore(state => state.pending?.intent);
+  const verifyOtp = useAuthStore(state => state.verifyOtp);
+  const requestOtp = useAuthStore(state => state.requestOtp);
   const inputRef = useRef<TextInput>(null);
+  const inFlight = useRef(false);
   const [code, setCode] = useState('');
-  const [focused, setFocused] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [seconds, setSeconds] = useState(RESEND_SECONDS);
 
-  // Simple resend countdown: tick down to 0, then allow another send.
   useEffect(() => {
     if (seconds <= 0) return;
-    const id = setTimeout(() => setSeconds((s) => s - 1), 1000);
-    return () => clearTimeout(id);
+    const timer = setTimeout(() => setSeconds(value => value - 1), 1000);
+    return () => clearTimeout(timer);
   }, [seconds]);
 
+  const changeNumber = () => {
+    if (!inFlight.current) router.replace(intent === 'login' ? '/login' : '/phone');
+  };
   const submit = async (value: string) => {
+    if (inFlight.current || !phone || !/^\d{6}$/.test(value)) return;
+    inFlight.current = true;
     setLoading(true);
     setError(undefined);
     try {
       const { destination } = await verifyOtp(value);
-      // replace(), not push(), so Back doesn't return to the code screen post-login.
       const destinationPath = {
-        home: '/home',
-        'driver-onboarding': '/driver-onboarding',
-        'driver-dashboard': '/driver-dashboard',
-        'driver-status': '/driver-status',
+        home: '/home', 'driver-onboarding': '/driver-onboarding',
+        'driver-dashboard': '/driver-dashboard', 'driver-status': '/driver-status',
       } as const;
       router.replace(destinationPath[destination]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Verification failed. Try again.');
-      setCode(''); // wipe the wrong code so they can retype cleanly
-      inputRef.current?.focus();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Verification failed. Try again.');
+      setCode('');
+      requestAnimationFrame(() => inputRef.current?.focus());
     } finally {
+      inFlight.current = false;
       setLoading(false);
     }
   };
-
   const onChange = (text: string) => {
+    if (inFlight.current) return;
     const next = text.replace(/\D/g, '').slice(0, CODE_LENGTH);
     setCode(next);
-    if (error) setError(undefined);
-    if (next.length === CODE_LENGTH) submit(next);
+    setError(undefined);
+    if (next.length === CODE_LENGTH) void submit(next);
   };
-
   const onResend = async () => {
-    if (seconds > 0 || !phone) return;
+    if (seconds > 0 || !phone || inFlight.current) return;
+    inFlight.current = true;
+    setResending(true);
     setCode('');
     setError(undefined);
-    await requestOtp(phone);
-    setSeconds(RESEND_SECONDS);
+    try {
+      await requestOtp(phone);
+      setSeconds(RESEND_SECONDS);
+      requestAnimationFrame(() => inputRef.current?.focus());
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not resend your code. Try again.');
+    } finally {
+      inFlight.current = false;
+      setResending(false);
+    }
   };
 
-  // If we somehow land here without a phone in flight (e.g. deep link), start over.
   if (!phone) return <Redirect href="/phone" />;
-
-  const boxes = Array.from({ length: CODE_LENGTH }, (_, i) => code[i] ?? '');
-
-  return (
-    <StyledSafeAreaView edges={['top', 'bottom']} className="flex-1">
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View className="flex-1 bg-background">
-          <View className="px-[34px] pb-xl pt-[42px]">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-              hitSlop={12}
-              onPress={() => router.replace(intent === 'login' ? '/login' : '/phone')}
-              className="h-6 w-6 items-start justify-center"
-            >
-              <Text variant="body" className="!text-[24px] !leading-[24px]">
-                ←
-              </Text>
-            </Pressable>
-
-            <View className="mt-[46px] items-center gap-xs">
-              <Text
-                variant="h2"
-                className={isTallScreen ? '!text-[26px] !leading-[32px]' : '!text-[20px] !leading-[26px]'}
-              >
-                Verify your phone
-              </Text>
-              <Text
-                variant="caption"
-                color="textMuted"
-                className={`${isTallScreen ? '!text-[14px]' : '!text-[12px]'} text-center`}
-              >
-                Enter the six-digit code sent to {phone}
-              </Text>
-              <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.replace(intent === 'login' ? '/login' : '/phone')}><Text variant="caption" color="primary">Change phone number</Text></Pressable>
-            </View>
-
-            {/* The six boxes + the invisible input laid on top of them. */}
-            <Pressable className="mt-[29px]" onPress={() => inputRef.current?.focus()}>
-              <View className="flex-row justify-center gap-md">
-                {boxes.map((digit, i) => {
-                  const isActive = focused && i === code.length;
-                  const borderClass = error
-                    ? 'border-danger'
-                    : isActive
-                      ? 'border-primary'
-                      : 'border-border';
-                  return (
-                    <View
-                      key={i}
-                      className={`h-[44px] w-[32px] items-center justify-center rounded-[5px] bg-surfaceMuted ${
-                        isActive ? 'border-2' : 'border'
-                      } ${borderClass}`}
-                    >
-                      <Text variant="h3" className={isTallScreen ? '!text-[22px]' : '!text-[18px]'}>
-                        {digit}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-
-              <TextInput
-                ref={inputRef}
-                value={code}
-                onChangeText={onChange}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
-                keyboardType="number-pad"
-                maxLength={CODE_LENGTH}
-                autoFocus
-                caretHidden
-                // Enable OS autofill of the SMS code (iOS + Android).
-                textContentType="oneTimeCode"
-                autoComplete="sms-otp"
-                className="absolute h-px w-px opacity-0"
-              />
-            </Pressable>
-
-            {error ? (
-              <Text variant="caption" color="danger" className="text-center">
-                {error}
-              </Text>
-            ) : null}
-
-            {/* Fixed gap (not a flex-1 spacer) — the mockup keeps the button and
-                resend link anchored below the boxes, with leftover space at the
-                very bottom of the screen rather than the CTA being pinned there. */}
-            <View className="mt-[70px] gap-xl">
-              <Button
-                label="Verify and Continue"
-                fullWidth
-                loading={loading}
-                disabled={code.length !== CODE_LENGTH}
-                onPress={() => submit(code)}
-                className="h-[40px] rounded-[8px]"
-              />
-              <Pressable onPress={onResend} disabled={seconds > 0} hitSlop={8}>
-                <Text
-                  variant="caption"
-                  color={seconds > 0 ? 'textMuted' : 'primary'}
-                  className={`${isTallScreen ? '!text-[13px]' : '!text-[11px]'} text-center`}
-                >
-                  {seconds > 0 ? `Resend code in ${formatCountdown(seconds)}` : 'Resend code'}
-                </Text>
-              </Pressable>
-            </View>
-
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </StyledSafeAreaView>
-  );
+  return <OtpVerificationView phone={phone} code={code} inputRef={inputRef} error={error}
+    loading={loading} resending={resending} seconds={seconds} onBack={changeNumber} onChangeNumber={changeNumber}
+    onCodeChange={onChange} onVerify={() => void submit(code)} onResend={() => void onResend()} />;
 }

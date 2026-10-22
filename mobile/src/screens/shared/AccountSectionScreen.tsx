@@ -1,22 +1,24 @@
-import { useEffect, useState, type ComponentProps } from 'react';
-import { Alert, Linking, Pressable, ScrollView, Switch, TextInput, View } from 'react-native';
+import { useState, type ComponentProps } from 'react';
+import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Text } from '@/components/common';
 import { useTheme } from '@/constants/theme';
-import { ThemePreferencePicker } from '@/components/common/ThemePreferencePicker';
 import { useAuthStore } from '@/store/authStore';
-import { useTripStore } from '@/store/tripStore';
-import { getTripHistory, type Trip } from '@/services/tripService';
-import { SupportSection } from './SupportSection';
-import { PhoneChangeSection } from './PhoneChangeSection';
+import { HelpSupportScreen } from './HelpSupportScreen';
+import { ProfileScreen } from './ProfileScreen';
 import { VehicleDocumentsSection } from './VehicleDocumentsSection';
-import { AddBankSection, DriverEarningsSection, DriverWalletSection, PayoutsSection, RiderWalletSection, TopUpSection, WithdrawSection } from './WalletSections';
-import { NotificationPreferencesPanel } from '@/components/notifications';
+import { TopUpSection } from './WalletSections';
+import { DriverWalletScreen, DriverEarningsScreen, PayoutsScreen } from './DriverFinanceScreens';
+import { AddBankScreen, WithdrawScreen } from './PayoutForms';
+import { RideHistoryScreen } from './RideHistoryScreen';
+import { RiderPaymentScreen } from './RiderPaymentScreen';
+import { RiderServicesScreen } from './RiderServicesScreen';
+import { SafetyCenterScreen } from './SafetyCenterScreen';
+import { SettingsScreen, NotificationSettingsScreen, LocationSettingsScreen, DriverServicesSettingsScreen } from './SettingsScreen';
+import { accountSectionRedirect } from '@/utils/roleAccess';
 
-type SectionId = 'profile' | 'services' | 'payment' | 'trips' | 'support' | 'safety' | 'saved-places' | 'settings' | 'ride-plus' | 'promotions' | 'family' | 'work' | 'earn' | 'driver-wallet' | 'driver-earnings' | 'payouts' | 'driver-trips' | 'vehicle-documents' | 'driver-rewards' | 'top-up' | 'add-bank' | 'withdraw';
-
-const DRIVER_ONLY_SECTIONS = new Set<SectionId>(['driver-wallet', 'driver-earnings', 'payouts', 'driver-trips', 'vehicle-documents', 'driver-rewards', 'add-bank', 'withdraw']);
+type SectionId = 'profile' | 'services' | 'payment' | 'trips' | 'support' | 'safety' | 'saved-places' | 'settings' | 'notification-settings' | 'location-settings' | 'driver-services' | 'ride-plus' | 'promotions' | 'family' | 'work' | 'earn' | 'driver-wallet' | 'driver-earnings' | 'payouts' | 'driver-trips' | 'vehicle-documents' | 'driver-rewards' | 'top-up' | 'add-bank' | 'withdraw';
 
 const TITLES: Record<SectionId, { title: string; subtitle: string }> = {
   profile: { title: 'Your profile', subtitle: 'Keep your personal details accurate.' },
@@ -27,6 +29,9 @@ const TITLES: Record<SectionId, { title: string; subtitle: string }> = {
   safety: { title: 'Safety center', subtitle: 'Tools that help protect every journey.' },
   'saved-places': { title: 'Saved places', subtitle: 'Book frequent journeys faster.' },
   settings: { title: 'Settings', subtitle: 'Manage your app and privacy preferences.' },
+  'location-settings': { title: 'Location permissions', subtitle: 'Manage device location access.' },
+  'notification-settings': { title: 'Notifications', subtitle: 'Choose what you receive.' },
+  'driver-services': { title: 'Driver services', subtitle: 'Requests, applications and consent.' },
   'ride-plus': { title: 'Rakky Ride Plus', subtitle: 'Save more on the rides you take most.' },
   promotions: { title: 'Promotions', subtitle: 'Apply a code or view active savings.' },
   family: { title: 'Family Profile', subtitle: 'Organise and pay for family travel.' },
@@ -35,7 +40,7 @@ const TITLES: Record<SectionId, { title: string; subtitle: string }> = {
   'driver-wallet': { title: 'Driver wallet', subtitle: 'Earnings, rewards, balance, and payouts.' },
   'driver-earnings': { title: 'Earnings', subtitle: 'Track income, bonuses, and deductions.' },
   payouts: { title: 'Balance & payouts', subtitle: 'Manage where and when you get paid.' },
-  'driver-trips': { title: 'Driver trips', subtitle: 'Completed trips, fares, and tips.' },
+  'driver-trips': { title: 'Driver trips', subtitle: 'Trips, earnings, and receipts.' },
   'vehicle-documents': { title: 'Vehicle & documents', subtitle: 'Keep your driver account verified.' },
   'driver-rewards': { title: 'Rewards & goals', subtitle: 'Grow earnings with clear progress.' },
   'top-up': { title: 'Top up', subtitle: 'Add funds securely through Paystack.' },
@@ -48,12 +53,31 @@ export function AccountSectionScreen() {
   const { section: rawSection } = useLocalSearchParams<{ section?: string }>();
   const section: SectionId = rawSection && rawSection in TITLES ? rawSection as SectionId : 'profile';
   const meta = TITLES[section];
+  const user = useAuthStore(state => state.session?.user);
+  const userId = user?.id;
   const driverApplication = useAuthStore((state) => state.driverApplication);
-  if (DRIVER_ONLY_SECTIONS.has(section) && driverApplication?.status !== 'approved') {
-    return <Redirect href={driverApplication?.status === 'pending' || driverApplication?.status === 'rejected' ? '/driver-status' : '/driver-onboarding'} />;
-  }
+  if (!user) return <Redirect href="/welcome" />;
+  const redirect = accountSectionRedirect(rawSection ?? '', user.role, driverApplication?.status);
+  if (redirect) return <Redirect href={redirect} />;
+  if (section === 'vehicle-documents') return <VehicleDocumentsSection key={userId} />;
+  if (section === 'driver-trips') return <RideHistoryScreen key={userId} driver />;
+  if (section === 'driver-wallet') return <DriverWalletScreen key={userId} />;
+  if (section === 'driver-earnings') return <DriverEarningsScreen key={userId} />;
+  if (section === 'payouts') return <PayoutsScreen key={userId} />;
+  if (section === 'add-bank') return <AddBankScreen key={userId} />;
+  if (section === 'withdraw') return <WithdrawScreen key={userId} />;
+  if (section === 'profile') return <ProfileScreen />;
+  if (section === 'trips') return <RideHistoryScreen />;
+  if (section === 'payment') return <RiderPaymentScreen />;
+  if (section === 'services') return <RiderServicesScreen />;
+  if (section === 'safety') return <SafetyCenterScreen />;
+  if (section === 'support') return <HelpSupportScreen />;
+  if (section === 'driver-services') return <DriverServicesSettingsScreen />;
+  if (section === 'settings') return <SettingsScreen />;
+  if (section === 'location-settings') return <LocationSettingsScreen />;
+  if (section === 'notification-settings') return <NotificationSettingsScreen />;
   return <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
-    <View className="flex-row items-center border-b border-border px-xl py-md"><Pressable accessibilityRole="button" accessibilityLabel="Back to account" onPress={() => router.canGoBack() ? router.back() : router.replace('/menu')} className="h-11 w-11 items-center justify-center rounded-full bg-surfaceMuted"><Text variant="h3">←</Text></Pressable><View className="ml-md flex-1"><Text variant="h3" className="!text-[21px]">{meta.title}</Text><Text variant="caption" color="textMuted" numberOfLines={1}>{meta.subtitle}</Text></View></View>
+    <View className="flex-row items-center border-b border-border px-xl py-md"><Pressable accessibilityRole="button" accessibilityLabel="Back to account" onPress={() => router.canGoBack() ? router.back() : router.replace('/menu')} className="h-11 w-11 items-center justify-center rounded-full bg-surfaceMuted"><Text variant="h3">←</Text></Pressable><View className="ml-md flex-1"><Text variant="h3">{meta.title}</Text><Text variant="caption" color="textMuted" numberOfLines={1}>{meta.subtitle}</Text></View></View>
     <ScrollView className="flex-1" contentContainerClassName="px-xl py-lg" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}><SectionContent section={section} /></ScrollView>
   </SafeAreaView>;
 }
@@ -61,67 +85,24 @@ export function AccountSectionScreen() {
 function SectionContent({ section }: { section: SectionId }) {
   const router = useRouter();
   const user = useAuthStore((state) => state.session?.user);
-  const updateProfile = useAuthStore((state) => state.updateProfile);
   const setRole = useAuthStore((state) => state.setRole);
   const driverApplication = useAuthStore((state) => state.driverApplication);
-  const activeTrip = useTripStore((state)=>state.trip);
-  const nameLocked=driverApplication?.status==='approved'||Boolean(activeTrip&&['driver_assigned','driver_arrived','in_progress','returning'].includes(activeTrip.status));
   const restartDriverApplication = useAuthStore((state) => state.restartDriverApplication);
-  const logout = useAuthStore((state) => state.logout);
-  const [name, setName] = useState(user?.name ?? 'Rider');
-  const [profileSaving, setProfileSaving] = useState(false);
   const [email, setEmail] = useState(user?.email ?? '');
   const [code, setCode] = useState('');
-  const [trusted, setTrusted] = useState(true);
   const [joined, setJoined] = useState(false);
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [tripsLoading, setTripsLoading] = useState(true);
-  const [tripsError, setTripsError] = useState<string | null>(null);
-  useEffect(() => {
-    if (section !== 'trips' && section !== 'driver-trips') return;
-    void getTripHistory().then((result) => setTrips(result.trips)).catch(() => setTripsError('Could not load your trip history.')).finally(() => setTripsLoading(false));
-  }, [section]);
 
-  if (section === 'profile') return <><AvatarLetter value={name} /><Field label="Full name" value={name} onChangeText={setName} editable={!nameLocked} />{nameLocked ? <Text variant="caption" color="textMuted">Reviewed driver identity needs staff review. Material changes cannot be made during an active trip.</Text> : null}<Field label="Email address" value={email} onChangeText={setEmail} keyboardType="email-address" /><Field label="Phone number" value={user?.phone ?? ''} editable={false} /><PhoneChangeSection />{user?.role !== 'driver' ? <InfoCard icon="🚘" title="Drive with Rakky Ride" detail={driverApplication?.status === 'approved' ? 'Your driver account is approved and ready' : driverApplication?.status === 'pending' ? 'Your driver application is being reviewed' : driverApplication?.status === 'rejected' ? 'Review the decision and update your application' : 'Register your vehicle and receive nearby requests'} action={driverApplication?.status === 'approved' ? 'Switch' : driverApplication ? 'View' : 'Apply'} onPress={() => { if (driverApplication?.status === 'approved') { void setRole('driver').then((changed) => changed && router.replace('/driver-dashboard')); return; } if (driverApplication && driverApplication.status !== 'draft') { router.push('/driver-status'); return; } router.push({ pathname: '/account/[section]', params: { section: 'earn' } }); }} /> : null}<Button label="Save changes" fullWidth loading={profileSaving} className="mt-lg" onPress={() => {
-    setProfileSaving(true);
-    void updateProfile({ name, email }).then(() => Alert.alert('Profile updated', 'Your details have been saved.'))
-      .catch((error: unknown) => Alert.alert('Could not save profile', error instanceof Error ? error.message : 'Try again.'))
-      .finally(() => setProfileSaving(false));
-  }} /><View className="mt-xl border-t border-border pt-lg"><Text variant="bodyMedium" color="danger">Delete account</Text><Text variant="caption" color="textMuted" className="mt-xs">Account deletion is temporarily unavailable. Your account remains active.</Text><Button label="Delete account" variant="destructive" disabled fullWidth className="mt-md" /></View></>;
-  if (section === 'services') return <><FeatureHero icon="◈" title="One app for every journey" detail="Request a car, send a package, plan ahead, or unlock member benefits from one place." /><ServiceCard icon="🚙" title="Ride" detail="Affordable everyday trips with live driver tracking" action="Book a ride" onPress={() => router.push('/set-destination')} /><ServiceCard icon="📦" title="Courier" detail="Send a sealed package to a recipient across Lagos" action="Send a package" onPress={() => router.push('/courier')} /><ServiceCard icon="◷" title="Schedule a ride" detail="Choose your pickup time in advance for important journeys" action="Schedule" onPress={() => router.push('/schedule')} /><ServiceCard icon="✚" title="Rakky Ride Plus" detail="Priority pickup, ride credit, and member-only offers" action="View benefits" onPress={() => router.push({ pathname: '/account/[section]', params: { section: 'ride-plus' } })} /></>;
-  if (section === 'payment') return <RiderWalletSection />;
   if (section === 'top-up') return <TopUpSection />;
-  if (section === 'add-bank') return <AddBankSection />;
-  if (section === 'withdraw') return <WithdrawSection />;
-  if (section === 'trips') return <><InfoCard icon="◷" title="Scheduled rides" detail="View or cancel upcoming bookings" action="Open" onPress={() => router.push('/schedule')} /><TripHistory trips={trips} loading={tripsLoading} error={tripsError} onOpen={(id) => router.push({ pathname: '/trip-receipt', params: { tripId: id } })} /></>;
-  if (section === 'driver-trips') return <TripHistory trips={trips} loading={tripsLoading} error={tripsError} onOpen={(id) => router.push({ pathname: '/trip-receipt', params: { tripId: id } })} />;
-  if (section === 'support') return <SupportSection />;
-  if (section === 'safety') return <><FeatureHero icon="◇" title="You’re in control" detail="Ride tracking, private calling, trusted contacts, and emergency help are available before and during trips." /><SettingRow title="Trusted contact" detail="Notify your chosen contact during a safety concern" value={trusted} onValueChange={setTrusted} /><InfoCard icon="⌘" title="Share a live trip" detail="Share driver, vehicle, and live location" action="Open" onPress={() => router.push('/ongoing-trip')} /><InfoCard icon="112" title="Emergency assistance" detail="Call Nigeria’s emergency response number" action="Call" onPress={() => void Linking.openURL('tel:112')} /></>;
   if (section === 'saved-places') return <><InfoCard icon="⌂" title="Home" detail="12 Road 12, Lekki Phase 1" action="Edit" onPress={() => router.push('/set-destination')} /><InfoCard icon="▣" title="Work" detail="Admiralty Way, Lekki Phase 1" action="Edit" onPress={() => router.push('/set-destination')} /><Button label="Add a saved place" variant="outline" fullWidth className="mt-md" onPress={() => router.push('/set-destination')} /></>;
-  if (section === 'settings') return <><NotificationPreferencesPanel /><View className="mt-lg rounded-xl border border-border p-md"><Text variant="bodyMedium">Appearance</Text><Text variant="caption" color="textMuted">Choose your look or follow your device</Text><ThemePreferencePicker /></View><InfoCard icon="⌖" title="Location permissions" detail="Manage access in device settings" action="Open" onPress={() => void Linking.openSettings()} /><InfoCard icon="⌁" title="Privacy and data" detail="Download data or manage your account" action="View" onPress={() => Alert.alert('Privacy', 'Your privacy and data controls will appear here.')} /><Button label="Log out" variant="outline" fullWidth className="mt-lg" onPress={() => { logout(); router.replace('/welcome'); }} /></>;
   if (section === 'ride-plus') return <><FeatureHero icon="✚" title="Your rides, rewarded" detail="Get priority pickup, member-only offers, and 5% ride credit on eligible trips." /><Benefit text="5% credit on eligible rides" /><Benefit text="Priority support when you need help" /><Benefit text="Exclusive airport and weekend offers" /><Button label={joined ? 'Rakky Ride Plus activated' : 'Try Rakky Ride Plus free'} disabled={joined} fullWidth className="mt-xl" onPress={() => setJoined(true)} /></>;
   if (section === 'promotions') return <><Field label="Promo code" value={code} onChangeText={setCode} placeholder="Enter your code" autoCapitalize="characters" /><Button label="Apply code" fullWidth disabled={!code.trim()} onPress={() => { Alert.alert('Code applied', 'Your discount will appear before your next booking.'); setCode(''); }} /><View className="mt-xl rounded-2xl bg-primarySoft p-lg"><Text variant="caption" color="primary">ACTIVE OFFER</Text><Text variant="h3" className="mt-xs">10% launch discount</Text><Text variant="caption" color="textMuted" className="mt-xs">Automatically applied to eligible rides for a limited time.</Text></View></>;
   if (section === 'family') return <><FeatureHero icon="⌂" title="Travel together, pay once" detail="Invite family members, choose spending limits, and receive every trip receipt." /><Field label="Family member’s phone" value={code} onChangeText={setCode} placeholder="+234" keyboardType="phone-pad" /><Button label="Send invitation" fullWidth disabled={!code.trim()} onPress={() => { Alert.alert('Invitation sent', 'They’ll receive an invitation to join your Family Profile.'); setCode(''); }} /></>;
   if (section === 'work') return <><FeatureHero icon="▣" title="Separate work from personal" detail="Use a business payment method and receive organised monthly ride statements." /><Field label="Work email" value={email} onChangeText={setEmail} placeholder="you@company.com" keyboardType="email-address" /><Button label="Create Work Profile" fullWidth disabled={!email.trim()} onPress={() => Alert.alert('Work Profile created', 'Your business rides can now be organised separately.')} /></>;
-  if (section === 'driver-wallet') return <DriverWalletSection />;
-  if (section === 'driver-earnings') return <DriverEarningsSection />;
-  if (section === 'payouts') return <PayoutsSection />;
-  if (section === 'vehicle-documents') return <VehicleDocumentsSection />;
   if (section === 'driver-rewards') return <><FeatureHero icon="★" title="8 of 12 trips completed" detail="Complete 4 more eligible trips by Sunday to earn a ₦5,000 bonus." /><View className="h-3 overflow-hidden rounded-full bg-surfaceMuted"><View className="h-full w-2/3 rounded-full bg-success" /></View><Text variant="caption" color="textMuted" className="mt-sm">67% complete · Lagos weekly challenge</Text><Text variant="bodyMedium" className="mb-sm mt-xl">Available campaigns</Text><InfoCard icon="↗" title="Friday evening boost" detail="Earn 15% more · 5 PM–10 PM" action="Details" onPress={() => Alert.alert('Friday boost', 'Eligible trips starting in Lagos between 5 PM and 10 PM receive the boost.')} /><InfoCard icon="⌖" title="Airport pickup reward" detail="Complete 3 airport pickups · ₦3,000" action="Track" onPress={() => Alert.alert('Airport reward', 'You have completed 1 of 3 eligible airport pickups.')} /></>;
   return <><FeatureHero icon="🚘" title="Drive when it works for you" detail="Go online, receive nearby requests, track earnings, and get paid securely." /><Benefit text="Choose your own driving hours" /><Benefit text="See trip destination and fare clearly" /><Benefit text="Safety support while you’re online" /><Button label={driverApplication?.status === 'approved' ? 'Switch to driver mode' : driverApplication?.status === 'pending' ? 'View application status' : driverApplication?.status === 'rejected' ? 'Review application' : 'Apply to drive'} fullWidth className="mt-xl" onPress={() => { if (driverApplication?.status === 'approved') { void setRole('driver').then((changed) => changed && router.replace('/driver-dashboard')); return; } if (driverApplication?.status === 'pending' || driverApplication?.status === 'rejected') { router.replace('/driver-status'); return; } restartDriverApplication(); router.replace('/driver-onboarding'); }} /></>;
 }
 
-function AvatarLetter({ value }: { value: string }) { return <View className="mb-xl items-center"><View className="h-24 w-24 items-center justify-center rounded-full bg-primarySoft"><Text variant="h1" color="primary">{value.slice(0, 1).toUpperCase()}</Text></View><Text variant="caption" color="textMuted" className="mt-sm">Profile photo uploads are not available yet.</Text></View>; }
-function Field(props: ComponentProps<typeof TextInput> & { label: string }) { const theme = useTheme(); const { label, ...inputProps } = props; return <View className="mb-md"><Text variant="caption" color="textMuted" className="mb-xs">{label}</Text><TextInput selectionColor={theme.colors.primary} placeholderTextColor={theme.colors.textMuted} className="h-[52px] rounded-lg border border-borderStrong bg-surface px-md font-inter-regular text-body text-text outline-none" {...inputProps} /></View>; }
+function Field(props: ComponentProps<typeof TextInput> & { label: string }) { const theme = useTheme(); const { label, ...inputProps } = props; return <View className="mb-md"><Text variant="caption" color="textMuted" className="mb-xs">{label}</Text><TextInput selectionColor={theme.colors.primary} placeholderTextColor={theme.colors.textMuted} className="min-h-12 rounded-lg border border-borderStrong bg-surface px-md py-md font-inter-regular text-body text-text outline-none" {...inputProps} /></View>; }
 function InfoCard({ icon, title, detail, action, onPress }: { icon: string; title: string; detail: string; action: string; onPress?: () => void }) { return <Pressable onPress={onPress} className="mb-sm flex-row items-center rounded-xl border border-border bg-surface p-md"><View className="h-11 w-11 items-center justify-center rounded-lg bg-surfaceMuted"><Text color="icon">{icon}</Text></View><View className="ml-md flex-1 pr-sm"><Text variant="bodyMedium">{title}</Text><Text variant="caption" color="textMuted">{detail}</Text></View><Text variant="caption" color="primary" className="ml-sm shrink-0">{action}</Text></Pressable>; }
-function ServiceCard({ icon, title, detail, action, onPress }: { icon: string; title: string; detail: string; action: string; onPress: () => void }) { return <Pressable accessibilityRole="button" accessibilityLabel={`${action}: ${title}`} onPress={onPress} className="mb-md overflow-hidden rounded-2xl border border-border bg-surface active:opacity-70"><View className="flex-row items-center p-md"><View className="h-14 w-14 items-center justify-center rounded-xl bg-primarySoft"><Text variant="h3" className="!text-[24px]">{icon}</Text></View><View className="ml-md flex-1"><Text variant="bodyMedium">{title}</Text><Text variant="caption" color="textMuted" className="mt-xs">{detail}</Text></View></View><View className="flex-row items-center justify-between border-t border-border bg-surfaceMuted px-md py-sm"><Text variant="caption" color="primary">{action}</Text><Text color="primary">→</Text></View></Pressable>; }
-function FeatureHero({ icon, title, detail }: { icon: string; title: string; detail: string }) { return <View className="mb-lg rounded-2xl bg-primarySoft p-lg"><View className="h-12 w-12 items-center justify-center rounded-xl bg-primary"><Text color="textInverse">{icon}</Text></View><Text variant="h3" className="mt-md !text-[21px]">{title}</Text><Text variant="caption" color="textMuted" className="mt-xs">{detail}</Text></View>; }
+function FeatureHero({ icon, title, detail }: { icon: string; title: string; detail: string }) { return <View className="mb-lg rounded-2xl bg-primarySoft p-lg"><View className="h-12 w-12 items-center justify-center rounded-xl bg-primary"><Text color="textInverse">{icon}</Text></View><Text variant="h3" className="mt-md">{title}</Text><Text variant="caption" color="textMuted" className="mt-xs">{detail}</Text></View>; }
 function Benefit({ text }: { text: string }) { return <View className="flex-row items-center gap-md border-b border-border py-md"><View className="h-7 w-7 items-center justify-center rounded-full bg-successSoft"><Text color="success">✓</Text></View><Text variant="bodyMedium" className="flex-1">{text}</Text></View>; }
-function SettingRow({ title, detail, value, onValueChange }: { title: string; detail: string; value: boolean; onValueChange: (value: boolean) => void }) { const theme = useTheme(); return <View className="mb-sm flex-row items-center rounded-xl border border-border bg-surface p-md"><View className="flex-1"><Text variant="bodyMedium">{title}</Text><Text variant="caption" color="textMuted">{detail}</Text></View><Switch value={value} onValueChange={onValueChange} trackColor={{ false: theme.colors.borderStrong, true: theme.colors.primary }} thumbColor={theme.colors.surface} /></View>; }
-function TripHistory({ trips, loading, error, onOpen }: { trips: Trip[]; loading: boolean; error: string | null; onOpen: (id: string) => void }) {
-  if (loading) return <View className="items-center py-xl"><Text color="textMuted">Loading trips…</Text></View>;
-  if (error) return <View className="rounded-xl bg-dangerSoft p-lg"><Text color="danger">{error}</Text></View>;
-  if (!trips.length) return <View className="items-center rounded-xl bg-surfaceMuted p-xl"><Text variant="h3">No past trips yet</Text><Text variant="caption" color="textMuted" className="mt-xs text-center">Completed and cancelled trips will appear here.</Text></View>;
-  return <>{trips.map((trip) => <TripCard key={trip.id} date={new Date(trip.completed_at ?? trip.requested_at).toLocaleString()} route={`${trip.pickup_address} → ${trip.dropoff_address}`} fare={`₦${Math.round((trip.driver_earning_kobo ?? trip.fare_kobo) / 100).toLocaleString()}`} status={trip.status.replaceAll('_', ' ')} onPress={() => onOpen(trip.id)} />)}</>;
-}
-function TripCard({ date, route, fare, status, onPress }: { date: string; route: string; fare: string; status: string; onPress?: () => void }) { return <Pressable onPress={onPress} className="mb-md rounded-xl border border-border bg-surface p-md"><View className="flex-row justify-between"><Text variant="caption" color="textMuted">{date}</Text><Text variant="caption" color={status === 'In progress' ? 'success' : 'textMuted'}>{status}</Text></View><Text variant="bodyMedium" className="mt-sm" numberOfLines={1}>{route}</Text><View className="mt-md flex-row items-center justify-between"><Text variant="caption" color="textMuted">View receipt and details</Text><Text variant="bodyMedium">{fare}</Text></View></Pressable>; }

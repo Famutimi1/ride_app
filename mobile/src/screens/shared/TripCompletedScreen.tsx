@@ -6,10 +6,12 @@ import { Button, Input, RatingStars, Text } from '@/components/common';
 import { useAuthStore } from '@/store/authStore';
 import { useMapStore } from '@/store/mapStore';
 import { useTripStore } from '@/store/tripStore';
+import { roleHome, tripBelongsToRole } from '@/utils/roleAccess';
 
 export function TripCompletedScreen() {
   const router = useRouter();
   const role = useAuthStore((state) => state.session?.user.role ?? 'rider');
+  const userId = useAuthStore((state) => state.session?.user.id);
   const trip = useTripStore((state) => state.trip);
   const rate = useTripStore((state) => state.rate);
   const clear = useTripStore((state) => state.clear);
@@ -18,7 +20,7 @@ export function TripCompletedScreen() {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
-  if (!trip) return <Redirect href={role === 'driver' ? '/driver-dashboard' : '/home'} />;
+  if (!trip || !tripBelongsToRole(trip, userId, role) || !['completed', 'returned'].includes(trip.status)) return <Redirect href={roleHome(role)} />;
 
   const isDriver = role === 'driver';
   const returned = trip.status === 'returned';

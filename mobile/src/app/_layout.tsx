@@ -57,6 +57,7 @@ export default function RootLayout() {
   const sessionError = useAuthStore((s) => s._sessionError);
   const uiHasHydrated = useUiStore((s) => s._hasHydrated);
   const isSignedIn = useIsSignedIn();
+  const sessionContext = useAuthStore(state => `${state.session?.user.id}:${state.session?.user.role}`);
   const theme = useTheme();
 
   const ready = (fontsLoaded || fontError) && authHasHydrated && uiHasHydrated;
@@ -97,10 +98,11 @@ export default function RootLayout() {
       <View className="flex-1 bg-background" style={nativeWindTheme[theme.scheme]}>
         {/* SafeAreaProvider powers useSafeAreaInsets()/SafeAreaView used across screens. */}
         <SafeAreaProvider>
-          {isSignedIn ? <LocationBootstrap /> : null}
-          {isSignedIn ? <TripRecovery /> : null}
-          {isSignedIn ? <DriverTrackingBootstrap /> : null}
-          {isSignedIn ? <><WalletBootstrap /><DriverServiceSettingsBootstrap /></> : null}
+          {isSignedIn ? <LocationBootstrap key={`location:${sessionContext}`} /> : null}
+          {isSignedIn ? <TripRecovery key={`trip:${sessionContext}`} /> : null}
+          {isSignedIn ? <DriverTrackingBootstrap key={`tracking:${sessionContext}`} /> : null}
+          {isSignedIn ? <WalletBootstrap key={`wallet:${sessionContext}`} /> : null}
+          {isSignedIn ? <DriverServiceSettingsBootstrap /> : null}
           {isSignedIn ? <NotificationBootstrap /> : null}
           {/* Match the status-bar text to the active theme: light glyphs on the dark
               background, dark glyphs on the light one. Driven by our theme (not "auto")

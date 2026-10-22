@@ -4,8 +4,9 @@ import { useMapStore } from '@/store/mapStore';
 import { useTripStore } from '@/store/tripStore';
 import { useNearbyDrivers } from '@/hooks/useNearbyDrivers';
 import { HomeLocationFallback } from './HomeLocationFallback';
+import type { AppMapProps } from './mapTypes';
 
-export function RideMap() {
+export function RideMap({ mapPadding }: { mapPadding?: AppMapProps['mapPadding'] } = {}) {
   const [now, setNow] = useState(0);
   useEffect(() => { const tick = () => setNow(Date.now()); const first = setTimeout(tick, 0); const timer = setInterval(tick, 10_000); return () => { clearTimeout(first); clearInterval(timer); }; }, []);
   const current = useMapStore((state) => state.currentLocation);
@@ -21,5 +22,5 @@ export function RideMap() {
   const markers = assigned
     ? liveAssignedLocation ? [{ id: trip!.driver_id!, kind: 'driver' as const, latitude: liveAssignedLocation.latitude, longitude: liveAssignedLocation.longitude, heading: liveAssignedLocation.heading, title: trip!.driver_name ?? 'Your driver' }] : []
     : (supplyService==='ride'?drivers:[]).map((driver) => ({ ...driver, id: driver.driverId, kind: 'nearby-driver' as const }));
-  return <AppMap region={homeRegion} markers={[{ ...current, id: 'rider-me', kind: 'rider', title: 'Your location' }, ...markers]} />;
+  return <AppMap region={homeRegion} mapPadding={mapPadding} markers={[{ ...current, id: 'rider-me', kind: 'rider', title: 'Your location' }, ...markers]} />;
 }

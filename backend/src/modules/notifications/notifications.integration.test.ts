@@ -61,6 +61,55 @@ test('notification persistence, preferences and provider receipts', { skip: !pro
     const pageThree=await service.listNotifications(user.id,pageTwo.nextCursor??undefined,1);
     assert.equal(new Set([...pageOne.notifications,...pageTwo.notifications,...pageThree.notifications].map(item=>item.id)).size,3);
 
+    await t.test('role-scoped pages, counts and reads separate an account with both roles', async () => {
+      const both = (await pool.query<{id:string}>("INSERT INTO users(full_name,role) VALUES('Dual role fixture','user') RETURNING id")).rows[0];
+      const fixtures = [
+        { type: 'trip_completed', category: 'trip_updates' as const, eventKey: 'trip:ride:rider', deepLink: '/ongoing-trip', audience: 'rider' },
+        { type: 'trip_completed', category: 'trip_updates' as const, eventKey: 'trip:work:driver', deepLink: '/driver-trip', audience: 'driver' },
+        { type: 'ride_payment_settled', category: 'wallet_updates' as const, eventKey: 'payment:old', deepLink: '/account/driver-wallet', audience: 'rider' },
+        { type: 'topup_succeeded', category: 'wallet_updates' as const, eventKey: 'topup:old-rider', deepLink: '/account/driver-wallet', audience: 'rider', title: 'Wallet top-up successful' },
+        { type: 'topup_succeeded', category: 'wallet_updates' as const, eventKey: 'topup:old-driver', deepLink: '/account/driver-wallet', audience: 'driver', title: 'Earnings balance updated' },
+        { type: 'ride_offer', category: 'driver_offers' as const, eventKey: 'offer:one', deepLink: '/driver-dashboard', audience: 'driver' },
+        { type: 'driver_application_approved', category: 'support' as const, eventKey: 'application:one', deepLink: '/driver-dashboard', audience: 'driver' },
+        { type: 'withdrawal_succeeded', category: 'wallet_updates' as const, eventKey: 'withdrawal:one', deepLink: '/account/driver-wallet', audience: 'driver' },
+        { type: 'scheduled_ride_confirmed', category: 'scheduled_reminders' as const, eventKey: 'schedule:one', deepLink: null, audience: 'rider' },
+        { type: 'support_updated', category: 'support' as const, eventKey: 'support:one', deepLink: '/account/support', audience: 'shared' },
+        { type: 'safety_updated', category: 'safety_security' as const, eventKey: 'safety:one', deepLink: '/account/safety', audience: 'shared' },
+      ];
+      const ids: string[] = [];
+      for (const fixture of fixtures) {
+        const created = await service.createNotificationRecord(db, { ...input, ...fixture, userId: both.id, title: fixture.title ?? 'Fixture', data: {} });
+        assert.equal(created.record.data.audience, fixture.audience);
+        ids.push(created.record.id);
+      }
+      // Exercise the pre-existing rows too, without a migration or destructive backfill.
+      await pool.query("UPDATE notifications SET data=data-'audience' WHERE user_id=$1", [both.id]);
+      for (const role of ['rider', 'driver'] as const) {
+        const expected = fixtures.filter(fixture => fixture.audience === role || fixture.audience === 'shared');
+        assert.equal((await service.unreadCount(both.id, role)).count, expected.length);
+        const received: string[] = [];
+        let cursor: string | undefined;
+        do {
+          const page = await service.listNotifications(both.id, cursor, 2, role);
+          assert.ok(page.notifications.every(item => item.data.audience === role || item.data.audience === 'shared'));
+          received.push(...page.notifications.map(item => item.eventKey));
+          cursor = page.nextCursor ?? undefined;
+        } while (cursor);
+        assert.deepEqual(received.sort(), expected.map(item => item.eventKey).sort());
+      }
+      await assert.rejects(service.markOpened(both.id, ids[0], 'driver'), /notification_not_found/);
+      await assert.rejects(service.markRead(both.id, ids[1], 'rider'), /notification_not_found/);
+      await assert.rejects(service.markOpened(another.id, ids[1], 'driver'), /notification_not_found/);
+      assert.equal((await service.markAllRead(both.id, 'driver')).updated, 7);
+      assert.equal((await service.unreadCount(both.id, 'driver')).count, 0);
+      assert.equal((await service.unreadCount(both.id, 'rider')).count, 4);
+      const opened = await service.markOpened(both.id, ids[0], 'rider');
+      assert.ok(opened.openedAt);
+      await service.markRead(both.id, ids[0], 'rider');
+      assert.equal((await service.unreadCount(both.id, 'rider')).count, 3);
+      assert.equal((await service.listNotifications(both.id)).notifications.length, fixtures.length);
+    });
+
     const { processNotificationReceipts } = await import('./notificationQueue.js');
     const originalFetch = globalThis.fetch;
     const receipts = new Map<string, { status:'ok'|'error'; details?:{error:string} }>();

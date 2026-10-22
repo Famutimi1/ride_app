@@ -67,7 +67,7 @@ export function Input({
       <View
         style={containerStyle}
         className={[
-          'h-[52px] flex-row items-center gap-sm rounded-md border bg-surfaceMuted px-lg',
+          'min-h-12 flex-row items-center gap-sm rounded-md border bg-surfaceMuted px-md py-md',
           borderClass,
           containerClassName,
         ]

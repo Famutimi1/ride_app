@@ -1,5 +1,5 @@
 /**
- * typography.ts — the text styles from the mockup's Typography table.
+ * typography.ts — a compact Inter scale for the rider and driver interfaces.
  *
  * Font: Inter (loaded in src/app/_layout.tsx). Each variant names a specific
  * Inter weight file so the weight renders correctly on both iOS and Android —
@@ -22,16 +22,15 @@ export const fontFamily = {
 } as const;
 
 export const typography = {
-  // From the mockup table (Inter). H1 read as ~38.4 in the mock → rounded to 38.
-  h1: { fontFamily: fontFamily.bold, fontSize: 38, lineHeight: 44, fontWeight: '700' },
-  h2: { fontFamily: fontFamily.bold, fontSize: 32, lineHeight: 40, fontWeight: '700' },
-  h3: { fontFamily: fontFamily.semibold, fontSize: 28, lineHeight: 36, fontWeight: '600' },
-  // `body` wasn't an explicit row in the mockup table but every screen needs it;
-  // 16/24 is the standard body size that sits below the H3/Caption rows shown.
-  body: { fontFamily: fontFamily.regular, fontSize: 16, lineHeight: 24, fontWeight: '400' },
-  bodyMedium: { fontFamily: fontFamily.medium, fontSize: 16, lineHeight: 24, fontWeight: '500' },
-  caption: { fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 20, fontWeight: '400' },
-  button: { fontFamily: fontFamily.medium, fontSize: 15, lineHeight: 22, fontWeight: '500' },
+  // Restrained semibold headings and tighter tracking keep titles crisp without
+  // overpowering the map, forms, or financial information. Mirror in Tailwind.
+  h1: { fontFamily: fontFamily.semibold, fontSize: 30, lineHeight: 36, fontWeight: '600', letterSpacing: -0.7 },
+  h2: { fontFamily: fontFamily.semibold, fontSize: 24, lineHeight: 30, fontWeight: '600', letterSpacing: -0.5 },
+  h3: { fontFamily: fontFamily.semibold, fontSize: 20, lineHeight: 26, fontWeight: '600', letterSpacing: -0.3 },
+  body: { fontFamily: fontFamily.regular, fontSize: 15, lineHeight: 22, fontWeight: '400' },
+  bodyMedium: { fontFamily: fontFamily.medium, fontSize: 15, lineHeight: 22, fontWeight: '500' },
+  caption: { fontFamily: fontFamily.regular, fontSize: 13, lineHeight: 18, fontWeight: '400' },
+  button: { fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 20, fontWeight: '600' },
 } satisfies Record<string, TextStyle>;
 
 export type TypographyVariant = keyof typeof typography;

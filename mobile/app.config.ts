@@ -16,15 +16,15 @@ export default ({ config, projectRoot }: ConfigContext): ExpoConfig => {
   // Local builds use the ignored file in the mobile root. EAS file environment
   // variables resolve to a temporary path and can override it in cloud builds.
   const googleServicesFile = process.env.GOOGLE_SERVICES_JSON ?? './google-services.json';
-  const sharedGoogleMapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY;
+  const sharedGoogleMapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY?.trim();
   const androidGoogleMapsKey =
-    process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY ?? sharedGoogleMapsKey;
-  const iosGoogleMapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_KEY ?? sharedGoogleMapsKey;
+    process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY?.trim() || sharedGoogleMapsKey;
+  const iosGoogleMapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_KEY?.trim() || sharedGoogleMapsKey;
   const iosGoogleClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 
   if (!androidGoogleMapsKey || !iosGoogleMapsKey) {
     throw new Error(
-      'Google Maps is not configured. Add EXPO_PUBLIC_GOOGLE_MAPS_KEY to mobile/.env.',
+      'Google Maps is not configured. Set EXPO_PUBLIC_GOOGLE_MAPS_KEY (or both platform keys) in the EAS environment selected by eas.json. Local development can use mobile/.env.',
     );
   }
 

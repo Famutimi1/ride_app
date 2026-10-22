@@ -52,6 +52,21 @@ test('account edits persist and phone ownership cannot be transferred with anoth
       await assert.rejects(inTransaction((client) => auth.googleSignIn('test-credential', undefined, client)), { code: 'invalid_google_token' });
       await db.query('UPDATE users SET is_active=true WHERE id=$1', [second]);
     });
+    await t.test('staff can complete driver personal details with the same account without changing staff sign-in identity', async () => {
+      const driver = await import('../driver/driver.service.js');
+      for (const role of ['admin', 'super_admin']) {
+        const email = `${role}@example.test`;
+        const id = (await db.query('INSERT INTO users(full_name,phone,email,role) VALUES($1,$2,$3,$4) RETURNING id', ['Combined account', phone(), email, role])).rows[0].id as string;
+        await inTransaction(client => driver.savePersonalInfo(id, { fullName: 'Driver name', email, address: '12 Test Street, Lagos' }, client));
+        const saved = await inTransaction(client => auth.updateProfile(id, { name: 'Updated driver name', email }, client));
+        assert.equal(saved.user.name, 'Updated driver name'); assert.equal(saved.user.email, email);
+        assert.equal((await db.query('SELECT role FROM users WHERE id=$1', [id])).rows[0].role, role);
+        await assert.rejects(inTransaction(client => driver.savePersonalInfo(id, { fullName: 'Test', email: 'changed@example.test', address: '12 Test Street' }, client)), { code: 'staff_email_requires_admin' });
+        await assert.rejects(inTransaction(client => auth.updateProfile(id, { email: 'changed@example.test' }, client)), { code: 'staff_email_requires_admin' });
+        await db.query("UPDATE driver_profiles SET status='approved' WHERE user_id=$1", [id]);
+        await assert.rejects(inTransaction(client => auth.updateProfile(id, { name: 'Unreviewed identity' }, client)), { code: 'approved_driver_material_requires_review' });
+      }
+    });
     await t.test('scoped verification tokens cannot authenticate ordinary HTTP or socket requests', () => {
       assert.throws(() => jwt.verifyAccessToken(jwt.signPhoneVerificationToken(first)));
       assert.equal(jwt.verifyPhoneVerificationToken(jwt.signPhoneVerificationToken(first)), first);

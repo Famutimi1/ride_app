@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useWindowDimensions } from 'react-native';
 
 import { renderGoogleButton } from '@/services/googleSignIn';
 
@@ -14,6 +15,7 @@ interface GoogleAuthButtonProps {
 }
 
 export function GoogleAuthButton({ mode, loading, disabled, onCredential, onError }: GoogleAuthButtonProps) {
+  const { width } = useWindowDimensions();
   const containerRef = useRef<HTMLDivElement>(null);
   const callbacks = useRef({ onCredential, onError });
   const [failed, setFailed] = useState(false);
@@ -22,6 +24,7 @@ export function GoogleAuthButton({ mode, loading, disabled, onCredential, onErro
     callbacks.current = { onCredential, onError };
   }, [onCredential, onError]);
 
+  // GIS fixes its iframe width when rendered; refresh it after a window resize.
   useEffect(() => {
     const container = containerRef.current;
     if (!container || loading || disabled) return;
@@ -37,7 +40,7 @@ export function GoogleAuthButton({ mode, loading, disabled, onCredential, onErro
       disposed = true;
       container.replaceChildren();
     };
-  }, [attempt, disabled, loading, mode]);
+  }, [attempt, disabled, loading, mode, width]);
 
   if (loading || disabled || failed) {
     return (
@@ -52,5 +55,5 @@ export function GoogleAuthButton({ mode, loading, disabled, onCredential, onErro
     );
   }
 
-  return <div ref={containerRef} style={{ alignItems: 'center', display: 'flex', minHeight: 52, justifyContent: 'center', width: '100%' }} />;
+  return <div ref={containerRef} style={{ alignItems: 'center', display: 'flex', minHeight: 48, justifyContent: 'center', width: '100%' }} />;
 }

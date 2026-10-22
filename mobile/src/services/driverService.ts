@@ -4,9 +4,12 @@ export const savePersonalInfo=(input:{fullName:string;email:string;address:strin
 export const saveVehicleInfo=(input:{make:string;model:string;year:string;color:string;registrationNumber:string})=>apiClient.post('/driver/onboarding/vehicle-info',input);
 export async function uploadDriverDocuments(files:{license:PickedDocument;vehicleRegistration:PickedDocument;insurance:PickedDocument}){const body=new FormData();for(const [key,file] of Object.entries(files))body.append(key,file.file??({uri:file.uri,name:file.name,type:file.mimeType??'application/octet-stream'} as unknown as Blob),file.name);return apiClient.post('/driver/onboarding/documents',body,{headers:{'Content-Type':'multipart/form-data'}});}
 export const submitDriverApplication=()=>apiClient.post('/driver/onboarding/submit');
+export interface DriverVehicle {
+  make:string|null;model:string|null;year:number|null;color:string|null;registrationNumber:string|null;
+}
 export interface DriverApplicationResponse {
   status:'none'|'pending'|'approved'|'rejected';rejection_reason?:string;submitted_at?:string;reviewed_at?:string;
-  vehicle:{make:string|null;model:string|null;year:number|null;color:string|null;registrationNumber:string|null}|null;
+  vehicle:DriverVehicle|null;
   documents:{kind:'license'|'registration'|'insurance';available:boolean}[];
   serviceSettings:DriverServiceSettings;
 }
@@ -19,6 +22,9 @@ export type DriverServiceStatus = 'none'|'pending'|'approved'|'rejected'|'suspen
 export interface DriverServiceSettings {
   version:number;
   vehicleCategory:'car'|'motorcycle'|null;
+  vehicle?:DriverVehicle|null;
+  requestedVehicleCategory?:'car'|'motorcycle'|null;
+  vehicleReviewRequired?:boolean;
   services:Record<DriverService,{status:DriverServiceStatus;enabled:boolean;consentAccepted:boolean;review:{reason?:string}|null}>;
   consent:{version:string;descriptions:Record<DriverService,string>};
 }

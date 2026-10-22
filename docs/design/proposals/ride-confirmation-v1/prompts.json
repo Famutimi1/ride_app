@@ -1,0 +1,9 @@
+{
+  "status": "implemented",
+  "mode": "built-in image_gen",
+  "useCase": "ui-mockup",
+  "selectedOutput": "ride-confirmation.png",
+  "prompts": [
+    {}
+  ]
+}

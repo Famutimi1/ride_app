@@ -1,6 +1,7 @@
 import { Pressable, View } from 'react-native';
 import { useUiStore, type ThemePreference } from '@/store/uiStore';
 import { Text } from './Text';
+import { RideIcon } from './RideIcon';
 
 const OPTIONS: readonly { value: ThemePreference; label: string }[] = [
   { value: 'light', label: 'Light' },
@@ -12,7 +13,7 @@ export function ThemePreferencePicker() {
   const preference = useUiStore((state) => state.themePreference);
   const setPreference = useUiStore((state) => state.setThemePreference);
   return (
-    <View className="mt-sm flex-row flex-wrap gap-sm">
+    <View accessibilityRole="radiogroup" accessibilityLabel="Appearance" className="flex-row gap-xs rounded-xl border border-border bg-surface p-xs">
       {OPTIONS.map(({ value, label }) => (
         <Pressable
           key={value}
@@ -21,9 +22,10 @@ export function ThemePreferencePicker() {
           accessibilityState={{ checked: preference === value }}
           aria-checked={preference === value}
           onPress={() => setPreference(value)}
-          className={`min-h-12 flex-1 items-center justify-center rounded-lg border px-sm py-sm ${preference === value ? 'border-primary bg-primarySoft' : 'border-borderStrong bg-surface'}`}
+          className={`min-h-16 flex-1 items-center justify-center gap-sm rounded-lg border px-xs py-md ${preference === value ? 'border-primary bg-primarySoft' : 'border-transparent bg-surface'}`}
         >
-          <Text variant="button" color={preference === value ? 'primary' : 'text'}>{label}</Text>
+          <RideIcon name={value === 'light' ? 'sun' : value === 'dark' ? 'moon' : 'device'} size={18} color={preference === value ? 'primary' : 'textMuted'} />
+          <Text variant="caption" color={preference === value ? 'primary' : 'text'}>{label}</Text>
         </Pressable>
       ))}
     </View>

@@ -4,6 +4,7 @@ import type { EmailClient, EmailPayload, EmailTemplate } from './email.types';
 import { renderEmail } from './emailTemplates';
 import type { CreateNotificationInput } from './notifications.types';
 import { emailControlKey, emailRuleEnabled, getEmailSettings } from './emailSettings.service';
+import { isAppAccountRole } from '../auth/auth.types';
 
 export function normalizedEmail(value:unknown):string|null {
   if(value===undefined||value===null||value==='')return null;
@@ -39,7 +40,7 @@ export async function queueAdminEmail(client:EmailClient,input:{userId?:string;e
 
 export async function queueCustomerEmail(client:EmailClient,userId:string,eventKey:string,template:EmailTemplate,payload:Omit<EmailPayload,'name'>){
   const user=(await client.query<{full_name:string;email:string|null;is_active:boolean;role:string}>('SELECT full_name,email,is_active,role FROM users WHERE id=$1',[userId])).rows[0];
-  if(!user||!user.is_active||user.role!=='user')return;
+  if(!user||!user.is_active||!isAppAccountRole(user.role))return;
   await queueEmail(client,{userId,eventKey,template,payload:{...payload,name:user.full_name},audience:'customer',recipient:user.email,recipientKey:userId});
 }
 

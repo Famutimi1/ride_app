@@ -82,21 +82,22 @@ export colors and has been aligned to the green palette.
 Font: **Inter** (loaded at app start in `src/app/_layout.tsx` via
 `@expo-google-fonts/inter`). Each variant points at a specific Inter weight file —
 on custom fonts the *family name* carries the weight, so we don't rely on
-`fontWeight` alone.
+`fontWeight` alone. The compact scale uses semibold headings, subtle negative
+heading tracking, and regular body text for a quieter visual hierarchy.
 
 | Variant | Size / Line height | Weight | Inter family | Use |
 |---|---|---|---|---|
-| `h1` | 38 / 44 | 700 | `Inter_700Bold` | Big screen titles, balances |
-| `h2` | 32 / 40 | 700 | `Inter_700Bold` | Screen titles |
-| `h3` | 28 / 36 | 600 | `Inter_600SemiBold` | Section headers, prices |
-| `body` | 16 / 24 | 400 | `Inter_400Regular` | Default body text |
-| `bodyMedium` | 16 / 24 | 500 | `Inter_500Medium` | Emphasised body / list titles |
-| `caption` | 14 / 20 | 400 | `Inter_400Regular` | Secondary / helper text |
-| `button` | 15 / 22 | 500 | `Inter_500Medium` | Button labels |
+| `h1` | 30 / 36 | 600 | `Inter_600SemiBold` | Big screen titles, balances |
+| `h2` | 24 / 30 | 600 | `Inter_600SemiBold` | Screen titles |
+| `h3` | 20 / 26 | 600 | `Inter_600SemiBold` | Section headers, prices |
+| `body` | 15 / 22 | 400 | `Inter_400Regular` | Default body text |
+| `bodyMedium` | 15 / 22 | 500 | `Inter_500Medium` | Emphasised body / list titles |
+| `caption` | 13 / 18 | 400 | `Inter_400Regular` | Secondary / helper text |
+| `button` | 14 / 20 | 600 | `Inter_600SemiBold` | Button labels |
 
-Sizes come straight from the mockup's typography table. `body` and `bodyMedium`
-are the one addition — the mockup showed H1–H3 + caption + button but every screen
-needs a standard 16px body size, so it sits in the natural gap below H3.
+The scale is mirrored in `mobile/tailwind.config.js` for NativeWind. Headings use
+letter spacing of −0.7 / −0.5 / −0.3px for H1 / H2 / H3. Use variants for screen
+and sheet titles instead of local pixel overrides. Native font scaling stays on.
 
 Usage — always via the `<Text>` component, never a raw `fontSize`:
 
@@ -113,9 +114,9 @@ Usage — always via the `<Text>` component, never a raw `fontSize`:
 
 | Token | px |  | Token | px |
 |---|---|---|---|---|
-| `xs` | 4 |  | `xl` | 24 |
-| `sm` | 8 |  | `2xl` | 32 |
-| `md` | 12 |  | `3xl` | 48 |
+| `xs` | 4 |  | `xl` | 20 |
+| `sm` | 8 |  | `2xl` | 28 |
+| `md` | 12 |  | `3xl` | 40 |
 | `lg` | 16 | | | |
 
 **Radius** (`radius.*`): `xs` 3 · `sm` 6 · `md` 8 · `lg` 10 · `xl` 12 ·
@@ -137,8 +138,8 @@ All in `mobile/src/components/common/`, all theme-aware. Import from the barrel:
 | Component | Key props | Notes |
 |---|---|---|
 | `Text` | `variant`, `color` | Themed replacement for RN `<Text>`. `color` = any semantic token. |
-| `Button` | `label`, `variant`, `size`, `loading`, `fullWidth`, `leftIcon`/`rightIcon` | Variants: `primary` · `secondary` · `ghost` · `destructive`. Handles pressed/disabled/loading. |
-| `Input` | `label`, `error`, `leftIcon`/`rightIcon` | 3 states: default / focused (green border) / error (red). |
+| `Button` | `label`, `variant`, `size`, `loading`, `fullWidth`, `leftIcon`/`rightIcon` | Variants: `primary` · `secondary` · `ghost` · `destructive`. Handles pressed/disabled/loading. Compact sizes use minimum heights of 44 / 48 / 52px and can grow for wrapped or scaled labels. |
+| `Input` | `label`, `error`, `leftIcon`/`rightIcon` | 3 states: default / focused (green border) / error (red). 48px minimum shell height with room to grow for scaled text. |
 | `Card` | `elevation`, `padding` | Rounded themed surface panel. |
 | `StatusPill` | `label`, `tone`, `dot` | Tones: `success`/`primary`/`warning`/`danger`/`neutral`. For "Online", "Searching…", etc. |
 | `Avatar` | `uri`, `name`, `size` | Photo, or initials fallback on a tinted circle. |

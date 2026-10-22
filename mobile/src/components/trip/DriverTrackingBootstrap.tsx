@@ -8,7 +8,7 @@ import { useTripStore } from '@/store/tripStore';
 /** Keep tracking alive across driver trip/chat/navigation screens, including web. */
 export function DriverTrackingBootstrap() {
   const driverId = useAuthStore((state) => state.session?.user.role === 'driver' ? state.session.user.id : null);
-  const tripId = useTripStore((state) => state.trip && ['driver_assigned', 'driver_arrived', 'in_progress', 'returning'].includes(state.trip.status) ? state.trip.id : null);
+  const tripId = useTripStore((state) => state.trip?.driver_id === driverId && ['driver_assigned', 'driver_arrived', 'in_progress', 'returning'].includes(state.trip.status) ? state.trip.id : null);
   useEffect(() => {
     if (!driverId || !tripId) return;
     let disposed = false;

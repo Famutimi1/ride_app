@@ -5,7 +5,7 @@ import { assertDriverMaterialEditable } from '../driver/driver.service';
 import { env } from '../../config/env';
 import { ApiError } from '../../shared/errors';
 import { normalizeNigerianPhone } from '../../shared/utils/phone';
-import { publicUser, type AccountType, type AuthUserRow, type DriverStatus, type OtpPurpose, type SessionScope } from './auth.types';
+import { isAppAccountRole, publicUser, type AccountType, type AuthUserRow, type DriverStatus, type OtpPurpose, type SessionScope } from './auth.types';
 import { generateOtp, withVerifiedOtp } from './otp.service';
 import { createRefreshToken, hashToken, signAccessToken, signPhoneVerificationToken, verifyPhoneVerificationToken, signPhoneChangeToken, verifyPhoneChangeToken } from './jwt.service';
 import { verifyGoogleToken, verifyStaffGoogleToken } from './google.service';
@@ -174,8 +174,10 @@ export async function updateProfile(userId: string, input: unknown, client: Pool
   if (hasEmail && (email === undefined || (email !== null && (email.length > 160 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))))) throw new ApiError(400, 'invalid_email');
   const user = (await client.query<AuthUserRow>('SELECT * FROM users WHERE id=$1 AND is_active=true FOR UPDATE', [userId])).rows[0];
   if (!user) throw new ApiError(401, 'account_inactive');
-  // Customer-entered contact email must never change a staff authentication identity.
-  if (user.role !== 'user') throw new ApiError(403, 'staff_profile_requires_admin');
+  if (!isAppAccountRole(user.role)) throw new ApiError(403, 'app_account_required');
+  // Staff may use their customer profile, but changing their sign-in email stays
+  // a staff identity operation. Sending the unchanged address is safe for forms.
+  if (user.role !== 'user' && hasEmail && email !== (user.email?.trim().toLowerCase() ?? null)) throw new ApiError(403, 'staff_email_requires_admin');
   if(hasName&&name!==user.full_name)await assertDriverMaterialEditable(userId,client);
   try {
     await client.query(`UPDATE users SET full_name=CASE WHEN $2 THEN $3 ELSE full_name END,

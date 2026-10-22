@@ -13,6 +13,7 @@ export interface Trip {
   estimated_distance_m:number;estimated_duration_s:number;route_polyline?:string|null;fare_kobo:number;
   commission_kobo?:number|null;driver_earning_kobo?:number|null;requested_at:string;accepted_at?:string|null;
   scheduled_at?:string|null;
+  cancelled_at?:string|null;payment_status?:'unpaid'|'held'|'settled'|'released';
   delivery_issue_reason?:string|null;returned_at?:string|null;
   cancel_reason?:string|null;
   driver_name?:string|null;driver_avatar?:string|null;driver_rating?:string|null;vehicle_make?:string|null;

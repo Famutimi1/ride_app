@@ -1,0 +1,26 @@
+{
+  "mode": "Built-in image_gen",
+  "reference": "docs/design/proposals/rider-home-v2/rider-home.png",
+  "assets": [
+    {
+      "key": "ride",
+      "object": "the small green rounded hatchback car from the Ride tile, front three-quarter view, black tires and dark windows",
+      "prompt": "Use case: precise-object-edit. Input is the APPROVED Rakky Ride homepage. Extract and recreate ONLY the small green rounded hatchback car from the Ride tile, front three-quarter view, black tires and dark windows. Preserve the clean friendly stylized 3D clay look, colors, proportions and material from the approved reference. One isolated object centered, fills about85% of a square canvas, generous unclipped edges. Transparent background with actual alpha, no tile surface, no text, no UI, no map, no frame, no surrounding objects, no checkerboard baked in. A faint soft contact shadow directly under object is okay. This will be displayed at about56 pixels as a service illustration in the app."
+    },
+    {
+      "key": "courier",
+      "object": "the cardboard courier parcel from the Courier tile, warm kraft material with green sealing tape, three-quarter view",
+      "prompt": "Use case: precise-object-edit. Input is the APPROVED Rakky Ride homepage. Extract and recreate ONLY the cardboard courier parcel from the Courier tile, warm kraft material with green sealing tape, three-quarter view. Preserve the clean friendly stylized 3D clay look, colors, proportions and material from the approved reference. One isolated object centered, fills about85% of a square canvas, generous unclipped edges. Transparent background with actual alpha, no tile surface, no text, no UI, no map, no frame, no surrounding objects, no checkerboard baked in. A faint soft contact shadow directly under object is okay. This will be displayed at about56 pixels as a service illustration in the app."
+    },
+    {
+      "key": "schedule",
+      "object": "the small white desk/calendar icon from the Schedule tile, green header, two dark binder rings, simple dark square day marks, no letters or numbers",
+      "prompt": "Use case: precise-object-edit. Input is the APPROVED Rakky Ride homepage. Extract and recreate ONLY the small white desk/calendar icon from the Schedule tile, green header, two dark binder rings, simple dark square day marks, no letters or numbers. Preserve the clean friendly stylized 3D clay look, colors, proportions and material from the approved reference. One isolated object centered, fills about85% of a square canvas, generous unclipped edges. Transparent background with actual alpha, no tile surface, no text, no UI, no map, no frame, no surrounding objects, no checkerboard baked in. A faint soft contact shadow directly under object is okay. This will be displayed at about56 pixels as a service illustration in the app."
+    }
+  ],
+  "outputs": [
+    "ride.png",
+    "courier.png",
+    "schedule.png"
+  ]
+}

@@ -19,7 +19,7 @@ export function DriverResponseModal({ visible, rideName, fare, onCancel }: Drive
         <View className="h-20 w-20 items-center justify-center rounded-full bg-primarySoft">
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
-        <Text variant="h3" className="mt-lg !text-[23px]">Waiting for driver</Text>
+        <Text variant="h3" className="mt-lg">Waiting for driver</Text>
         <Text variant="caption" color="textMuted" className="mt-xs text-center">Your ride request has been sent to the nearest verified driver.</Text>
 
         <View className="mt-lg w-full rounded-2xl bg-surfaceMuted p-md">

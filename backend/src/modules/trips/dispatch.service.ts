@@ -12,6 +12,7 @@ import type { TripRow } from './trip.types';
 import { createNotificationRecord, notifyUserSafely, publishNotification } from '../notifications/notifications.service';
 import { driverOfferNotification } from '../notifications/notificationTemplates';
 import type { CreatedNotification } from '../notifications/notifications.types';
+import { APP_ACCOUNT_ROLES } from '../auth/auth.types';
 
 export type DispatchResult = { kind: 'stopped' | 'terminal' | 'retry' } | { kind: 'expand'; radiusIndex: number } | { kind: 'offered'; driverId: string };
 
@@ -53,7 +54,7 @@ export async function dispatchNext(tripId: string, radiusIndex: number): Promise
     const candidates = await findEligibleDrivers(client, tripId, trip.pickup_lat, trip.pickup_lng, env.DISPATCH_RADIUS_STEPS_M[index]);
     for (const candidate of candidates) {
       if (!await acquireOfferLock(candidate.driverId, tripId)) continue;
-      const availableLock=await client.query("SELECT id FROM users WHERE id=$1 AND is_active=true AND role='user' FOR UPDATE SKIP LOCKED",[candidate.driverId]);
+      const availableLock=await client.query('SELECT id FROM users WHERE id=$1 AND is_active=true AND role=ANY($2::user_role[]) FOR UPDATE SKIP LOCKED',[candidate.driverId,APP_ACCOUNT_ROLES]);
       if(!availableLock.rowCount){await releaseOfferLock(candidate.driverId,tripId);continue;}
       await lockServiceProfile(candidate.driverId,client);
       if(!(await eligibleServiceDriverIds([candidate.driverId],trip.service_type,client)).has(candidate.driverId)){await releaseOfferLock(candidate.driverId,tripId);continue;}

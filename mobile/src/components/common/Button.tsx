@@ -36,9 +36,9 @@ export interface ButtonProps extends Omit<PressableProps, 'style' | 'children'> 
 }
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
-  sm: 'h-10 rounded-md',
-  md: 'h-[52px] rounded-md',
-  lg: 'h-14 rounded-lg',
+  sm: 'min-h-11 rounded-md py-sm',
+  md: 'min-h-12 rounded-md py-md',
+  lg: 'min-h-[52px] rounded-lg py-md',
 };
 
 export function Button({
@@ -95,9 +95,9 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={theme.colors[labelColor]} />
       ) : (
-        <View className="flex-row items-center gap-sm">
+        <View className="max-w-full flex-row items-center gap-sm">
           {leftIcon}
-          <Text variant="button" color={labelColor}>
+          <Text variant="button" color={labelColor} className="shrink text-center">
             {label}
           </Text>
           {rightIcon}

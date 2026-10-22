@@ -26,8 +26,8 @@ export interface AvatarProps {
 
 const DIMENSION_CLASSES: Record<AvatarSize, string> = {
   sm: 'h-8 w-8',
-  md: 'h-11 w-11',
-  lg: 'h-16 w-16',
+  md: 'h-10 w-10',
+  lg: 'h-14 w-14',
 };
 
 const StyledImage = cssInterop(Image, { className: 'style' });

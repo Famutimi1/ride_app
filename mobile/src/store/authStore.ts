@@ -4,7 +4,7 @@ import { apiErrorMessage, isSessionRejected } from '@/lib/apiClient';
 import { tokenStore } from '@/lib/secureTokenStore';
 import { getMe, googleAuth, logoutSession, requestLogin, requestRegistration, resendOtp, saveProfile, confirmPhoneChange, switchActiveRole, verifyLogin, verifyRegistration, type AuthUser, type UserRole } from '@/services/authService';
 import { getGoogleIdToken } from '@/services/googleSignIn';
-import { getDriverServiceSettings, updateDriverServicePreferences, withdrawDriverServiceConsent as apiWithdrawDriverServiceConsent, type DriverService, type DriverServiceSettings, getDriverApplicationStatus, submitDriverApplication as apiSubmitDriverApplication } from '@/services/driverService';
+import { getDriverServiceSettings, updateDriverServicePreferences, withdrawDriverServiceConsent as apiWithdrawDriverServiceConsent, type DriverService, type DriverServiceSettings, type DriverApplicationResponse, getDriverApplicationStatus, submitDriverApplication as apiSubmitDriverApplication } from '@/services/driverService';
 import { resetSocket } from '@/services/socket';
 import { useWalletStore } from '@/store/walletStore';
 import { useMapStore } from '@/store/mapStore';
@@ -22,11 +22,12 @@ export interface DriverApplication {status:DriverApplicationStatus;submittedAt?:
 export type AuthDestination='home'|'driver-onboarding'|'driver-dashboard'|'driver-status';
 interface Pending{phone:string;name?:string;email?:string;intent:AuthIntent;accountType:RegistrationAccountType;phoneVerificationToken?:string}
 interface AuthState{driverServices:DriverServiceSettings|null;refreshDriverServices:()=>Promise<void>;saveDriverServicePreferences:(ride:boolean,courier:boolean)=>Promise<void>;withdrawDriverServiceConsent:(service:DriverService)=>Promise<void>;session:Session|null;pending:Pending|null;driverApplication:DriverApplication|null;_hasHydrated:boolean;_sessionError:string|null;
-  hydrate:()=>Promise<void>;requestOtp:(phone:string,options?:{name?:string;email?:string;intent?:AuthIntent;accountType?:RegistrationAccountType})=>Promise<void>;verifyOtp:(code:string)=>Promise<{destination:AuthDestination}>;signInWithGoogle:()=>Promise<'phone'|AuthDestination>;signInWithGoogleIdToken:(idToken:string)=>Promise<'phone'|AuthDestination>;completeProfile:(input:{name:string;email?:string;role?:UserRole})=>Promise<void>;setRole:(role:UserRole)=>Promise<boolean>;submitDriverApplication:(application:Omit<DriverApplication,'status'|'submittedAt'|'rejectionReason'>)=>Promise<void>;refreshDriverApplication:()=>Promise<void>;restartDriverApplication:()=>void;updateProfile:(input:Partial<Pick<AuthUser,'name'|'email'>>)=>Promise<void>;changePhone:(challenge:string,code:string)=>Promise<void>;logout:()=>Promise<void>;setHydrated:()=>void}
+  hydrate:()=>Promise<void>;requestOtp:(phone:string,options?:{name?:string;email?:string;intent?:AuthIntent;accountType?:RegistrationAccountType})=>Promise<void>;verifyOtp:(code:string)=>Promise<{destination:AuthDestination}>;signInWithGoogle:()=>Promise<'phone'|AuthDestination>;signInWithGoogleIdToken:(idToken:string)=>Promise<'phone'|AuthDestination>;completeProfile:(input:{name:string;email?:string;role?:UserRole})=>Promise<void>;setRole:(role:UserRole)=>Promise<boolean>;submitDriverApplication:(application:Omit<DriverApplication,'status'|'submittedAt'|'rejectionReason'>)=>Promise<void>;refreshDriverApplication:()=>Promise<DriverApplicationResponse | undefined>;restartDriverApplication:()=>void;updateProfile:(input:Partial<Pick<AuthUser,'name'|'email'>>)=>Promise<void>;changePhone:(challenge:string,code:string)=>Promise<void>;logout:()=>Promise<void>;setHydrated:()=>void}
 const blankApplication=(user?:AuthUser|null):DriverApplication=>({status:'draft',personal:{fullName:user?.name??'',email:user?.email??'',address:''},vehicle:{make:'',model:'',year:'',color:'',registrationNumber:''},documents:{driverLicence:'',vehicleRegistration:'',insurance:''}});
 function applicationFromStatus(status:'none'|'pending'|'approved'|'rejected',user:AuthUser,rejectionReason?:string){const application=blankApplication(user);application.status=status==='none'?'draft':status;application.rejectionReason=rejectionReason;return application;}
 
 let sessionGeneration = 0;
+let roleSwitchInFlight = false;
 
 export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,session:null,pending:null,driverApplication:null,_hasHydrated:false,_sessionError:null,
   hydrate: async () => {
@@ -56,6 +57,8 @@ export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,ses
   signInWithGoogleIdToken:async(idToken)=>{try{const result=await googleAuth(idToken);if('needsPhoneVerification' in result){set({pending:{phone:'',name:result.user.name,email:result.user.email??undefined,intent:'register',accountType:'rider',phoneVerificationToken:result.phoneVerificationToken}});return'phone';}sessionGeneration += 1;await tokenStore.setTokens(result.tokens);const user={...result.user,role:result.activeRole} as AuthUser;set({session:{user},driverServices:null,driverApplication:applicationFromStatus(result.driverStatus,user),_sessionError:null});return result.activeRole==='driver'&&result.driverStatus==='approved'?'driver-dashboard':result.driverStatus==='pending'||result.driverStatus==='rejected'?'driver-status':'home';}catch(error){throw new Error(apiErrorMessage(error));}},
   completeProfile:async({name,email})=>get().updateProfile({name,...(email === undefined ? {} : {email})}),
   setRole: async (role) => {
+    if (!get().session || roleSwitchInFlight) return false;
+    roleSwitchInFlight = true;
     const generation = sessionGeneration;
     try {
       const data = await switchActiveRole(role);
@@ -63,6 +66,7 @@ export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,ses
       if (!session || generation !== sessionGeneration) return false;
       if (session.user.role === 'driver' && data.activeRole !== 'driver') await stopAllDriverLocationUpdates();
       if (generation !== sessionGeneration) return false;
+      if (data.activeRole !== session.user.role) sessionGeneration += 1;
       useTripStore.getState().clear();
       useMapStore.getState().clearTripMap();
       set({ session: { user: { ...session.user, role: data.activeRole } } });
@@ -70,7 +74,7 @@ export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,ses
     } catch (error) {
       Alert.alert('Could not switch mode', apiErrorMessage(error));
       return false;
-    }
+    } finally { roleSwitchInFlight = false; }
   },
   submitDriverApplication:async(application)=>{try{const {data}=await apiSubmitDriverApplication();set({driverApplication:{...application,status:'pending',submittedAt:new Date(data.submittedAt??Date.now()).getTime()}});}catch(error){throw new Error(apiErrorMessage(error));}},
   refreshDriverServices:async()=>{
@@ -104,6 +108,7 @@ export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,ses
     const current=get().driverApplication??blankApplication(user);
     set({driverApplication:{...current,status:data.status==='none'?'draft':data.status,rejectionReason:data.rejection_reason,submittedAt:data.submitted_at?new Date(data.submitted_at).getTime():current.submittedAt}});
     if(data.serviceSettings.version>=(get().driverServices?.version??-1))set({driverServices:data.serviceSettings});
+    return data;
   },
   restartDriverApplication:()=>set({driverApplication:blankApplication(get().session?.user)}),
   updateProfile: async (input) => {
@@ -144,4 +149,16 @@ export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,ses
   },
   setHydrated:()=>set({_hasHydrated:true}),
 }));
+// Clear the previous mode synchronously, before a screen can render its notifications.
+useAuthStore.subscribe((state, previous) => {
+  const user = state.session?.user;
+  const before = previous.session?.user;
+  if (user?.id !== before?.id || user?.role !== before?.role) {
+    useTripStore.getState().clear();
+    useCourierDraftStore.getState().clearDraft();
+    useMapStore.getState().clearTripMap();
+    useWalletStore.getState().reset();
+  }
+  useNotificationStore.getState().setContext(user?.id ?? null, user?.role ?? 'rider');
+});
 export const useIsSignedIn=()=>useAuthStore(s=>s.session!==null);

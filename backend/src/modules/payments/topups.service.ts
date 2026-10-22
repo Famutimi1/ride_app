@@ -63,7 +63,7 @@ export async function applySuccessfulTopup(reference:string) {
         ...(fee>0?[{accountId:feeAccount,direction:'debit' as const,amountKobo:fee}]:[]),
         {accountId:userAccount,direction:'credit',amountKobo:gross}]});
     await client.query("UPDATE payment_intents SET status='succeeded',failure_reason=NULL,fee_kobo=$2,channel=$3,paid_at=$4,ledger_transaction_id=$5,updated_at=now() WHERE id=$1",[intent.id,fee,charge.channel,charge.paidAt,transactionId]);
-    const notification=await createNotificationRecord(client,walletNotification({userId:intent.user_id,eventKey:`topup:${reference}:succeeded`,type:'topup_succeeded',title:intent.target==='wallet'?'Wallet top-up successful':'Earnings balance updated',body:`₦${(gross/100).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2})} has been added successfully.`,referenceId:reference}));
+    const notification=await createNotificationRecord(client,walletNotification({userId:intent.user_id,eventKey:`topup:${reference}:succeeded`,type:'topup_succeeded',audience:intent.target==='earnings'?'driver':'rider',title:intent.target==='wallet'?'Wallet top-up successful':'Earnings balance updated',body:`₦${(gross/100).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2})} has been added successfully.`,referenceId:reference}));
     return {result:{applied:true,status:'succeeded'},notification,userId:intent.user_id};
   });
   if (completed.result.applied&&completed.userId) {

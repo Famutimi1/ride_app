@@ -1,0 +1,12 @@
+{
+  "generator": "Built-in image_gen",
+  "design": {
+    "file": "designs/login-page.png",
+    "reference": "../onboarding-v3/designs/ride-page.png",
+    "prompt": "Use case: ui-mockup. Create a polished complete mobile login screen design for Rakky Ride. Use the reference ONLY for the clean white-forward visual identity and soft matte green clay 3D car style. Portrait page, no phone device frame. Header: subtle circular back chevron at left; small Rakky Ride wordmark. Small compact 3D green car illustration centered in upper third, about 25% page width and 15% page height with subtle mint glow, not a large hero. Left-aligned title 'Welcome back.' and subtitle 'Your next ride starts here.' Below, neat single rounded phone input containing Nigerian flag and '+234' separated by a thin vertical divider, placeholder 'Phone number'. Helper 'We’ll text you a login code.' Immediately below input, full-width green pill button 'Continue' with right arrow. Thin divider with 'or', then white outlined official-style multicolor Google G button 'Sign in with Google'. Centered footer 'New to Rakky Ride? Sign up' with green Sign up. Elegant spacing but no large empty gap between input and actions. Concise copy, generous breathing room. White/silver surfaces, charcoal text, deep green actions. Restrained premium transport app UI, readable 30px headings and 15px body at phone scale, no extra paragraphs, badges, ratings, social methods, menus or fake claims."
+  },
+  "implementationArtwork": "../onboarding-v3/ride.png",
+  "research": [
+    "https://www.uber.com/global/en/sign-in/"
+  ]
+}

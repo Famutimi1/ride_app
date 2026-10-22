@@ -1,33 +1,40 @@
 /** Rider home: live map, destination search, and an adjustable address sheet. */
 import { useCallback, useState } from 'react';
-import { cssInterop } from 'nativewind';
+import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Text, ThemeToggle } from '@/components/common';
-import { DriverOnlineControl, RideMap } from '@/components/map';
+import { Text } from '@/components/common';
+import { RideMap } from '@/components/map';
+import { useTheme } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useMapStore } from '@/store/mapStore';
+import { useUiStore } from '@/store/uiStore';
 import { focusOnCurrentLocation, LocationUnavailableError } from '@/services/locationService';
 import { getTripRoute } from '@/services/mapsService';
 import { getTripHistory } from '@/services/tripService';
 import { selectRepeatRides, type RepeatRide } from '@/utils/rideAgain';
+import { tripBelongsToRole } from '@/utils/roleAccess';
 
-const StyledSafeAreaView = cssInterop(SafeAreaView, { className: 'style' });
+import { HomeIcon } from './HomeIcon';
 
 const SERVICES = [
-  { id: 'ride', icon: '🚙', label: 'Ride', detail: 'Everyday trips', service: 'ride' },
-  { id: 'courier', icon: '📦', label: 'Courier', detail: 'Send a package', service: 'courier' },
-  { id: 'schedule', icon: '◷', label: 'Schedule', detail: 'Book ahead', service: 'scheduled' },
+  { id: 'ride', image: require('@/assets/images/home-v2/ride.png'), label: 'Ride', detail: 'Everyday trips' },
+  { id: 'courier', image: require('@/assets/images/home-v2/courier.png'), label: 'Courier', detail: 'Send a parcel' },
+  { id: 'schedule', image: require('@/assets/images/home-v2/schedule.png'), label: 'Schedule', detail: 'Book ahead' },
 ] as const;
 
 export function HomeScreen() {
   const router = useRouter();
+  const { colors, scheme } = useTheme();
+  const setThemePreference = useUiStore((state) => state.setThemePreference);
+  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const sheetHeight = Math.min(416 + insets.bottom, height * 0.58);
   const user = useAuthStore((state) => state.session?.user);
   const userId = user?.id;
   const userRole = user?.role;
-  const driverApplication = useAuthStore((state) => state.driverApplication);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [repeatRides, setRepeatRides] = useState<RepeatRide[]>([]);
   const [ridesLoading, setRidesLoading] = useState(true);
@@ -46,7 +53,7 @@ export function HomeScreen() {
         let cursor: string | undefined;
         for (let page = 0; page < 5; page += 1) {
           const result = await getTripHistory(cursor, { serviceType: 'ride', limit: 50 });
-          trips.push(...result.trips);
+          trips.push(...result.trips.filter(trip => tripBelongsToRole(trip, userId, 'rider')));
           if (selectRepeatRides(trips).length >= 2 || !result.nextCursor) break;
           cursor = result.nextCursor;
         }
@@ -79,45 +86,36 @@ export function HomeScreen() {
     }).catch(() => { /* The selected addresses remain editable if directions are unavailable. */ });
   };
 
+  const openAccountSection = (section: string) => router.push({ pathname: '/account/[section]', params: { section } });
+
   return (
-    <View className="flex-1 bg-background">
-      <RideMap />
-      {user.role === 'driver' && driverApplication?.status === 'approved' ? <DriverOnlineControl driverId={user.id} /> : null}
-
-      <StyledSafeAreaView edges={['top']} className="absolute left-sm right-sm top-0 pt-sm">
-        <View className="flex-row items-center justify-between">
-          <Pressable accessibilityRole="button" accessibilityLabel="Open account menu" onPress={() => router.push('/menu')} className="h-12 w-12 items-center justify-center rounded-full bg-surface shadow-sm active:opacity-70">
-            <Text variant="h3" className="!text-[22px]">☰</Text>
+    <View style={[styles.screen, { backgroundColor: colors.surfaceMuted }]}>
+      <View style={[StyleSheet.absoluteFill, { bottom: sheetHeight }]}>
+        <RideMap mapPadding={{ top: insets.top + 132, right: 20, bottom: 20, left: 20 }} />
+      </View>
+      <SafeAreaView edges={['top']} style={styles.topControls} pointerEvents="box-none">
+        <View style={styles.toolbar} pointerEvents="box-none">
+          <Pressable accessibilityRole="button" accessibilityLabel="Open account menu" onPress={() => router.push('/menu')} style={[styles.roundControl, { backgroundColor: colors.surface }]}>
+            <HomeIcon name="menu" size={22} />
           </Pressable>
-          <ThemeToggle floating />
+          <Pressable accessibilityRole="button" accessibilityLabel={scheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onPress={() => setThemePreference(scheme === 'dark' ? 'light' : 'dark')} style={[styles.roundControl, { backgroundColor: colors.surface }]}>
+            <HomeIcon name={scheme === 'dark' ? 'moon' : 'sun'} size={22} />
+          </Pressable>
         </View>
-
-        <View className="mt-md h-14 flex-row items-center rounded-lg bg-surface p-xs pl-md shadow-md">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open pickup and destination search"
-            onPress={openDestinationPage}
-            className="h-full flex-1 flex-row items-center gap-md active:opacity-60"
-          >
-            <Text variant="h3" color="icon" className="!text-[22px]">⌕</Text>
-            <Text variant="bodyMedium" color="textMuted" numberOfLines={1}>
-              Where to?
-            </Text>
+        <View style={[styles.searchBar, { backgroundColor: colors.surface }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Open pickup and destination search" onPress={openDestinationPage} style={styles.destinationSearch}>
+            <HomeIcon name="search" size={21} />
+            <Text variant="bodyMedium" numberOfLines={1}>Where to?</Text>
           </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Schedule a ride for later"
-            onPress={() => router.push('/schedule')}
-            className="h-11 flex-row items-center gap-sm rounded-md bg-surfaceMuted px-md active:opacity-70"
-          >
-            <Text variant="body" color="icon">▣</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Schedule a ride for later" onPress={() => router.push('/schedule')} style={[styles.scheduleButton, { backgroundColor: colors.surfaceMuted }]}>
+            <HomeIcon name="calendar" size={17} />
             <Text variant="caption">Schedule</Text>
           </Pressable>
         </View>
-        {locationError ? <View accessibilityRole="alert" className="mt-sm rounded-lg bg-surface p-md shadow-sm">
+        {locationError ? <View accessibilityRole="alert" style={[styles.locationError, { backgroundColor: colors.surface }]}>
           <Text variant="caption">{locationError}</Text>
         </View> : null}
-      </StyledSafeAreaView>
+      </SafeAreaView>
 
       <Pressable
         accessibilityRole="button"
@@ -127,67 +125,105 @@ export function HomeScreen() {
           void focusOnCurrentLocation().then((permission) => {
             if (permission !== 'granted') setLocationError('Allow location access to center the map on your position.');
           }).catch((error: unknown) => {
-            setLocationError(error instanceof LocationUnavailableError
-              ? error.message
-              : 'Could not refresh your location. Please try again.');
+            setLocationError(error instanceof LocationUnavailableError ? error.message : 'Could not refresh your location. Please try again.');
           });
         }}
-        className="absolute right-lg top-[42%] h-12 w-12 items-center justify-center rounded-full bg-success shadow-md active:opacity-80"
+        style={[styles.recenter, styles.roundControl, { bottom: sheetHeight + 16, backgroundColor: colors.surface }]}
       >
-        <Text variant="h3" color="textInverse" className="!text-[22px]">◎</Text>
+        <HomeIcon name="locate" size={24} color="primary" />
       </Pressable>
 
-      <StyledSafeAreaView
-        edges={['bottom']}
-        className="absolute bottom-0 left-0 right-0 h-[48%] rounded-t-[28px] bg-surface pb-sm pt-md shadow-lg"
-      >
-          <ScrollView className="flex-1" contentContainerClassName="pb-md" showsVerticalScrollIndicator={false}>
-          <View>
-            <View className="mb-sm items-center">
-              <View className="h-1 w-10 rounded-full bg-borderStrong" />
-            </View>
-            <View className="flex-row items-center justify-between px-xl">
-              <Text variant="bodyMedium">Our services</Text>
-              <Pressable onPress={() => router.push({ pathname: '/account/[section]', params: { section: 'services' } })} className="px-xs py-xs active:opacity-60">
-                <Text variant="caption" color="primary">Explore</Text>
-              </Pressable>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-sm px-xl py-md">
-              {SERVICES.map((service) => <Pressable key={service.id} onPress={() => service.id === 'schedule' ? router.push('/schedule') : service.id === 'courier' ? router.push('/courier') : router.push('/set-destination')} className="w-28 rounded-xl bg-surfaceMuted p-md active:opacity-70"><Text variant="h3" className="!text-[25px]">{service.icon}</Text><Text variant="bodyMedium" className="mt-sm">{service.label}</Text><Text variant="caption" color="textMuted" numberOfLines={1}>{service.detail}</Text></Pressable>)}
-            </ScrollView>
-            {user.role === 'rider' ? <><View className="mb-sm flex-row items-center justify-between px-xl">
-              <Text variant="bodyMedium">Ride again</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="See all trips" onPress={() => router.push({ pathname: '/account/[section]', params: { section: 'trips' } })}>
-                <Text variant="caption" color="primary">See all</Text>
-              </Pressable>
-            </View>
-            {repeatRides.map((ride) => (
-              <Pressable
-                key={ride.trip.id}
-                accessibilityRole="button"
-                accessibilityLabel={`${ride.completedCount ? 'Ride again' : 'Try route again'} from ${ride.trip.pickup_address} to ${ride.trip.dropoff_address}`}
-                onPress={() => repeatRide(ride)}
-                className="mx-xl flex-row items-center gap-md border-t border-border py-sm active:opacity-60"
+      <SafeAreaView edges={['bottom']} style={[styles.sheet, { height: sheetHeight, backgroundColor: colors.surface }]}>
+        <View style={[styles.handle, { backgroundColor: colors.borderStrong }]} />
+        <ScrollView contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.sectionHeader}>
+            <Text variant="bodyMedium">Our services</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Explore all services" onPress={() => openAccountSection('services')} style={styles.sectionAction}>
+              <Text variant="caption" color="primary">Explore</Text>
+              <HomeIcon name="chevron" size={14} color="primary" />
+            </Pressable>
+          </View>
+          <View style={styles.services}>
+            {SERVICES.map(service => (
+              <Pressable key={service.id} accessibilityRole="button" accessibilityLabel={`${service.label}: ${service.detail}`} onPress={() => service.id === 'schedule' ? router.push('/schedule') : service.id === 'courier' ? router.push('/courier') : openDestinationPage()}
+                style={({ pressed }) => [styles.serviceTile, { backgroundColor: colors.primarySoft, opacity: pressed ? 0.7 : 1 }]}
               >
-                <View className="h-10 w-10 items-center justify-center rounded-full bg-surfaceMuted">
-                  <Text variant="bodyMedium" color="primary">{ride.completedCount ? '↗' : '↻'}</Text>
+                <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden>
+                  <Image source={service.image} contentFit="contain" style={styles.serviceArt} />
                 </View>
-                <View className="flex-1">
-                  <Text variant="bodyMedium" numberOfLines={1}>{ride.trip.dropoff_address}</Text>
-                  <Text variant="caption" color="textMuted" numberOfLines={1}>From {ride.trip.pickup_address}</Text>
-                </View>
-                <Text variant="caption" color="primary">{ride.completedCount ? ride.count > 1 ? `×${ride.count}` : '' : 'Try again'}</Text>
-                <Text variant="body" color="icon">›</Text>
+                <Text variant="button" style={styles.centered}>{service.label}</Text>
+                <Text variant="caption" color="textMuted" style={styles.centered}>{service.detail}</Text>
               </Pressable>
             ))}
-            {ridesLoading && !repeatRides.length ? <Text variant="caption" color="textMuted" className="mx-xl py-sm">Loading your recent rides…</Text> : null}
-            {!ridesLoading && !repeatRides.length ? <Pressable onPress={ridesError ? () => setRefreshRides((value) => value + 1) : openDestinationPage} className="mx-xl border-t border-border py-md"><Text variant="caption" color="textMuted">{ridesError ? 'Could not load your rides. Tap to retry.' : 'Your previous ride routes will appear here. Plan your first ride.'}</Text></Pressable> : null}</> : null}
-            <View className="mx-xl mt-xs flex-row items-center justify-center gap-sm rounded-lg bg-primarySoft px-md py-sm">
-              <Text variant="caption" color="primary">🛡</Text>
-              <Text variant="caption" color="primary">Trips are tracked for your safety</Text>
+          </View>
+          {user.role === 'rider' ? <>
+            <View style={[styles.sectionHeader, styles.historyHeader]}>
+              <Text variant="bodyMedium">Ride again</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="See all trips" onPress={() => openAccountSection('trips')} style={styles.sectionAction}>
+                <Text variant="caption" color="primary">See all</Text>
+                <HomeIcon name="chevron" size={14} color="primary" />
+              </Pressable>
             </View>
-          </View></ScrollView>
-      </StyledSafeAreaView>
+            {repeatRides.map((ride, index) => (
+              <Pressable key={ride.trip.id} accessibilityRole="button" accessibilityLabel={`${ride.completedCount ? 'Ride again' : 'Try route again'} from ${ride.trip.pickup_address} to ${ride.trip.dropoff_address}`} onPress={() => repeatRide(ride)}
+                style={({ pressed }) => [styles.historyRow, { borderTopColor: colors.border, borderTopWidth: index ? StyleSheet.hairlineWidth : 0, opacity: pressed ? 0.6 : 1 }]}
+              >
+                <View style={[styles.historyIcon, { backgroundColor: colors.primarySoft }]}>
+                  <HomeIcon name="history" size={19} color="primary" />
+                </View>
+                <View style={styles.routeCopy}>
+                  <Text variant="button" numberOfLines={2}>{ride.trip.dropoff_address.split(',')[0]}</Text>
+                  <Text variant="caption" color="textMuted" numberOfLines={1}>From {ride.trip.pickup_address}</Text>
+                </View>
+                <View style={styles.repeatAction}>
+                  <Text variant="caption" color="primary">{ride.completedCount ? 'Ride again' : 'Try again'}</Text>
+                  <HomeIcon name="chevron" size={14} color="primary" />
+                </View>
+              </Pressable>
+            ))}
+            {ridesLoading && !repeatRides.length ? <Text variant="caption" color="textMuted" style={styles.emptyHistory}>Loading your recent rides…</Text> : null}
+            {!ridesLoading && !repeatRides.length ? (
+              <Pressable accessibilityRole="button" accessibilityLabel={ridesError ? 'Retry loading recent rides' : 'Plan your first ride'} onPress={ridesError ? () => setRefreshRides(value => value + 1) : openDestinationPage} style={styles.emptyHistory}>
+                <Text variant="caption" color="textMuted">{ridesError ? 'Could not load your rides. Tap to retry.' : 'Your recent routes will appear here. Plan your first ride.'}</Text>
+              </Pressable>
+            ) : null}
+          </> : null}
+          <Pressable accessibilityRole="button" accessibilityLabel="Open trip safety tools" onPress={() => openAccountSection('safety')} style={[styles.safetyStrip, { backgroundColor: colors.primarySoft }]}>
+            <HomeIcon name="safety" size={20} color="primary" />
+            <Text variant="caption" style={styles.safetyCopy}>Safety tools for every trip</Text>
+            <HomeIcon name="chevron" size={14} color="primary" />
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  topControls: { position: 'absolute', top: 0, left: 16, right: 16, paddingTop: 8 },
+  toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  roundControl: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', elevation: 3 },
+  searchBar: { marginTop: 10, minHeight: 56, padding: 4, paddingLeft: 16, borderRadius: 18, flexDirection: 'row', alignItems: 'center', elevation: 4 },
+  destinationSearch: { minHeight: 48, flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  scheduleButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 10, borderRadius: 14 },
+  locationError: { marginTop: 8, padding: 12, borderRadius: 12 },
+  recenter: { position: 'absolute', right: 16 },
+  sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 8, overflow: 'hidden', elevation: 6 },
+  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 2 },
+  sheetContent: { paddingHorizontal: 16, paddingBottom: 12 },
+  sectionHeader: { minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  sectionAction: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, paddingLeft: 12 },
+  services: { flexDirection: 'row', alignItems: 'stretch', gap: 8 },
+  serviceTile: { flex: 1, minWidth: 0, minHeight: 112, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, paddingVertical: 8, borderRadius: 16, gap: 2 },
+  serviceArt: { width: 64, height: 48 },
+  centered: { textAlign: 'center' },
+  historyHeader: { marginTop: 4 },
+  historyRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+  historyIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  routeCopy: { flex: 1, minWidth: 0, gap: 2 },
+  repeatAction: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  emptyHistory: { minHeight: 48, paddingVertical: 12 },
+  safetyStrip: { minHeight: 48, marginTop: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  safetyCopy: { flex: 1 },
+});

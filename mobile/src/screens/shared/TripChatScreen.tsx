@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/common';
@@ -11,6 +11,10 @@ import {
   type TripMessage,
 } from '@/services/socket';
 import { useAuthStore } from '@/store/authStore';
+import { useTripStore } from '@/store/tripStore';
+import type { AuthUser } from '@/services/authService';
+import type { Trip } from '@/services/tripService';
+import { canContactTrip, roleHome } from '@/utils/roleAccess';
 
 const QUICK_REPLIES = ['I’m at the pickup point', 'I’ll be there shortly', 'Please call me'];
 
@@ -23,32 +27,27 @@ function currentTime() {
 }
 
 export function TripChatScreen() {
+  const user = useAuthStore(state => state.session?.user);
+  const trip = useTripStore(state => state.trip);
+  const params = useLocalSearchParams<{ tripId?: string | string[] }>();
+  const requestedId = firstParam(params.tripId, '');
+  if (!user) return <Redirect href="/welcome" />;
+  if (!trip || !canContactTrip(trip, user.id, user.role, requestedId)) return <Redirect href={roleHome(user.role)} />;
+  return <TripChatContent key={`${user.id}:${user.role}:${trip.id}`} trip={trip} user={user} />;
+}
+
+function TripChatContent({ trip, user }: { trip: Trip; user: AuthUser }) {
   const router = useRouter();
   const theme = useTheme();
-  const params = useLocalSearchParams<{
-    tripId?: string | string[];
-    participantName?: string | string[];
-  }>();
-  const user = useAuthStore((state) => state.session?.user);
   const scrollRef = useRef<ScrollView>(null);
-  const tripId = firstParam(params.tripId, 'active-trip');
-  const participantName = firstParam(params.participantName, user?.role === 'driver' ? 'Rider' : 'James');
-  const senderRole: 'rider' | 'driver' = user?.role === 'driver' ? 'driver' : 'rider';
+  const tripId = trip.id;
+  const participantName = user.role === 'driver' ? trip.rider_name || 'Rider' : trip.driver_name || 'Driver';
+  const senderRole = user.role;
   const [draft, setDraft] = useState('');
-  const [messages, setMessages] = useState<TripMessage[]>([
-    {
-      id: 'welcome-message',
-      tripId,
-      senderId: 'trip-participant',
-      senderRole: senderRole === 'rider' ? 'driver' : 'rider',
-      text: senderRole === 'rider'
-        ? 'Hi, I’m on my way. Please stay close to your pickup point.'
-        : 'Hi, I’m at the pickup point and ready when you arrive.',
-      sentAt: currentTime() - 60_000,
-    },
-  ]);
+  const [messages, setMessages] = useState<TripMessage[]>([]);
 
   useEffect(() => subscribeToTripMessages(tripId, (message) => {
+    if (message.tripId !== tripId) return;
     setMessages((current) => current.some((item) => item.id === message.id)
       ? current
       : [...current, message]);
@@ -59,8 +58,10 @@ export function TripChatScreen() {
   }, [messages]);
 
   const initials = useMemo(() => participantName.trim().slice(0, 1).toUpperCase() || 'R', [participantName]);
-  const returnToTrip = () => router.canGoBack() ? router.back() : router.replace('/ongoing-trip');
+  const returnToTrip = () => router.canGoBack() ? router.back() : router.replace(senderRole === 'driver' ? '/driver-trip' : '/ongoing-trip');
   const send = (text = draft) => {
+    const current = useAuthStore.getState().session?.user;
+    if (current?.id !== user.id || current.role !== senderRole || !canContactTrip(useTripStore.getState().trip, user.id, senderRole, tripId)) return;
     const value = text.trim();
     if (!value || !user) return;
     const message: TripMessage = {
@@ -76,8 +77,6 @@ export function TripChatScreen() {
     sendTripMessage(message);
   };
 
-  if (!user) return null;
-
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-background"
@@ -86,7 +85,7 @@ export function TripChatScreen() {
       <SafeAreaView edges={['top']} className="border-b border-border bg-surface">
         <View className="h-16 flex-row items-center px-lg">
           <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={returnToTrip} className="h-11 w-11 items-center justify-center rounded-full bg-surfaceMuted active:opacity-70">
-            <Text variant="h3" className="!text-[22px]">←</Text>
+            <Text variant="h3">←</Text>
           </Pressable>
           <View className="ml-md h-11 w-11 items-center justify-center rounded-full bg-successSoft">
             <Text variant="bodyMedium" color="success">{initials}</Text>
@@ -168,7 +167,7 @@ export function TripChatScreen() {
             onPress={() => send()}
             className={`h-12 w-12 items-center justify-center rounded-full bg-primary ${draft.trim() ? 'active:opacity-80' : 'opacity-40'}`}
           >
-            <Text variant="h3" color="textInverse" className="!text-[21px]">↑</Text>
+            <Text variant="h3" color="textInverse">↑</Text>
           </Pressable>
         </View>
         <SafeAreaView edges={['bottom']} />

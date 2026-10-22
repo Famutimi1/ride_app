@@ -26,3 +26,6 @@ Thumbs.db
 
 # Local Claude Code agent state (remove this line if you want to commit it)
 .claude/
+
+# Local design references from this chat
+/design-reference-archive/

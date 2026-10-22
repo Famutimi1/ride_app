@@ -5,7 +5,7 @@ import { focusOnCurrentLocation, LocationUnavailableError, openDeviceLocationSet
 import { reverseGeocode } from '@/services/mapsService';
 import { useMapStore } from '@/store/mapStore';
 
-export function HomeLocationFallback({ compact = false }: { compact?: boolean }) {
+export function HomeLocationFallback({ compact = false, contained = false }: { compact?: boolean; contained?: boolean }) {
   const locating = useMapStore((state) => state.locating);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export function HomeLocationFallback({ compact = false }: { compact?: boolean })
     }
   };
 
-  return <View className={`flex-1 items-center bg-surfaceMuted px-xl ${compact ? 'pt-16' : 'pt-36'}`}>
+  return <View className={`flex-1 items-center bg-surfaceMuted px-xl ${contained ? 'pt-sm pb-md' : compact ? 'pt-16' : 'pt-36'}`}>
     {!compact ? <View className="h-14 w-14 items-center justify-center rounded-full bg-primarySoft"><Text variant="h2" color="primary">◎</Text></View> : null}
     <Text variant="bodyMedium" className="mt-md text-center">{locating || busy ? 'Finding your location…' : 'Your location is unavailable'}</Text>
     {message || !compact ? <Text variant="caption" color="textMuted" className="mt-xs text-center">

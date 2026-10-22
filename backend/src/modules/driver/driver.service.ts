@@ -5,6 +5,7 @@ import type { PoolClient } from 'pg';
 import { ApiError } from '../../shared/errors';
 import { getServiceSettings, lockServiceProfile, setServicePreferences } from '../matching/serviceEligibility';
 import { queueApplicationSubmitted, resolveWelcomeEmail } from '../notifications/email.service';
+import { isAppAccountRole } from '../auth/auth.types';
 
 /** All material write paths share the same user -> profile locking order. */
 export async function assertDriverMaterialEditable(userId:string,client:PoolClient) {
@@ -29,7 +30,12 @@ export async function savePersonalInfo(userId: string, input: Record<string, unk
   const fullName = String(input.fullName ?? '').trim(); const email = String(input.email ?? '').trim().toLowerCase(); const address = String(input.address ?? '').trim();
   if (fullName.length < 2 || fullName.length>120 || email.length>160 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || address.length < 5 || address.length>1000) throw new ApiError(400, 'invalid_personal_info');
   const user=await assertDriverMaterialEditable(userId,client);
-  if(user.role!=='user')throw new ApiError(403,'staff_profile_requires_admin');
+  if(!isAppAccountRole(user.role))throw new ApiError(403,'driver_account_required');
+  // Staff can enroll as drivers without changing their staff sign-in identity.
+  if(user.role!=='user') {
+    const current=(await client.query<{email:string|null}>('SELECT email FROM users WHERE id=$1',[userId])).rows[0];
+    if(email!==current?.email?.trim().toLowerCase())throw new ApiError(403,'staff_email_requires_admin');
+  }
   await client.query('UPDATE users SET full_name=$1,email=$2,updated_at=now() WHERE id=$3', [fullName, email, userId]);
   await resolveWelcomeEmail(client,userId,email);
   const { rows } = await client.query(`INSERT INTO driver_profiles (user_id,status,residential_address) VALUES ($1,'none',$2) ON CONFLICT (user_id) DO UPDATE SET residential_address=$2,updated_at=now() RETURNING *`, [userId, address]);
@@ -105,6 +111,7 @@ export async function courierPreference(userId: string, client: PoolClient) {
 export async function setCourierPreference(userId: string, value: unknown, client: PoolClient) {
   if (typeof value !== 'boolean') throw new ApiError(400, 'invalid_courier_preference');
   const profile=await lockServiceProfile(userId,client);
-  const result=await setServicePreferences(userId,{acceptsRide:profile.accepts_ride,acceptsCourier:value,expectedVersion:profile.service_settings_version},client);
+  const current=await getServiceSettings(userId,client);
+  const result=await setServicePreferences(userId,{acceptsRide:current.services.ride.enabled,acceptsCourier:value,expectedVersion:profile.service_settings_version},client);
   return {acceptsCourier:result.services.courier.enabled};
 }
