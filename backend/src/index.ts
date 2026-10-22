@@ -1,3 +1,4 @@
+import { startMediaWorkers,stopMediaWorkers } from './modules/auth/mediaQueue';
 import { createServer } from 'node:http';
 import type { Server as SocketServer } from 'socket.io';
 import { createApp } from './app';
@@ -26,7 +27,7 @@ async function shutdown(exitCode: number) {
     await startupWork.catch(()=>undefined);
     const closed = new Promise<void>(done => { if (!server.listening) done(); else server.close(() => done()); });
     if (io) await new Promise<void>(done => io!.close(() => done()));
-    await Promise.all([closed, stopTripWorkers(), stopPaymentWorkers(), stopNotificationWorkers(), stopEmailWorkers()]);
+    await Promise.all([closed, stopTripWorkers(), stopPaymentWorkers(), stopNotificationWorkers(), stopEmailWorkers(),stopMediaWorkers()]);
     await db.end();
     if (redis?.status !== 'end') await redis?.quit();
     clearTimeout(deadline);
@@ -41,7 +42,7 @@ async function start() {
   io = await attachWebsocket(server);
   if(stopping)return;
   registerTripSocketServer(io);
-  const workers=await Promise.allSettled([startTripWorkers(), startPaymentWorkers(), startNotificationWorkers(), startEmailWorkers()]);
+  const workers=await Promise.allSettled([startTripWorkers(), startPaymentWorkers(), startNotificationWorkers(), startEmailWorkers(),startMediaWorkers()]);
   if(workers.some(result=>result.status==='rejected'))throw new Error('required_worker_initialization_failed');
   if (stopping) return;
   await new Promise<void>((done, reject) => {

@@ -11,6 +11,11 @@ import { TermiiOtpProvider } from './otp.provider.termii';
 const provider: OtpProvider = new TermiiOtpProvider();
 const digest = (value: string) => createHash('sha256').update(value).digest();
 
+// Staff and customer logins share the login purpose; role checks still happen
+// when issuing the session. Step-up verification never accepts the shared code.
+const allowsTestOtp = (purpose: OtpPurpose): boolean =>
+  env.TEST_OTP_ENABLED && (purpose === 'registration' || purpose === 'login');
+
 export async function enforceOtpRateLimit(phone: string) {
   const redis = await ensureRedis();
   const cooldownKey = `otp:cooldown:${phone}`;
@@ -31,7 +36,13 @@ export async function generateOtp(phone: string, purpose: OtpPurpose, client: Po
   await enforceOtpRateLimit(phone);
   const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
   const { rows } = await client.query<{ id: string }>(`INSERT INTO otp_codes (phone, code_hash, purpose, expires_at) VALUES ($1,$2,$3,now() + interval '5 minutes') RETURNING id`, [phone, digest(code).toString('hex'), purpose]);
-  await provider.send(phone, code);
+  if (allowsTestOtp(purpose)) {
+    // Explicit internal testing mode works with NODE_ENV=production and no SMS
+    // provider. Keep the random code available as an alternative for testers.
+    console.info(`[auth] Internal-test OTP for ${phone.slice(0, 7)}****: ${code}`);
+  } else {
+    await provider.send(phone, code);
+  }
   return rows[0].id;
 }
 
@@ -57,7 +68,9 @@ async function verifyOtp(phone: string, purpose: OtpPurpose, submitted: string, 
   if (record.expires_at.getTime() <= Date.now()) return new ApiError(400, 'otp_expired');
   const expected = Buffer.from(record.code_hash, 'hex');
   const actual = digest(submitted);
-  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return new ApiError(400, 'otp_invalid');
+  const matchesGenerated = expected.length === actual.length && timingSafeEqual(expected, actual);
+  const matchesTest = allowsTestOtp(purpose) && timingSafeEqual(digest(env.TEST_OTP_CODE), actual);
+  if (!matchesGenerated && !matchesTest) return new ApiError(400, 'otp_invalid');
   await client.query('UPDATE otp_codes SET consumed_at=now() WHERE id=$1', [record.id]);
   return null;
 }

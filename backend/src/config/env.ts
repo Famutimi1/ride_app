@@ -12,6 +12,11 @@ const legacyGoogleMapsKey = existsSync(legacyMobileEnvPath)
   ? dotenv.parse(readFileSync(legacyMobileEnvPath)).GOOGLE_MAPS_API_KEY
   : undefined;
 const nodeEnv = process.env.NODE_ENV ?? 'development';
+const testOtpEnabled = process.env.TEST_OTP_ENABLED ?? 'false';
+if (!['true', 'false'].includes(testOtpEnabled)) throw new Error('TEST_OTP_ENABLED must be true or false.');
+const testOtpCode = process.env.TEST_OTP_CODE ?? '';
+if (testOtpEnabled === 'true' && !/^\d{6}$/.test(testOtpCode)) throw new Error('TEST_OTP_CODE must contain exactly six digits when TEST_OTP_ENABLED is true.');
+if (testOtpEnabled === 'true') console.warn('[auth] Shared test OTP enabled for registration and app/staff login. Phone ownership is not verified. Disable before public launch.');
 const paystackBaseUrl=process.env.PAYSTACK_BASE_URL??'https://api.paystack.co';
 if((nodeEnv==='production'||process.env.PAYSTACK_SECRET_KEY?.startsWith('sk_live_'))&&paystackBaseUrl!=='https://api.paystack.co')throw new Error('Production/live Paystack credentials require the official API origin.');
 const jwtAccessSecret = process.env.JWT_ACCESS_SECRET ?? process.env.JWT_SECRET ?? (nodeEnv === 'development' ? 'development-access-secret-change-me' : '');
@@ -44,11 +49,33 @@ function emailUrl(name:string){
   catch{throw new Error(`${name} requires a trusted HTTPS URL (HTTP is allowed only outside production).`);}
 }
 
+function mediaInteger(name: string, fallback: number, min: number, max: number) {
+  const value = Number(process.env[name] ?? fallback);
+  if (!Number.isSafeInteger(value) || value < min || value > max) throw new Error(`${name} must be between ${min} and ${max}.`);
+  return value;
+}
+const cloudinaryEnabled = process.env.CLOUDINARY_ENABLED ?? 'false';
+if (!['true', 'false'].includes(cloudinaryEnabled)) throw new Error('CLOUDINARY_ENABLED must be true or false.');
+const cloudinaryCredentials = {
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME?.trim() ?? '',
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY?.trim() ?? '',
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET?.trim() ?? '',
+};
+if (cloudinaryEnabled === 'true' && Object.values(cloudinaryCredentials).some(value => !value)) throw new Error('Cloudinary requires cloud name, API key and API secret.');
+if (cloudinaryCredentials.CLOUDINARY_CLOUD_NAME && !/^[a-zA-Z0-9_-]+$/.test(cloudinaryCredentials.CLOUDINARY_CLOUD_NAME)) throw new Error('Invalid CLOUDINARY_CLOUD_NAME.');
+const cloudinaryPrefix = process.env.CLOUDINARY_ASSET_PREFIX ?? `rakky-ride/${nodeEnv}`;
+if (!/^[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*$/.test(cloudinaryPrefix)) throw new Error('Invalid CLOUDINARY_ASSET_PREFIX.');
+
 /**
  * Centralised, typed access to environment variables.
  * Add new config here so the rest of the app never touches process.env directly.
  */
 export const env = {
+  ...cloudinaryCredentials,
+  CLOUDINARY_ENABLED: cloudinaryEnabled === 'true',
+  CLOUDINARY_ASSET_PREFIX: cloudinaryPrefix,
+  CLOUDINARY_UPLOAD_TIMEOUT_MS: mediaInteger('CLOUDINARY_UPLOAD_TIMEOUT_MS', 30000, 1000, 120000),
+  CLOUDINARY_PRIVATE_DOWNLOAD_TTL_SECONDS: mediaInteger('CLOUDINARY_PRIVATE_DOWNLOAD_TTL_SECONDS', 60, 30, 300),
   PORT: Number(process.env.PORT) || 4000,
   NODE_ENV: nodeEnv,
   DATABASE_URL: process.env.DATABASE_URL ?? '',
@@ -62,6 +89,8 @@ export const env = {
   REFRESH_TOKEN_EXPIRY_DAYS: Number(process.env.REFRESH_TOKEN_EXPIRY_DAYS) || 30,
   TERMII_API_KEY: process.env.TERMII_API_KEY ?? '',
   TERMII_SENDER_ID: process.env.TERMII_SENDER_ID ?? 'RakkyRide',
+  TEST_OTP_ENABLED: testOtpEnabled === 'true',
+  TEST_OTP_CODE: testOtpCode,
   GOOGLE_CLIENT_ID_IOS: process.env.GOOGLE_CLIENT_ID_IOS ?? '',
   GOOGLE_CLIENT_ID_ANDROID: process.env.GOOGLE_CLIENT_ID_ANDROID ?? '',
   GOOGLE_CLIENT_ID_WEB: process.env.GOOGLE_CLIENT_ID_WEB ?? '',

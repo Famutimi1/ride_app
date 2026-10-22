@@ -2,13 +2,13 @@ import { apiClient } from '@/lib/apiClient';
 export interface PickedDocument{name:string;uri:string;mimeType?:string|null;file?:Blob}
 export const savePersonalInfo=(input:{fullName:string;email:string;address:string})=>apiClient.post('/driver/onboarding/personal-info',input);
 export const saveVehicleInfo=(input:{make:string;model:string;year:string;color:string;registrationNumber:string})=>apiClient.post('/driver/onboarding/vehicle-info',input);
-export async function uploadDriverDocuments(files:{license:PickedDocument;vehicleRegistration:PickedDocument;insurance:PickedDocument}){const body=new FormData();for(const [key,file] of Object.entries(files))body.append(key,file.file??({uri:file.uri,name:file.name,type:file.mimeType??'application/octet-stream'} as unknown as Blob),file.name);return apiClient.post('/driver/onboarding/documents',body,{headers:{'Content-Type':'multipart/form-data'}});}
+export async function uploadDriverDocuments(files:{license:PickedDocument;vehicleRegistration:PickedDocument;insurance:PickedDocument}){const body=new FormData();for(const [key,file] of Object.entries(files))body.append(key,file.file??({uri:file.uri,name:file.name,type:file.mimeType??'application/octet-stream'} as unknown as Blob),file.name);const application=await getDriverApplicationStatus();return apiClient.post('/driver/onboarding/documents',body,{headers:{'Content-Type':'multipart/form-data',...(application.materialVersion?{'If-Match':application.materialVersion}:{})},timeout:390000});}
 export const submitDriverApplication=()=>apiClient.post('/driver/onboarding/submit');
 export interface DriverVehicle {
   make:string|null;model:string|null;year:number|null;color:string|null;registrationNumber:string|null;
 }
 export interface DriverApplicationResponse {
-  status:'none'|'pending'|'approved'|'rejected';rejection_reason?:string;submitted_at?:string;reviewed_at?:string;
+  materialVersion?:string;status:'none'|'pending'|'approved'|'rejected';rejection_reason?:string;submitted_at?:string;reviewed_at?:string;
   vehicle:DriverVehicle|null;
   documents:{kind:'license'|'registration'|'insurance';available:boolean}[];
   serviceSettings:DriverServiceSettings;

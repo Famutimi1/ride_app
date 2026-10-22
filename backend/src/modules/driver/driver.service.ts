@@ -1,3 +1,4 @@
+import { mediaContentType as documentContentType } from '../../shared/utils/mediaValidation';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -17,13 +18,7 @@ export async function assertDriverMaterialEditable(userId:string,client:PoolClie
   return {...user,profileStatus:profile?.status??null};
 }
 
-export function documentContentType(bytes:Buffer) {
-  if(bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))return 'image/png';
-  if(bytes[0]===255&&bytes[1]===216&&bytes[2]===255)return 'image/jpeg';
-  if(bytes.subarray(0,5).toString()==='%PDF-')return 'application/pdf';
-  if(bytes.subarray(0,4).toString()==='RIFF'&&bytes.subarray(8,12).toString()==='WEBP')return 'image/webp';
-  return null;
-}
+export { mediaContentType as documentContentType } from '../../shared/utils/mediaValidation';
 
 export async function savePersonalInfo(userId: string, input: Record<string, unknown>, client: PoolClient) {
   if(!input||typeof input!=='object'||Array.isArray(input))throw new ApiError(400,'invalid_personal_info');
@@ -38,8 +33,8 @@ export async function savePersonalInfo(userId: string, input: Record<string, unk
   }
   await client.query('UPDATE users SET full_name=$1,email=$2,updated_at=now() WHERE id=$3', [fullName, email, userId]);
   await resolveWelcomeEmail(client,userId,email);
-  const { rows } = await client.query(`INSERT INTO driver_profiles (user_id,status,residential_address) VALUES ($1,'none',$2) ON CONFLICT (user_id) DO UPDATE SET residential_address=$2,updated_at=now() RETURNING *`, [userId, address]);
-  return rows[0];
+  await client.query(`INSERT INTO driver_profiles (user_id,status,residential_address) VALUES ($1,'none',$2) ON CONFLICT (user_id) DO UPDATE SET residential_address=$2,updated_at=now()`, [userId, address]);
+  return {saved:true};
 }
 
 export async function saveVehicleInfo(userId: string, input: Record<string, unknown>, client: PoolClient) {
@@ -48,7 +43,7 @@ export async function saveVehicleInfo(userId: string, input: Record<string, unkn
   if (!make || make.length>60 || !model || model.length>60 || !color || color.length>30 || !plate || plate.length>20 || !Number.isInteger(year) || year < 1990 || year > new Date().getFullYear()+1) throw new ApiError(400, 'invalid_vehicle_info');
   await assertDriverMaterialEditable(userId,client);
   const { rows } = await client.query(`UPDATE driver_profiles SET vehicle_make=$1,vehicle_model=$2,vehicle_year=$3,vehicle_color=$4,plate_number=$5,updated_at=now() WHERE user_id=$6 RETURNING *`, [make,model,year,color,plate,userId]);
-  if (!rows[0]) throw new ApiError(409, 'personal_info_required'); return rows[0];
+  if (!rows[0]) throw new ApiError(409, 'personal_info_required'); return {saved:true};
 }
 
 async function storePrivateDocument(userId: string, file: Express.Multer.File) {
@@ -89,11 +84,11 @@ export async function submitApplication(userId: string, client: PoolClient) {
 
 export async function applicationStatus(userId: string, client: PoolClient) {
   const { rows } = await client.query<{
-    status: 'none'|'pending'|'approved'|'rejected'; rejection_reason: string|null;
+    materialVersion:string; status: 'none'|'pending'|'approved'|'rejected'; rejection_reason: string|null;
     submitted_at: Date|null; reviewed_at: Date|null;
     vehicle: {make:string|null;model:string|null;year:number|null;color:string|null;registrationNumber:string|null}|null;
     documents: Array<{kind:'license'|'registration'|'insurance';available:boolean}>;
-  }>(`SELECT status,rejection_reason,submitted_at,reviewed_at,
+  }>(`SELECT md5(updated_at::text) AS "materialVersion",status,rejection_reason,submitted_at,reviewed_at,
     CASE WHEN vehicle_make IS NOT NULL THEN json_build_object('make',vehicle_make,'model',vehicle_model,'year',vehicle_year,'color',vehicle_color,'registrationNumber',plate_number) ELSE NULL END AS vehicle,
     json_build_array(json_build_object('kind','license','available',license_doc_url IS NOT NULL),
       json_build_object('kind','registration','available',vehicle_reg_doc_url IS NOT NULL),

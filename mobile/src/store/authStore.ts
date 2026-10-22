@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { Alert } from 'react-native';
 import { apiErrorMessage, isSessionRejected } from '@/lib/apiClient';
 import { tokenStore } from '@/lib/secureTokenStore';
-import { getMe, googleAuth, logoutSession, requestLogin, requestRegistration, resendOtp, saveProfile, confirmPhoneChange, switchActiveRole, verifyLogin, verifyRegistration, type AuthUser, type UserRole } from '@/services/authService';
+import { getMe, saveAvatar, type PickedAvatar, googleAuth, logoutSession, requestLogin, requestRegistration, resendOtp, saveProfile, confirmPhoneChange, switchActiveRole, verifyLogin, verifyRegistration, type AuthUser, type UserRole } from '@/services/authService';
 import { getGoogleIdToken } from '@/services/googleSignIn';
 import { getDriverServiceSettings, updateDriverServicePreferences, withdrawDriverServiceConsent as apiWithdrawDriverServiceConsent, type DriverService, type DriverServiceSettings, type DriverApplicationResponse, getDriverApplicationStatus, submitDriverApplication as apiSubmitDriverApplication } from '@/services/driverService';
 import { resetSocket } from '@/services/socket';
@@ -22,9 +22,15 @@ export interface DriverApplication {status:DriverApplicationStatus;submittedAt?:
 export type AuthDestination='home'|'driver-onboarding'|'driver-dashboard'|'driver-status';
 interface Pending{phone:string;name?:string;email?:string;intent:AuthIntent;accountType:RegistrationAccountType;phoneVerificationToken?:string}
 interface AuthState{driverServices:DriverServiceSettings|null;refreshDriverServices:()=>Promise<void>;saveDriverServicePreferences:(ride:boolean,courier:boolean)=>Promise<void>;withdrawDriverServiceConsent:(service:DriverService)=>Promise<void>;session:Session|null;pending:Pending|null;driverApplication:DriverApplication|null;_hasHydrated:boolean;_sessionError:string|null;
-  hydrate:()=>Promise<void>;requestOtp:(phone:string,options?:{name?:string;email?:string;intent?:AuthIntent;accountType?:RegistrationAccountType})=>Promise<void>;verifyOtp:(code:string)=>Promise<{destination:AuthDestination}>;signInWithGoogle:()=>Promise<'phone'|AuthDestination>;signInWithGoogleIdToken:(idToken:string)=>Promise<'phone'|AuthDestination>;completeProfile:(input:{name:string;email?:string;role?:UserRole})=>Promise<void>;setRole:(role:UserRole)=>Promise<boolean>;submitDriverApplication:(application:Omit<DriverApplication,'status'|'submittedAt'|'rejectionReason'>)=>Promise<void>;refreshDriverApplication:()=>Promise<DriverApplicationResponse | undefined>;restartDriverApplication:()=>void;updateProfile:(input:Partial<Pick<AuthUser,'name'|'email'>>)=>Promise<void>;changePhone:(challenge:string,code:string)=>Promise<void>;logout:()=>Promise<void>;setHydrated:()=>void}
+  hydrate:()=>Promise<void>;requestOtp:(phone:string,options?:{name?:string;email?:string;intent?:AuthIntent;accountType?:RegistrationAccountType})=>Promise<void>;verifyOtp:(code:string)=>Promise<{destination:AuthDestination}>;signInWithGoogle:()=>Promise<'phone'|AuthDestination>;signInWithGoogleIdToken:(idToken:string)=>Promise<'phone'|AuthDestination>;completeProfile:(input:{name:string;email?:string;role?:UserRole})=>Promise<void>;setRole:(role:UserRole)=>Promise<boolean>;submitDriverApplication:(application:Omit<DriverApplication,'status'|'submittedAt'|'rejectionReason'>)=>Promise<void>;refreshDriverApplication:()=>Promise<DriverApplicationResponse | undefined>;restartDriverApplication:()=>void;updateAvatar:(file:PickedAvatar|null)=>Promise<void>;updateProfile:(input:Partial<Pick<AuthUser,'name'|'email'>>)=>Promise<void>;changePhone:(challenge:string,code:string)=>Promise<void>;logout:()=>Promise<void>;setHydrated:()=>void}
 const blankApplication=(user?:AuthUser|null):DriverApplication=>({status:'draft',personal:{fullName:user?.name??'',email:user?.email??'',address:''},vehicle:{make:'',model:'',year:'',color:'',registrationNumber:''},documents:{driverLicence:'',vehicleRegistration:'',insurance:''}});
 function applicationFromStatus(status:'none'|'pending'|'approved'|'rejected',user:AuthUser,rejectionReason?:string){const application=blankApplication(user);application.status=status==='none'?'draft':status;application.rejectionReason=rejectionReason;return application;}
+function preserveNewerAvatar<T extends Omit<AuthUser, 'role'>>(incoming: T, current?: AuthUser): T {
+  if (current?.id === incoming.id && (current.avatarVersion ?? 0) > (incoming.avatarVersion ?? 0)) {
+    return { ...incoming, avatarUrl: current.avatarUrl, avatarVersion: current.avatarVersion };
+  }
+  return incoming;
+}
 
 let sessionGeneration = 0;
 let roleSwitchInFlight = false;
@@ -39,7 +45,7 @@ export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,ses
       }
       const data = await getMe();
       if (generation !== sessionGeneration) return;
-      const user = { ...data.user, role: data.activeRole } as AuthUser;
+      const user = preserveNewerAvatar({ ...data.user, role: data.activeRole }, get().session?.user);
       set({ session: { user }, ...(get().session?.user.id===user.id?{}:{driverServices:null}), driverApplication: applicationFromStatus(data.driverStatus, user), _hasHydrated: true, _sessionError: null });
     } catch (error) {
       if (generation !== sessionGeneration) return;
@@ -69,7 +75,7 @@ export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,ses
       if (data.activeRole !== session.user.role) sessionGeneration += 1;
       useTripStore.getState().clear();
       useMapStore.getState().clearTripMap();
-      set({ session: { user: { ...session.user, role: data.activeRole } } });
+      set({ session: { user: { ...get().session!.user, role: data.activeRole } } });
       return true;
     } catch (error) {
       Alert.alert('Could not switch mode', apiErrorMessage(error));
@@ -111,6 +117,16 @@ export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,ses
     return data;
   },
   restartDriverApplication:()=>set({driverApplication:blankApplication(get().session?.user)}),
+  updateAvatar: async (file) => {
+    const generation=sessionGeneration,user=get().session?.user;
+    if(!user)throw new Error('Sign in to change your photo.');
+    try {
+      const data=await saveAvatar(file,user.avatarVersion??0);
+      const current=get().session?.user;
+      if(generation!==sessionGeneration||current?.id!==user.id)throw new Error('Your session changed. Sign in and check your photo.');
+      if((data.user.avatarVersion??0)>=(current.avatarVersion??0))set({session:{user:{...current,avatarUrl:data.user.avatarUrl,avatarVersion:data.user.avatarVersion}}});
+    }catch(error){throw new Error(apiErrorMessage(error));}
+  },
   updateProfile: async (input) => {
     const generation = sessionGeneration;
     const userId = get().session?.user.id;
@@ -118,7 +134,8 @@ export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,ses
     try {
       const data = await saveProfile(input);
       if (generation !== sessionGeneration || get().session?.user.id !== userId) throw new Error('Your session changed. Sign in and check your profile.');
-      set({ session: { user: { ...data.user, role: data.activeRole } } });
+      const user = preserveNewerAvatar(data.user, get().session?.user);
+      set({ session: { user: { ...user, role: get().session?.user.role??data.activeRole } } });
     } catch (error) { throw new Error(apiErrorMessage(error)); }
   },
   changePhone: async (challenge, code) => {
@@ -128,7 +145,8 @@ export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,ses
     try {
       const data = await confirmPhoneChange(challenge, code);
       if (generation !== sessionGeneration || get().session?.user.id !== userId) throw new Error('Your session changed. Sign in and check your phone number.');
-      set({ session: { user: { ...data.user, role: data.activeRole } } });
+      const user = preserveNewerAvatar(data.user, get().session?.user);
+      set({ session: { user: { ...user, role: data.activeRole } } });
     } catch (error) { throw new Error(apiErrorMessage(error)); }
   },
   logout: async () => {

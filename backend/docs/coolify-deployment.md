@@ -167,6 +167,16 @@ Keep `ENABLE_ADMIN_MONEY_ACTIONS=false`, `ENABLE_LIVE_PAYMENTS=false`, and
 `EMAIL_ENABLED=false` until the existing provider/rollout requirements are complete.
 This Docker work does not enable those services or change the app's financial rules.
 
+For the private testing period, set backend runtime variables
+`TEST_OTP_ENABLED=true` and `TEST_OTP_CODE=666666`, then deploy the code containing
+this feature. This also enables phone login for existing staff/admin accounts
+without an SMS provider; it does not grant staff roles to ordinary accounts.
+Testers must request a code before using the shared code. A random alternative
+code is printed in the backend logs while this mode is enabled, even in production.
+Anyone with the shared code and a registered number can access that account.
+Before public launch, configure Termii, disable the setting, remove the shared
+code and redeploy all instances. See the [testing behavior and disable procedure](../../docs/setup/environment-variables.md#shared-otp-for-private-testing).
+
 ## 6. Mount private document storage
 
 Add persistent storage with container destination:

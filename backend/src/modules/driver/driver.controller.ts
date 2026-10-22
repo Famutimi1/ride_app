@@ -1,5 +1,7 @@
+import { releaseMediaUpload } from '../../shared/middleware/mediaUpload';
 import type { NextFunction, Request, Response } from 'express';
 import { inTransaction } from '../../shared/config/db';
+import { uploadDocuments } from './documentStorage.service';
 import * as driver from './driver.service';
 import * as services from '../matching/serviceEligibility';
 import { createNotificationRecord, publishNotification } from '../notifications/notifications.service';
@@ -7,7 +9,7 @@ import { driverApplicationNotification } from '../notifications/notificationTemp
 const run = (handler: (req: Request) => Promise<unknown>) => async (req: Request,res: Response,next: NextFunction) => { try { res.json(await handler(req)); } catch(error) { next(error); } };
 export const personalInfo=run((req)=>inTransaction((client)=>driver.savePersonalInfo(req.userId!,req.body,client)));
 export const vehicleInfo=run((req)=>inTransaction((client)=>driver.saveVehicleInfo(req.userId!,req.body,client)));
-export const documents=run((req)=>inTransaction((client)=>driver.saveDocuments(req.userId!,req.files as Record<string,Express.Multer.File[]>,client)));
+export const documents=run(async(req)=>{try{return await uploadDocuments(req.userId!,req.files as Record<string,Express.Multer.File[]>,req.get('If-Match'));}finally{releaseMediaUpload(req);}});
 export const submit=run(async(req)=>{const value=await inTransaction(async(client)=>{const result=await driver.submitApplication(req.userId!,client);const notification=await createNotificationRecord(client,driverApplicationNotification({userId:req.userId!,status:'pending',version:new Date(result.submittedAt).toISOString()}));return{result,notification};});await publishNotification(value.notification).catch((error:unknown)=>console.error('[notifications] driver application publish failed',error instanceof Error?error.message:'unknown'));return value.result;});
 export const status=run((req)=>inTransaction((client)=>driver.applicationStatus(req.userId!,client)));
 export const courierPreference=run((req)=>inTransaction((client)=>driver.courierPreference(req.userId!,client)));

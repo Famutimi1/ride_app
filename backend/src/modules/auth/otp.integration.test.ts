@@ -16,6 +16,7 @@ test('OTP rejection commits attempts and successful use stays atomic', { skip: !
   const scopedUrl = new URL(databaseUrl!);
   scopedUrl.searchParams.set('options', `-c search_path=${schema},public`);
   let appPool: Pool | undefined;
+  let appRedis: { disconnect(): void } | undefined;
   try {
     await admin.query(`CREATE SCHEMA ${schema}`);
     process.env.DATABASE_URL = scopedUrl.toString();
@@ -24,8 +25,8 @@ test('OTP rejection commits attempts and successful use stays atomic', { skip: !
     for (const file of ['001_auth.sql', '002_trip_system.sql', '003_payments_ledger.sql', '012_auth_session_scope.sql', '014_auth_session_families.sql', '017_email_outbox.sql', '018_email_settings.sql']) {
       await db.query(await readFile(resolve(process.cwd(), 'migrations', file), 'utf8'));
     }
-    const { withVerifiedOtp } = await import('./otp.service.js');
-    const { verifyLogin, verifyRegistration } = await import('./auth.service.js');
+    const { withVerifiedOtp, generateOtp } = await import('./otp.service.js');
+    const { verifyLogin, verifyRegistration, initiateLogin, initiateRegistration } = await import('./auth.service.js');
     let sequence = 0;
     const seed = async (purpose: OtpPurpose = 'withdrawal') => {
       const phone = `+234800${String(++sequence).padStart(7, '0')}`;
@@ -131,7 +132,107 @@ test('OTP rejection commits attempts and successful use stays atomic', { skip: !
       assert.equal((await db.query('SELECT count(*)::int AS n FROM refresh_tokens')).rows[0].n, sessionsBefore);
       assert.equal((await state(otp.id)).consumed_at, null);
     });
+
+    await t.test('shared internal-test OTP keeps challenge and account permissions in production mode', async (t) => {
+      const { env } = await import('../../config/env.js');
+      const { inTransaction } = await import('../../shared/config/db.js');
+      const { ensureRedis } = await import('../../shared/config/redis.js');
+      const { verifyAccessToken } = await import('./jwt.service.js');
+      appRedis = await ensureRedis();
+      const original = { NODE_ENV: env.NODE_ENV, TEST_OTP_ENABLED: env.TEST_OTP_ENABLED, TEST_OTP_CODE: env.TEST_OTP_CODE, TERMII_API_KEY: env.TERMII_API_KEY };
+      Object.assign(env, { NODE_ENV: 'production', TEST_OTP_ENABLED: true, TEST_OTP_CODE: '666666', TERMII_API_KEY: '' });
+      const logs: string[] = [];
+      t.mock.method(console, 'info', (message: string) => { logs.push(message); });
+      const network = t.mock.method(globalThis, 'fetch', async () => { throw new Error('SMS must not be called for test login'); });
+      const work = async () => 'authorized';
+      try {
+        await t.test('registration needs no SMS, preserves the random code and enforces resend cooldown', async () => {
+          const phone = '+2348100000001';
+          await inTransaction(client => initiateRegistration('Beta rider', phone, 'rider', client));
+          const code = logs.at(-1)?.match(/: (\d{6})$/)?.[1];
+          assert.ok(code);
+          const row = (await db.query<{ code_hash: string }>('SELECT code_hash FROM otp_codes WHERE phone=$1', [phone])).rows[0];
+          assert.equal(row.code_hash, createHash('sha256').update(code).digest('hex'));
+          await assert.rejects(inTransaction(client => initiateRegistration('Beta rider', phone, 'rider', client)), { code: 'otp_cooldown' });
+          const session = await verifyRegistration({ phone, code: '666666', fullName: 'Beta rider' }, undefined);
+          assert.equal(verifyAccessToken(session.tokens.accessToken).sessionScope, 'app');
+          assert.equal(session.user.platformRole, 'user');
+          await assert.rejects(inTransaction(client => initiateRegistration('Beta rider', phone, 'rider', client)), { code: 'phone_already_registered' });
+          await assert.rejects(verifyLogin(phone, '666666', undefined), { code: 'otp_not_found' });
+          // A fresh login request generates a different purpose-specific challenge.
+          const redis = await ensureRedis();
+          await redis.del(`otp:cooldown:${phone}`);
+          await inTransaction(client => initiateLogin(phone, client));
+          const randomCode = logs.at(-1)?.match(/: (\d{6})$/)?.[1];
+          assert.ok(randomCode);
+          assert.ok((await verifyLogin(phone, randomCode, undefined)).tokens.accessToken);
+          assert.equal(network.mock.callCount(), 0);
+        });
+
+        await t.test('admin and super-admin logins retain staff scope without granting it to customers', async () => {
+          for (const role of ['admin', 'super_admin', 'user'] as const) {
+            const otp = await seed('login');
+            await db.query('INSERT INTO users(full_name,phone,role) VALUES($1,$2,$3)', ['Beta account', otp.phone, role]);
+            if (role === 'user') {
+              await assert.rejects(verifyLogin(otp.phone, '666666', undefined, 'staff'), { code: 'staff_account_required' });
+              assert.equal((await state(otp.id)).consumed_at, null);
+              assert.ok((await verifyLogin(otp.phone, '666666', undefined)).tokens.accessToken);
+            } else {
+              const session = await verifyLogin(otp.phone, '666666', undefined, 'staff');
+              assert.equal(verifyAccessToken(session.tokens.accessToken).sessionScope, 'staff');
+              assert.equal(session.user.platformRole, role);
+              await assert.rejects(verifyLogin(otp.phone, '123456', undefined, 'staff'), { code: 'otp_not_found' });
+            }
+          }
+        });
+
+        await t.test('unregistered, inactive and malformed numbers still cannot log in', async () => {
+          const otp = await seed('login');
+          await assert.rejects(inTransaction(client => initiateLogin(otp.phone, client)), { code: 'account_not_found' });
+          await assert.rejects(verifyLogin(otp.phone, '666666', undefined), { code: 'account_not_found' });
+          await db.query("INSERT INTO users(full_name,phone,is_active) VALUES('Inactive beta',$1,false)", [otp.phone]);
+          await assert.rejects(verifyLogin(otp.phone, '666666', undefined), { code: 'account_not_found' });
+          await assert.rejects(verifyLogin('invalid', '666666', undefined));
+          assert.equal((await state(otp.id)).consumed_at, null);
+        });
+
+        await t.test('missing, expired, exhausted and consumed requests still reject the shared code', async () => {
+          await assert.rejects(withVerifiedOtp('+2348100000099', 'login', '666666', work), { code: 'otp_not_found' });
+          const expired = await seed('login');
+          await db.query("UPDATE otp_codes SET expires_at=now()-interval '1 minute' WHERE id=$1", [expired.id]);
+          await assert.rejects(withVerifiedOtp(expired.phone, 'login', '666666', work), { code: 'otp_expired' });
+          const exhausted = await seed('login');
+          for (let i = 0; i < 5; i++) await assert.rejects(withVerifiedOtp(exhausted.phone, 'login', '000000', work), { code: 'otp_invalid' });
+          await assert.rejects(withVerifiedOtp(exhausted.phone, 'login', '666666', work), { code: 'otp_attempts_exceeded' });
+          const otp = await seed('login');
+          const results = await Promise.allSettled(Array.from({ length: 6 }, () => withVerifiedOtp(otp.phone, 'login', '666666', work)));
+          assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+          await assert.rejects(withVerifiedOtp(otp.phone, 'login', '666666', work), { code: 'otp_not_found' });
+        });
+
+        await t.test('step-up purposes require their generated OTP and still require the SMS provider', async () => {
+          for (const purpose of ['withdrawal', 'payout_account', 'phone_change'] as const) {
+            const otp = await seed(purpose);
+            await assert.rejects(withVerifiedOtp(otp.phone, purpose, '666666', work), { code: 'otp_invalid' });
+            assert.equal(await withVerifiedOtp(otp.phone, purpose, '123456', work), 'authorized');
+            await assert.rejects(inTransaction(client => generateOtp(otp.phone, purpose, client)), { code: 'otp_provider_not_configured' });
+          }
+          assert.equal(network.mock.callCount(), 0);
+        });
+
+        await t.test('disabling the setting rejects the shared code for outstanding requests and restores SMS delivery', async () => {
+          const otp = await seed('login');
+          Object.assign(env, { TEST_OTP_ENABLED: false });
+          await assert.rejects(withVerifiedOtp(otp.phone, 'login', '666666', work), { code: 'otp_invalid' });
+          assert.equal(await withVerifiedOtp(otp.phone, 'login', '123456', work), 'authorized');
+          await assert.rejects(inTransaction(client => generateOtp('+2348100000002', 'login', client)), { code: 'otp_provider_not_configured' });
+        });
+      } finally {
+        Object.assign(env, original);
+      }
+    });
   } finally {
+    appRedis?.disconnect();
     await appPool?.end();
     await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
     await admin.end();

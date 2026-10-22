@@ -1,13 +1,12 @@
 import { Router } from 'express';
-import multer from 'multer';
+import { limitMediaUpload,parseDocuments } from '../../shared/middleware/mediaUpload';
 import { requireApprovedDriver, requireAuth } from '../auth/auth.middleware';
 import { serviceSettings, servicePreferences, serviceApplication, withdrawConsent, courierPreference, documents, personalInfo, setCourierPreference, status, submit, vehicleInfo } from './driver.controller';
-const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:8*1024*1024,files:3,fields:0,parts:6,fieldNameSize:64,fieldSize:16384}});
 export const driverRouter=Router();
 driverRouter.use(requireAuth);
 driverRouter.post('/onboarding/personal-info',personalInfo);
 driverRouter.post('/onboarding/vehicle-info',vehicleInfo);
-driverRouter.post('/onboarding/documents',upload.fields([{name:'license',maxCount:1},{name:'vehicleRegistration',maxCount:1},{name:'insurance',maxCount:1}]),documents);
+driverRouter.post('/onboarding/documents',limitMediaUpload,parseDocuments,documents);
 driverRouter.post('/onboarding/submit',submit);
 driverRouter.get('/application/status',status);
 driverRouter.get('/service-settings',serviceSettings);

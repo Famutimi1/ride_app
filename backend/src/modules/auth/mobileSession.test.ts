@@ -35,9 +35,52 @@ interface AuthState {
   session: unknown;
   _sessionError: string | null;
   _hasHydrated: boolean;
+  updateAvatar:(file:null)=>Promise<void>;
   updateProfile: (input: { name: string }) => Promise<void>;
+  changePhone: (challenge: string, code: string) => Promise<void>;
   setRole: (role: 'rider' | 'driver') => Promise<boolean>;
 }
+
+test('photo responses update only the current account and cannot overwrite a newer revision',async()=>{
+  const requests:((value:unknown)=>void)[]=[];
+  const h=harness({'@/services/authService':{getMe:async()=>({user:{id:'rider-one',name:'Rider',avatarVersion:0},activeRole:'rider',driverStatus:'none'}),saveAvatar:()=>new Promise(resolve=>requests.push(resolve)),logoutSession:async()=>undefined}});
+  await h.tokens.setTokens({accessToken:'access',refreshToken:'refresh'});await h.auth().hydrate();
+  const first=h.auth().updateAvatar(null),second=h.auth().updateAvatar(null);
+  requests[1]({user:{id:'rider-one',avatarVersion:2,avatarUrl:'new-photo'},activeRole:'rider'});await second;
+  requests[0]({user:{id:'rider-one',avatarVersion:1,avatarUrl:'old-photo'},activeRole:'rider'});await first;
+  assert.equal((h.auth().session as {user:{avatarUrl:string}}).user.avatarUrl,'new-photo');
+  const late=h.auth().updateAvatar(null);await h.auth().logout();
+  requests[2]({user:{id:'rider-one',avatarVersion:3,avatarUrl:'late-photo'},activeRole:'rider'});
+  await assert.rejects(late,/session changed/);assert.equal(h.auth().session,null);
+});
+
+test('late account responses preserve a newly saved photo', async t => {
+  for (const action of ['hydrate', 'updateProfile', 'changePhone'] as const) {
+    await t.test(action, async () => {
+      let complete!: (value: unknown) => void;
+      let initial = true;
+      const previous = { user: { id: 'rider-one', name: 'Rider', avatarVersion: 0, avatarUrl: 'previous' }, activeRole: 'rider', driverStatus: 'none' };
+      const deferred = () => new Promise(resolve => { complete = resolve; });
+      const h = harness({ '@/services/authService': {
+        getMe: async () => { if (initial) { initial = false; return previous; } return deferred(); },
+        saveProfile: deferred,
+        confirmPhoneChange: deferred,
+        saveAvatar: async () => ({ ...previous, user: { ...previous.user, avatarVersion: 1, avatarUrl: 'new-photo' } }),
+      } });
+      await h.tokens.setTokens({ accessToken: 'access', refreshToken: 'refresh' });
+      await h.auth().hydrate();
+      const pending = action === 'hydrate' ? h.auth().hydrate() : action === 'updateProfile' ? h.auth().updateProfile({ name: 'Updated' }) : h.auth().changePhone('challenge', '123456');
+      // Hydration awaits secure storage before requesting the account.
+      while (!complete) await Promise.resolve();
+      await h.auth().updateAvatar(null);
+      complete(previous);
+      await pending;
+      const user = (h.auth().session as { user: { avatarUrl: string; avatarVersion: number } }).user;
+      assert.equal(user.avatarUrl, 'new-photo');
+      assert.equal(user.avatarVersion, 1);
+    });
+  }
+});
 
 test('mobile service settings cannot cross accounts or overwrite a newer version', async t => {
   await t.test('a late service response cannot restore settings after logout', async () => {

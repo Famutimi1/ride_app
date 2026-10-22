@@ -71,8 +71,8 @@ async function main() {
       stdio: 'inherit',
       env: { ...process.env, NODE_ENV: 'test', DATABASE_URL: testUrl.toString(), REDIS_URL: `redis://127.0.0.1:${port}`,
         JWT_ACCESS_SECRET: randomBytes(32).toString('hex'), PAYSTACK_SECRET_KEY: 'sk_test_isolated_fixture',
-        PAYSTACK_BASE_URL: 'http://127.0.0.1:9', TERMII_API_KEY: '', ALERT_WEBHOOK_URL: '', RAKKY_TEST_ISOLATED: 'true',
-        EMAIL_ENABLED:'false',RESEND_API_KEY:'',RESEND_WEBHOOK_SECRET:'',EMAIL_ADMIN_RECIPIENTS:'' },
+        PAYSTACK_BASE_URL: 'http://127.0.0.1:9', TERMII_API_KEY: '', TEST_OTP_ENABLED: 'false', TEST_OTP_CODE: '', ALERT_WEBHOOK_URL: '', RAKKY_TEST_ISOLATED: 'true',
+        CLOUDINARY_ENABLED:'false',CLOUDINARY_CLOUD_NAME:'',CLOUDINARY_API_KEY:'',CLOUDINARY_API_SECRET:'',EMAIL_ENABLED:'false',RESEND_API_KEY:'',RESEND_WEBHOOK_SECRET:'',EMAIL_ADMIN_RECIPIENTS:'' },
     });
     process.exitCode = await new Promise<number>((done, reject) => { suite!.once('error', reject); suite!.once('exit', code => done(code ?? 1)); });
   } finally {

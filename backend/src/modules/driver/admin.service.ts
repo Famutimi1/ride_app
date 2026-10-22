@@ -1,3 +1,4 @@
+import { readCloudDocument } from './documentStorage.service';
 import { getServiceSettings, reviewDriverServices, notifyServiceAvailability } from '../matching/serviceEligibility';
 import { open, realpath } from "node:fs/promises";
 import { resolve, sep } from "node:path";
@@ -57,6 +58,11 @@ export async function getAdminApplication(userId: string, actorId: string) {
     asOf: new Date().toISOString(),
   };
 }
+// Release account/application locks before fetching provider bytes. The second
+// transaction checks the same material version and references before approval.
+class DocumentVerificationRequired extends Error {
+  constructor(readonly references: Array<string|null>) {super('document_verification_required');}
+}
 export async function reviewAdminApplication(
   actorId: string,
   userId: string,
@@ -71,7 +77,8 @@ export async function reviewAdminApplication(
     throw new ApiError(400, "invalid_application_decision");
   const decision = input.decision,
     expectedVersion = input.expectedVersion;
-  const completed = await inTransaction(async (client) => {
+  let verifiedReferences:Array<string|null>|null=null;
+  const performReview = () => inTransaction(async (client) => {
     const replay = await replayAdminOperation(
       client,
       actorId,
@@ -109,7 +116,11 @@ export async function reviewAdminApplication(
       !application.insurance
     ))
       throw new ApiError(409, "driver_application_incomplete");
-    if (approvesService) await Promise.all([application.license,application.registration,application.insurance].map(reference=>readPrivateDocument(userId,reference)));
+    if (approvesService) {
+      const references=[application.license,application.registration,application.insurance];
+      if (!verifiedReferences) throw new DocumentVerificationRequired(references);
+      if (references.some((reference,index)=>reference!==verifiedReferences![index])) throw new ApiError(409,'application_changed');
+    }
     const reviewed = await reviewDriverServices(userId,input,actorId,audit.reason,client);
     const version = (await client.query<{version:string}>('SELECT updated_at::text AS version FROM driver_profiles WHERE user_id=$1',[userId])).rows[0].version;
     const record = await client.query<{ id: string }>(
@@ -145,6 +156,14 @@ export async function reviewAdminApplication(
     }));
     return { result, notification };
   });
+  let completed:Awaited<ReturnType<typeof performReview>>;
+  try {completed=await performReview();}
+  catch(error) {
+    if (!(error instanceof DocumentVerificationRequired)) throw error;
+    await Promise.all(error.references.map(reference=>readPrivateDocument(userId,reference)));
+    verifiedReferences=error.references;
+    completed=await performReview();
+  }
   if (completed.notification) await publishNotification(completed.notification).catch((error:unknown)=>console.error('[notifications] driver application review publish failed',error instanceof Error?error.message:'unknown'));
   await notifyServiceAvailability(userId);
   return completed.result;
@@ -174,6 +193,7 @@ export async function readAdminDocument(
 
 export async function readPrivateDocument(userId:string,reference:string|null|undefined) {
   if (!reference) throw new ApiError(404, "document_not_found");
+  if(reference.startsWith('cloudinary://'))return readCloudDocument(userId,reference);
   const match =
     /^private:\/\/driver-documents\/([0-9a-f-]{36})\/([0-9a-f-]{36}\.[a-z0-9]+)$/i.exec(
       reference,

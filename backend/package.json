@@ -10,13 +10,15 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "typecheck:scripts": "tsc --ignoreConfig --noEmit --target ES2022 --module nodenext --moduleResolution nodenext --esModuleInterop --skipLibCheck --resolveJsonModule scripts/test-isolated.ts scripts/paystack-e2e.ts scripts/paystack-recovery-check.ts scripts/test-service-connections.ts scripts/sync-email-brand.ts scripts/preview-emails.ts scripts/docker-smoke.ts",
+    "typecheck:scripts": "tsc --ignoreConfig --noEmit --target ES2022 --module nodenext --moduleResolution nodenext --esModuleInterop --skipLibCheck --resolveJsonModule scripts/test-isolated.ts scripts/paystack-e2e.ts scripts/paystack-recovery-check.ts scripts/test-service-connections.ts scripts/sync-email-brand.ts scripts/preview-emails.ts scripts/docker-smoke.ts scripts/cloudinary-smoke.ts scripts/cloudinary-inventory.ts",
     "verify": "npm run typecheck && npm run typecheck:scripts && npm test",
     "test": "tsx scripts/test-isolated.ts",
     "test:docker": "tsx scripts/docker-smoke.ts",
     "migrate": "tsx src/shared/config/migrate.ts",
     "migrate:deploy": "node dist/shared/config/migrate.js",
-    "test:connections": "tsx scripts/test-service-connections.ts"
+    "test:connections": "tsx scripts/test-service-connections.ts",
+    "test:cloudinary": "tsx scripts/cloudinary-smoke.ts --synthetic-upload",
+    "cloudinary:inventory": "tsx scripts/cloudinary-inventory.ts"
   },
   "engines": {
     "node": ">=22.13.0"
@@ -32,6 +34,7 @@
   "dependencies": {
     "@socket.io/redis-adapter": "^8.3.0",
     "bullmq": "^6.3.11",
+    "cloudinary": "^2.11.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",

@@ -9,5 +9,5 @@ export type AppAccountRole = typeof APP_ACCOUNT_ROLES[number];
 export function isAppAccountRole(role: unknown): role is AppAccountRole {
   return APP_ACCOUNT_ROLES.some(value => value === role);
 }
-export interface AuthUserRow { id: string; full_name: string; phone: string | null; email: string | null; google_id: string | null; avatar_url: string | null; role: AppAccountRole; active_role: AccountType; is_active: boolean }
-export function publicUser(user: AuthUserRow, scope: SessionScope = 'app') { return { id: user.id, name: user.full_name, phone: user.phone, email: user.email, avatarUrl: user.avatar_url, platformRole: scope === 'staff' ? user.role : 'user' as const }; }
+export interface AuthUserRow { id: string; full_name: string; phone: string | null; email: string | null; google_id: string | null; avatar_url: string | null; avatar_revision?:number; role: AppAccountRole; active_role: AccountType; is_active: boolean }
+export function publicUser(user: AuthUserRow, scope: SessionScope = 'app') { return { id: user.id, name: user.full_name, phone: user.phone, email: user.email, avatarUrl: user.avatar_url, avatarVersion:user.avatar_revision??0, platformRole: scope === 'staff' ? user.role : 'user' as const }; }

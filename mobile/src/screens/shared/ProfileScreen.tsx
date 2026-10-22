@@ -11,6 +11,7 @@ import type { AuthUser } from '@/services/authService';
 import { useAuthStore } from '@/store/authStore';
 import { useTripStore } from '@/store/tripStore';
 import { profileIdentityNotice } from '@/utils/profileIdentity';
+import { ProfilePhotoEditor } from './ProfilePhotoEditor';
 import { PhoneChangeSection } from './PhoneChangeSection';
 
 export function ProfileScreen() {
@@ -66,7 +67,7 @@ function ProfileForm({ user }: { user?: AuthUser }) {
     : application?.status === 'rejected' ? 'Review the decision and update your application.'
     : 'Apply to receive nearby requests.';
 
-  return <ProfileView name={identityNotice ? user?.name ?? '' : name} email={email} displayName={user?.name ?? 'Your account'} phone={user?.phone ?? ''} role={user?.role ?? 'rider'}
+  return <ProfileView avatarUrl={user?.avatarUrl} photoEditor={<ProfilePhotoEditor key={user?.id} locked={Boolean(profileIdentityNotice(false, trip?.status))} />} name={identityNotice ? user?.name ?? '' : name} email={email} displayName={user?.name ?? 'Your account'} phone={user?.phone ?? ''} role={user?.role ?? 'rider'}
     identityNotice={identityNotice} saving={saving} error={error} notice={notice} switching={switching}
     onName={setName} onEmail={setEmail} onSave={() => void save()}
     onBack={() => router.canGoBack() ? router.back() : router.replace('/menu')}
@@ -76,6 +77,7 @@ function ProfileForm({ user }: { user?: AuthUser }) {
 }
 
 interface ProfileViewProps {
+  avatarUrl?:string|null;photoEditor?:ReactNode;
   name: string; email: string; displayName: string; phone: string; role: AuthUser['role'];
   identityNotice: string | null; saving: boolean; switching: boolean; error: string | null; notice: string | null;
   phoneExpanded: boolean; phoneChange: ReactNode;
@@ -92,11 +94,10 @@ export function ProfileView(props: ProfileViewProps) {
       <Text variant="bodyMedium" accessibilityRole="header">Your profile</Text>
     </View>
     <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-      <View style={styles.summary}>
-        <Avatar name={props.displayName} size="md" />
+      {props.photoEditor ?? <View style={styles.summary}>
+        <Avatar uri={props.avatarUrl} name={props.displayName} size="md" />
         <View style={styles.copy}><Text variant="bodyMedium">{props.displayName}</Text><Text variant="caption" color="textMuted">{props.role === 'driver' ? 'Driver' : 'Rider'}</Text></View>
-      </View>
-      <Text variant="caption" color="textMuted" style={styles.photoNote}>Photo uploads are not available yet.</Text>
+      </View>}
       <Text variant="button" accessibilityRole="header" style={styles.heading}>Personal details</Text>
       <View style={styles.fields}>
         <ProfileField icon="passenger" label="Full name" value={props.name} onChangeText={props.onName} editable={!locked && !props.saving} locked={locked} autoCapitalize="words" autoComplete="name" />

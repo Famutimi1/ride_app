@@ -11,6 +11,7 @@
  */
 import { Image } from 'expo-image';
 import { cssInterop } from 'nativewind';
+import { useState } from 'react';
 import { View } from 'react-native';
 
 import { Text } from './Text';
@@ -43,14 +44,16 @@ function initialsOf(name?: string): string {
 }
 
 export function Avatar({ uri, name, size = 'md' }: AvatarProps) {
+  const [failedUri, setFailedUri] = useState<string | null>(null);
   const circleClass = `${DIMENSION_CLASSES[size]} rounded-full`;
 
-  if (uri) {
+  if (uri && uri !== failedUri) {
     return (
       <StyledImage
         source={{ uri }}
         className={circleClass}
         contentFit="cover"
+        onError={() => setFailedUri(uri)}
         // Smooth fade instead of a hard pop when the photo loads in.
         transition={150}
       />

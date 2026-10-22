@@ -250,7 +250,7 @@ export async function googleSignIn(idToken: unknown, deviceInfo: string | undefi
   if (user) {
     if (!user.is_active) throw new ApiError(403, 'account_inactive');
     if (!user.google_id) {
-      const updated = (await client.query('UPDATE users SET google_id=$1,avatar_url=COALESCE(avatar_url,$2),updated_at=now() WHERE id=$3 RETURNING *', [profile.sub, profile.picture ?? null, user.id])).rows[0] as AuthUserRow | undefined;
+      const updated = (await client.query('UPDATE users SET google_id=$1,avatar_url=CASE WHEN avatar_revision=0 THEN COALESCE(avatar_url,$2) ELSE avatar_url END,updated_at=now() WHERE id=$3 RETURNING *', [profile.sub, profile.picture ?? null, user.id])).rows[0] as AuthUserRow | undefined;
       if (!updated) throw new ApiError(409, 'google_link_failed');
       user = updated;
     }

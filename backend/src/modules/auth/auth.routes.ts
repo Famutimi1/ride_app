@@ -2,7 +2,15 @@ import { Router } from 'express';
 import { activeRole, google, staffGoogle, loginInitiate, loginVerify, staffLoginVerify, logout, logoutAll, me, refresh, registerInitiate, registerVerify, resend, profileUpdate, phoneChangeInitiate, phoneChangeVerify } from './auth.controller';
 import { requireAuth,limitPublicAuth } from './auth.middleware';
 
+import { limitMediaUpload,parseAvatar,releaseMediaUpload } from '../../shared/middleware/mediaUpload';
+import { uploadAvatar,removeAvatar } from './avatar.service';
 export const authRouter = Router();
+authRouter.post('/profile/avatar',requireAuth,limitMediaUpload,parseAvatar,async(req,res,next)=>{
+  try {res.json(await uploadAvatar(req.userId!,req.file,req.get('If-Match')));}catch(error){next(error);}finally{releaseMediaUpload(req);}
+});
+authRouter.delete('/profile/avatar',requireAuth,async(req,res,next)=>{
+  try {res.json(await removeAvatar(req.userId!,req.get('If-Match')));}catch(error){next(error);}
+});
 const publicAuthPaths=new Set(['/register/initiate','/register/verify','/login/initiate','/login/verify','/login/staff/verify','/otp/resend','/refresh','/google','/google/staff','/logout']);
 authRouter.use((req,res,next)=>{if(req.method==='POST'&&publicAuthPaths.has(req.path))void limitPublicAuth(req,res,next);else next();});
 authRouter.use((req,res,next)=>{if(['POST','PATCH'].includes(req.method)&&req.path!=='/logout-all'&&(!req.body||typeof req.body!=='object'||Array.isArray(req.body)))return void res.status(400).json({error:'invalid_request_body'});next();});

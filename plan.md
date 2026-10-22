@@ -2,7 +2,11 @@
 
 Prepared for Rakky Ride on 22 October 2026.
 
-Status: planning only. The environment examples document the proposed configuration; the application does not read those Cloudinary variables yet. No SDK, database migration, provider account, or live upload has been configured by this task.
+Status: initial implementation completed locally on 22 October 2026. The official SDK, migration 021, authenticated upload routes, private document proxy, durable cleanup reconciliation, and Expo photo controls are implemented. See [setup and verified behavior](docs/features/cloudinary.md). Production deployment and migration of existing identity documents are separate rollout tasks.
+
+Implementation adjustment: **all driver documents use authenticated raw storage**, including JPEG, PNG and WebP. A synthetic live check showed that Cloudinary image storage rewrote the supplied PNG. Raw storage passed byte-for-byte image/PDF round trips and unsigned-access rejection, preserving originals for review. Avatar images still use sanitized public image storage.
+
+Replaced driver documents are retained until a retention policy is chosen. Failed uploads and replaced/removed managed avatars become cleanup candidates after 24 hours. A read-only inventory command is available; no real existing documents were migrated. Android/iOS device checks and Coolify staging checks remain release work.
 
 ## 1. What this will do
 
@@ -37,19 +41,19 @@ Keep the existing single account shared by rider and driver roles. A user's phot
 
 Use authenticated uploads from Express. Reuse the existing multipart document flow and introduce a separate single-photo endpoint. The mobile app needs only its existing backend API URL.
 
-The official Node SDK provides `upload_stream`, which fits the existing Multer buffers. It does not remove the memory cost of those buffers, so bounded request sizes and upload concurrency are still required. This plan proposes adding the official `cloudinary` backend package during implementation, subject to project dependency approval. Nothing is installed now. [Cloudinary Node upload guide](https://cloudinary.com/documentation/node_image_and_video_upload)
+The official Node SDK provides `upload_stream`, which fits the existing Multer buffers. It does not remove the memory cost of those buffers, so bounded request sizes and upload concurrency are still required. This plan proposes adding the official `cloudinary` backend package during implementation, as authorized by the implementation request. The official SDK is now installed as part of the implementation. [Cloudinary Node upload guide](https://cloudinary.com/documentation/node_image_and_video_upload)
 
 Do not add unsigned upload presets or a client-side signature endpoint in the initial implementation. They are unnecessary for this backend-mediated flow. Never accept a client-supplied Cloudinary asset ID, remote URL, owner ID, delivery type, or folder as authority to update an account.
 
 ### Profile pictures
 
-Proposed initial policy: a sanitized avatar derivative is public CDN media, using `resource_type: image` and `type: upload`. Anyone with its URL could view it. Confirm this product privacy choice before implementation; authenticated avatar delivery is the alternative if account photos must remain private.
+Proposed initial policy: a sanitized avatar derivative is public CDN media, using `resource_type: image` and `type: upload`. Anyone with its URL could view it. This is the implemented initial visibility policy; authenticated avatar delivery would require a separate product change.
 
 Accept JPEG, PNG, and WebP, with a proposed 5 MiB limit. Check actual file bytes, dimensions, and pixel limits; reject SVG, animated formats, PDF, and unsupported encodings. Produce a bounded, static avatar, normalize orientation, remove unnecessary metadata, and verify the result before exposing its URL. Preserve the original framing unless the user chooses a crop. Do not expose an untouched original containing metadata as the avatar.
 
 ### Driver documents
 
-Use `type: authenticated`. Use `resource_type: image` for supported document images and `resource_type: raw` for PDFs that should remain unchanged. A raw PDF cannot use image transformations; provide the original through the existing staff viewer/download flow. Keep the current 8 MiB file limit and current allowlist.
+Use `type: authenticated` and `resource_type: raw` for every driver document to preserve its original bytes (see the verified adjustment above). A raw PDF cannot use image transformations; provide the original through the existing staff viewer/download flow. Keep the current 8 MiB file limit and current allowlist.
 
 Cloudinary distinguishes `private` originals from `authenticated` assets, which also protect derivatives. Public `upload` delivery is unsuitable for identity and vehicle documents. This is why the plan uses authenticated documents. [Upload customization and delivery types](https://cloudinary.com/documentation/upload_parameters)
 
@@ -114,9 +118,9 @@ When enabled, missing or invalid credentials must stop startup with a clear conf
 
 1. Add an authenticated single-file route under the existing auth/profile module, for example `POST /api/auth/profile/avatar`, with multipart field `avatar`.
 2. Do not send this through the current JSON-only auth body validation middleware unchanged: give the multipart endpoint its own parsing/validation path. Keep the existing name/email endpoint's allowlist.
-3. Enforce self ownership, active account, file limits, request limits, and existing driver identity-review restrictions. An approved driver's photo change must follow the product's identity-review policy rather than bypassing it. Block identity-photo replacement during active trips.
+3. Enforce self ownership, active account, file limits and request limits. Updated product policy (22 October 2026): both riders and approved drivers can change their profile photo without staff approval. Block photo replacement during active trips; names and identity documents keep their separate review rules.
 4. Upload a new unique asset, then atomically replace the user's current avatar metadata. Use a version check so concurrent uploads cannot delete the winning avatar. Return the updated public user payload through the normal auth-store update flow.
-5. Add a remove-photo action only with the same ownership and identity-review rules. Clear the database reference first; schedule managed asset cleanup afterward. Never delete a Google-hosted photo or a default brand asset through Cloudinary cleanup.
+5. Add a remove-photo action with the same ownership and active-trip rules, without staff approval. Clear the database reference first; schedule managed asset cleanup afterward. Never delete a Google-hosted photo or a default brand asset through Cloudinary cleanup.
 
 ### Phase D: Expo and dashboard integration
 
@@ -157,4 +161,4 @@ When enabled, missing or invalid credentials must stop startup with a clear conf
 
 ## 8. Scope and decisions still to approve
 
-This task creates the plan and environment examples only. Implementation should begin after agreeing on the new backend SDK dependency, additive metadata migration, avatar visibility, approved-driver photo review, and retention policy. No credentials need to be shared in chat for that decision.
+The implementation request authorized the SDK and additive metadata fields on existing tables. Public sanitized avatars are self-service for riders and drivers under the updated product policy. Approved-driver name and document protections remain. Replacement document deletion remains disabled pending a retention decision. No production deployment, historical-document migration, or automated account-deletion policy has been run.

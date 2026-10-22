@@ -33,6 +33,39 @@ On a physical phone, the development client automatically replaces a configured
 `localhost` API hostname with Metro's LAN hostname. The backend still uses the
 configured port, currently `4000`.
 
+## Shared OTP for private testing
+
+Set these **backend runtime** variables to let private testers use `666666`
+for registration and login, including the staff/admin dashboard:
+
+```dotenv
+TEST_OTP_ENABLED=true
+TEST_OTP_CODE=666666
+```
+
+This setting works with `NODE_ENV=production`. It defaults to disabled; enabling
+it requires an explicitly configured six-digit code. It skips SMS delivery for
+registration/login and prints the alternative generated random OTP in backend
+logs. Termii is not needed for those flows while the setting is enabled.
+
+Both codes require a pending, unexpired request for the same phone and purpose.
+Attempt limits, resend limits, single-use consumption, active-account checks,
+staff role checks and session scopes still apply. Login requires an existing
+active account; public registration cannot create staff/admin roles. Phone changes,
+payout-account verification and withdrawals still require their normal OTP.
+
+The shared code does not prove phone ownership. Anyone who knows the code and a
+registered number can sign in to that account, including a staff account. Use
+this only for the agreed private testing period; the setting itself does not
+restrict who can reach the deployment.
+
+Before public launch, configure Termii, set `TEST_OTP_ENABLED=false` and remove
+`TEST_OTP_CODE`, then restart/redeploy **every** backend instance. With the setting
+disabled, outstanding requests also stop accepting the alternative shared code;
+only their generated code remains valid. Verify that a newly requested random
+code works and that the former shared code is rejected. Do not set these values
+in Expo or dashboard frontend environment variables.
+
 Transactional email variables are server-only: `EMAIL_ENABLED`, `RESEND_API_KEY`,
 `RESEND_WEBHOOK_SECRET`, `EMAIL_FROM`, `EMAIL_REPLY_TO`, `EMAIL_ADMIN_RECIPIENTS`,
 `EMAIL_DASHBOARD_URL` and optional `EMAIL_LOGO_URL`. The dashboard origin also hosts
