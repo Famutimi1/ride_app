@@ -1,0 +1,36 @@
+# Android rendering checks
+
+Updated 23 October 2026 after checking the Pixel 10 Pro API 37.1 emulator.
+
+## Shared fixes
+
+- Generated SVG images use `svgDataUri()` in `mobile/src/utils/svgDataUri.ts`. Android's Expo Image data loader expects base64; percent-encoded SVG data URLs left icons blank. This applies to menu, home, booking and shared icons, the search radar and onboarding/login gradients. Google Maps web marker URLs keep their existing web format.
+- Pressables with function-valued `style` use `cssInterop={false}`. NativeWind 4's inline-style processing flattened these functions instead of preserving React Native's pressed-state callback. The affected controls use plain theme/StyleSheet styles, so bypassing class interop retains their layout, borders and press feedback. Do not add `className` to those controls without resolving it separately.
+- `borderWidths.divider` uses 1 dp on Android so dividers stay visible on dense screens. Web and iOS retain their existing physical hairlines. Colours still come from semantic theme tokens.
+- Android body text is 17 with line height 26, captions 15/22 and button labels 16/24 after the requested small increase. Heading sizes are 33, 27 and 23. Web remains at 15/13/14 px. The values are mirrored in the JS typography tokens and Tailwind's `platformSelect` configuration, including native text inputs. System font scaling remains enabled.
+- Avatars show their initials background while the remote image loads, and retain it on failure. This also avoids a blank profile circle when the emulator cannot resolve Cloudinary's hostname.
+- Android maps retain Google's default land and road colours, with the water tint matched to the web map's soft aqua (`palette.mapWaterAqua`). `androidMapStyle` in `mobile/src/constants/colors.ts` replaces the earlier blue-water override. `AppMap` explicitly requests the light native map appearance so Android system dark mode cannot darken the base map. App controls still follow the selected theme. The web map and iOS styles are unchanged. Google may render labels and terrain details differently between its web and Android SDKs. This shared map component covers rider, driver and booking screens.
+- Android starts with an explicit Google camera zoom from `mapCamera.ts`, using the same longitude-span calculation as web. Subsequent recentering uses `animateCamera`, so the short destination-map viewport does not force a wider zoom to fit latitude bounds. Other native platforms retain their initial region. Bounds reported by Google are not fed back as a controlled `region`: with Android viewport padding, that feedback repeatedly zoomed the destination map out to world level. Destination entry starts near the chosen pickup/current location. Route fitting waits for map readiness, includes both route polylines, and respects the same `fitRouteOnChange` flag used on web, including courier review. Android applies viewport padding once, rather than adding the same margins again as route edge padding.
+- The destination location button cancels pending map-pin geocoding and gives manual recentering priority over delayed route responses. Editing an address or moving its pin restores automatic trip framing. Programmatic camera moves are not treated as address selections. A location tap before native map readiness is queued. The home location button also controls its map directly, retaining the chosen zoom when a fresh GPS result arrives.
+- The destination location button uses its measured screen position without a translated touch target, and shows a green selected state after manual recentering.
+- Map marker artwork comes from `mobile/src/components/map/markerSvg.ts` on both platforms: the location arrow, pickup dot pin, destination flag pin and overhead cars. Native SVG images refresh their Google marker bitmap after loading. The location arrow bounces inside a padded bitmap, with explicit redraws while its screen is focused and the app is active; reduced-motion settings disable the bounce. This avoids clipping and Android's frozen native-driver animation snapshots.
+
+## Verification
+
+Checked native Home, Menu, Payment, Ride History, Services, Courier, Profile, Settings, Safety, Help & Support, Driver Home and Driver Wallet layouts. Screenshots are saved in the ignored `design-reference-archive/android-ui-2026-10-23/` directory. The review uses the existing account and does not submit rides, deliveries, payments, applications or document uploads. Driver mode was opened for the review, kept offline, and switched back to rider mode afterward.
+
+Verified SVG encoding against UTF-8/base64 reference values, TypeScript, lint and an Android production Hermes export. This is an emulator review, not a physical-device or Google Play rollout. Rebuild the Android app or ship the compatible app update before expecting an older standalone installation to include these changes.
+
+The destination-map follow-up confirmed stable street-level zoom after recentering and repeated idle updates, plus a route preview with both the pickup dot and destination flag visible. Four successive Android captures confirmed the location arrow moves while the surrounding map stays unchanged. Follow-up screenshots are `destination-world-zoom-before.png`, `destination-stable-zoom-after.png`, `destination-route-pins-after.png` and `location-bounce-0.png` through `location-bounce-3.png` in the same ignored archive. TypeScript and lint passed after these changes.
+
+The camera follow-up was tested after a cold app launch: pan then recenter on home; display both selected endpoints and the complete route; recenter on the emulator's current location while the chosen pickup is elsewhere without changing either address; then refocus the destination field to restore full-trip framing. Allow camera animations and tile rendering to settle before capturing. Screenshots are `home-camera-recenter-verified.png`, `destination-trip-fit-verified.png`, `destination-current-location-verified.png` and `destination-trip-refocus-verified.png` in the ignored archive. Five longitude-span zoom checks, TypeScript and lint passed. These checks use previews and do not request a driver.
+
+During the review, emulator internet/DNS failures interrupted some map tiles and remote photo downloads. The UI fixes do not change map providers, device location or network settings. Local development uses ADB port reverses for Metro (8081) and the backend (4000); production uses the configured backend domain.
+
+During the earlier map review, the device could ping `8.8.8.8` but returned "unknown host" for `maps.googleapis.com`. A cold boot with explicit DNS restored Google map tiles:
+
+```sh
+"$HOME/Library/Android/sdk/emulator/emulator" -avd Pixel_10_Pro -dns-server 8.8.8.8,8.8.4.4 -no-snapshot-load
+```
+
+Close the running instance of that emulator before using this command. This changes DNS for that emulator launch, without wiping app data or changing the backend. Restore `adb reverse tcp:8081 tcp:8081` and `adb reverse tcp:4000 tcp:4000` after restarting, then connect the development build to `http://127.0.0.1:8081`. The confirmed screenshot is `design-reference-archive/android-ui-2026-10-23/android-map-dns-fixed.png`. Android documents this workaround at https://developer.android.com/studio/run/emulator-networking-dns.

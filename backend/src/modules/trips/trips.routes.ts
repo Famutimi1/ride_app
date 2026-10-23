@@ -3,6 +3,7 @@ import { env } from '../../config/env';
 import { ensureRedis } from '../../shared/config/redis';
 import { requireApprovedDriver, requireAuth } from '../auth/auth.middleware';
 import * as controller from './trips.controller';
+import * as messages from './tripMessages.controller';
 
 export const tripsRouter = Router();
 tripsRouter.use(requireAuth);
@@ -17,6 +18,8 @@ tripsRouter.get('/active',controller.active);
 tripsRouter.get('/offers/current',controller.currentOffer);
 tripsRouter.get('/scheduled',requireRiderMode,controller.scheduled);
 tripsRouter.get('/history',controller.history);
+tripsRouter.get('/:id/messages',messages.history);
+tripsRouter.post('/:id/messages',messages.send);
 tripsRouter.get('/:id',controller.detail);
 tripsRouter.get('/:id/delivery-code',controller.deliveryCode);
 tripsRouter.post('/:id/delivery-code/rotate',tripRateLimit(2),controller.rotateDeliveryCode);

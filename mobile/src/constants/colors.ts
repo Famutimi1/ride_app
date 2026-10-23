@@ -41,6 +41,7 @@ const palette = {
   shadowSm: '#141A140F',
   shadowMd: '#141A141A',
   shadowLg: '#141A1424',
+  mapWaterAqua: '#9CD7E9',
 } as const;
 
 export const shadowColors = {
@@ -121,11 +122,15 @@ export const darkColors: AppColors = {
   skeleton: palette.charcoalBorder,
 };
 
+const mapVisibilityStyles = [
+  { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+] as const;
+
 export const mapStyles = {
   light: [
-    { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
-    { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-    { featureType: 'poi', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+    ...mapVisibilityStyles,
     { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: palette.silver50 }] },
     { featureType: 'road', elementType: 'geometry', stylers: [{ color: palette.white }] },
     { featureType: 'water', elementType: 'geometry', stylers: [{ color: palette.silver200 }] },
@@ -140,3 +145,8 @@ export const mapStyles = {
     { featureType: 'water', elementType: 'geometry', stylers: [{ color: palette.charcoalRaised }] },
   ],
 } as const;
+
+/** Use the web map's soft aqua water instead of the earlier blue override. */
+export const androidMapStyle = [
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: palette.mapWaterAqua }] },
+] as const;

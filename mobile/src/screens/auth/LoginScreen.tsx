@@ -1,3 +1,4 @@
+import { svgDataUri } from '@/utils/svgDataUri';
 /** Phone-based sign-in for returning Rakky Ride users (route: "/login"). */
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -65,9 +66,7 @@ export function LoginScreen() {
     }
   };
 
-  const glow = `data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="220"><defs><radialGradient id="halo"><stop stop-color="${colors.primarySoft}"/><stop offset="1" stop-color="${colors.background}" stop-opacity="0"/></radialGradient></defs><ellipse cx="180" cy="110" rx="180" ry="110" fill="url(#halo)"/></svg>`,
-  )}`;
+  const glow = svgDataUri(`<svg xmlns="http://www.w3.org/2000/svg" width="360" height="220"><defs><radialGradient id="halo"><stop stop-color="${colors.primarySoft}"/><stop offset="1" stop-color="${colors.background}" stop-opacity="0"/></radialGradient></defs><ellipse cx="180" cy="110" rx="180" ry="110" fill="url(#halo)"/></svg>`);
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={[styles.screen, { backgroundColor: colors.background }]}>

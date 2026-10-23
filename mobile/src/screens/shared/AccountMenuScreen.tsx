@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, BrandLogo, Text } from '@/components/common';
-import { spacing, useTheme } from '@/constants/theme';
+import { borderWidths, spacing, useTheme } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 
 import { AccountMenuIcon, type MenuIconName } from './AccountMenuIcon';
@@ -110,7 +110,7 @@ export function AccountMenuView({ name, avatarUrl, driverMode, switchLabel, bann
 
         <ScrollView style={styles.screen} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
           <Pressable accessibilityRole="button" accessibilityLabel="Open profile" onPress={() => onOpen('profile')} style={[styles.profile, { borderBottomColor: colors.border }]}>
-            <Avatar uri={avatarUrl} name={name} size="md" />
+            <Avatar uri={avatarUrl} name={name} size="lg" />
             <View style={styles.profileCopy}>
               <Text variant="bodyMedium" numberOfLines={1}>{name}</Text>
               <Text variant="caption" color="textMuted">{driverMode ? 'Driver partner' : 'Rider'}</Text>
@@ -124,7 +124,7 @@ export function AccountMenuView({ name, avatarUrl, driverMode, switchLabel, bann
         </ScrollView>
 
         <View style={styles.footer}>
-          <Pressable accessibilityRole="button" accessibilityLabel={switchLabel} accessibilityState={{ disabled: switching, busy: switching }} disabled={switching} onPress={onSwitch}
+          <Pressable cssInterop={false} accessibilityRole="button" accessibilityLabel={switchLabel} accessibilityState={{ disabled: switching, busy: switching }} disabled={switching} onPress={onSwitch}
             style={({ pressed }) => [styles.driverBanner, { backgroundColor: colors.primarySoft, opacity: pressed || switching ? 0.7 : 1 }]}
           >
             <View style={styles.bannerCopy}>
@@ -148,8 +148,8 @@ function MenuList({ items, onPress }: { items: readonly MenuItem[]; onPress: (id
   return (
     <View>
       {items.map((item, index) => (
-        <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={item.label} onPress={() => onPress(item.id)}
-          style={({ pressed }) => [styles.menuRow, { borderBottomColor: colors.border, borderBottomWidth: index < items.length - 1 ? StyleSheet.hairlineWidth : 0, opacity: pressed ? 0.6 : 1 }]}
+        <Pressable cssInterop={false} key={item.id} accessibilityRole="button" accessibilityLabel={item.label} onPress={() => onPress(item.id)}
+          style={({ pressed }) => [styles.menuRow, { borderBottomColor: colors.border, borderBottomWidth: index < items.length - 1 ? borderWidths.divider : 0, opacity: pressed ? 0.6 : 1 }]}
         >
           <AccountMenuIcon name={item.icon} />
           <Text variant="bodyMedium" style={styles.menuLabel}>{item.label}</Text>
@@ -167,11 +167,11 @@ const styles = StyleSheet.create({
   brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   close: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   body: { paddingHorizontal: 24, paddingBottom: 12 },
-  profile: { minHeight: 80, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.lg, borderBottomWidth: StyleSheet.hairlineWidth },
+  profile: { minHeight: 80, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.lg, borderBottomWidth: borderWidths.divider },
   profileCopy: { flex: 1, minWidth: 0, gap: spacing.xs },
   menuRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 20, paddingVertical: 15 },
   menuLabel: { flex: 1 },
-  groupSeparator: { height: StyleSheet.hairlineWidth },
+  groupSeparator: { height: borderWidths.divider },
   footer: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16 },
   driverBanner: { minHeight: 96, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 22, flexDirection: 'row', alignItems: 'center', gap: 8 },
   bannerCopy: { flex: 1, gap: 8 },

@@ -1,3 +1,4 @@
+import { svgDataUri } from '@/utils/svgDataUri';
 import { Image } from 'expo-image';
 import { View } from 'react-native';
 
@@ -20,6 +21,6 @@ export function AddressIcon({ name, size = 18, color = 'text' }: { name: Address
   const { colors } = useTheme();
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${colors[color]}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${SHAPES[name]}</svg>`;
   return <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden style={{ width: size, height: size }}>
-    <Image source={{ uri: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}` }} contentFit="contain" style={{ width: size, height: size }} />
+    <Image source={{ uri: svgDataUri(svg) }} contentFit="contain" style={{ width: size, height: size }} />
   </View>;
 }

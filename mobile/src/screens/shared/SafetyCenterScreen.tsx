@@ -8,7 +8,7 @@ import { RideIcon } from '@/components/common/RideIcon';
 import { AddressIcon } from '@/components/map/AddressIcon';
 import { getCareContent, type CareArticle, type CareContent } from '@/constants/care';
 import { careDestination, careServiceContext, careTripForRole } from '@/utils/careCenter';
-import { radius, spacing, useTheme } from '@/constants/theme';
+import { borderWidths, radius, spacing, useTheme } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useTripStore } from '@/store/tripStore';
 import { hasShareableTrip, safetyTripShareMessage } from '@/utils/safetyCenter';
@@ -121,7 +121,7 @@ export function SafetyCenterView({ role = 'rider', content: suppliedContent, onT
 function SafetyGuidance({ article, last }: { article: CareArticle; last: boolean }) {
   const { colors } = useTheme();
   const [expanded, setExpanded] = useState(false);
-  return <View style={{ borderBottomColor: colors.border, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth }}>
+  return <View style={{ borderBottomColor: colors.border, borderBottomWidth: last ? 0 : borderWidths.divider }}>
     <Pressable accessibilityRole="button" accessibilityLabel={article.question} accessibilityState={{ expanded }} aria-expanded={expanded} onPress={() => setExpanded(value => !value)} style={styles.tip}>
       <Text variant="caption" style={styles.copy}>{article.question}</Text><RideIcon name={expanded ? 'minus' : 'plus'} size={16} color="icon" />
     </Pressable>
@@ -132,7 +132,7 @@ function SafetyGuidance({ article, last }: { article: CareArticle; last: boolean
 type SafetyIcon = ComponentProps<typeof RideIcon>['name'];
 function SafetyTool({ icon, title, detail, disabled = false, busy = false, locked = false, last = false, onPress }: { icon: SafetyIcon; title: string; detail: string; disabled?: boolean; busy?: boolean; locked?: boolean; last?: boolean; onPress?: () => void }) {
   const { colors } = useTheme();
-  return <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${detail}`} accessibilityState={{ disabled, busy }} disabled={disabled} onPress={onPress} style={[styles.tool, { borderBottomColor: colors.border, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth }]}>
+  return <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${detail}`} accessibilityState={{ disabled, busy }} disabled={disabled} onPress={onPress} style={[styles.tool, { borderBottomColor: colors.border, borderBottomWidth: last ? 0 : borderWidths.divider }]}>
     <View style={[styles.icon, { backgroundColor: disabled ? colors.surfaceMuted : colors.primarySoft }]}><RideIcon name={icon} size={18} color={disabled ? 'icon' : 'primary'} /></View>
     <View style={styles.copy}><Text variant="button">{title}</Text><Text variant="caption" color="textMuted" style={styles.smallGap}>{detail}</Text></View>
     {busy ? <ActivityIndicator size="small" color={colors.primary} /> : <RideIcon name={locked ? 'lock' : 'chevron'} size={16} color={disabled ? 'icon' : 'primary'} />}
@@ -141,18 +141,18 @@ function SafetyTool({ icon, title, detail, disabled = false, busy = false, locke
 
 function SafetyTip({ icon, text, last = false }: { icon: SafetyIcon; text: string; last?: boolean }) {
   const { colors } = useTheme();
-  return <View style={[styles.tip, { borderBottomColor: colors.border, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth }]}><View style={[styles.icon, { backgroundColor: colors.surfaceMuted }]}><RideIcon name={icon} size={18} /></View><Text variant="caption" style={styles.copy}>{text}</Text></View>;
+  return <View style={[styles.tip, { borderBottomColor: colors.border, borderBottomWidth: last ? 0 : borderWidths.divider }]}><View style={[styles.icon, { backgroundColor: colors.surfaceMuted }]}><RideIcon name={icon} size={18} /></View><Text variant="caption" style={styles.copy}>{text}</Text></View>;
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth },
+  screen: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: borderWidths.divider },
   back: { width: 48, height: 48, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' }, headerTitle: { flex: 1 },
-  content: { padding: spacing.lg }, emergency: { borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.xl, padding: spacing.md },
+  content: { padding: spacing.lg }, emergency: { borderWidth: borderWidths.divider, borderRadius: radius.xl, padding: spacing.md },
   emergencyHeading: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md }, icon: { width: 32, height: 32, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   copy: { flex: 1, minWidth: 0 }, smallGap: { marginTop: spacing.xs }, centered: { textAlign: 'center' },
   lagosCall: { minHeight: 44, paddingVertical: spacing.sm, alignItems: 'center', justifyContent: 'center' },
   sectionHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xl, marginBottom: spacing.md }, sectionTitle: { flexGrow: 1 },
-  tripBadge: { borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs }, tools: { borderRadius: radius.xl, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  tripBadge: { borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs }, tools: { borderRadius: radius.xl, borderWidth: borderWidths.divider, overflow: 'hidden' },
   tool: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, minHeight: 68 }, guidanceHeading: { marginTop: spacing.xl, marginBottom: spacing.md },
   tip: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, minHeight: 48 },
   answer: { paddingHorizontal: spacing.md, paddingBottom: spacing.md },

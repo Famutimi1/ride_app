@@ -6,6 +6,12 @@
  * Reference these via `useTheme()` → `spacing.lg`, `radius.md`.
  */
 
+import { Platform, StyleSheet } from 'react-native';
+
+// One Android layout pixel stays visible on high-density screens. A physical
+// hairline otherwise becomes faint or disappears when the emulator is scaled.
+export const borderWidths = { divider: Platform.OS === 'android' ? 1 : StyleSheet.hairlineWidth } as const;
+
 // Keep small gaps comfortable; tighten page gutters and large section gaps.
 export const spacing = {
   xs: 4,

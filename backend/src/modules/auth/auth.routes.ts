@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { activeRole, google, staffGoogle, loginInitiate, loginVerify, staffLoginVerify, logout, logoutAll, me, refresh, registerInitiate, registerVerify, resend, profileUpdate, phoneChangeInitiate, phoneChangeVerify } from './auth.controller';
+import { activeRole, google, webGoogle, staffGoogle, loginInitiate, loginVerify, staffLoginVerify, logout, logoutAll, me, refresh, registerInitiate, registerVerify, resend, profileUpdate, phoneChangeInitiate, phoneChangeVerify } from './auth.controller';
 import { requireAuth,limitPublicAuth } from './auth.middleware';
 
 import { limitMediaUpload,parseAvatar,releaseMediaUpload } from '../../shared/middleware/mediaUpload';
@@ -11,7 +11,7 @@ authRouter.post('/profile/avatar',requireAuth,limitMediaUpload,parseAvatar,async
 authRouter.delete('/profile/avatar',requireAuth,async(req,res,next)=>{
   try {res.json(await removeAvatar(req.userId!,req.get('If-Match')));}catch(error){next(error);}
 });
-const publicAuthPaths=new Set(['/register/initiate','/register/verify','/login/initiate','/login/verify','/login/staff/verify','/otp/resend','/refresh','/google','/google/staff','/logout']);
+const publicAuthPaths=new Set(['/register/initiate','/register/verify','/login/initiate','/login/verify','/login/staff/verify','/otp/resend','/refresh','/google','/google/web','/google/staff','/logout']);
 authRouter.use((req,res,next)=>{if(req.method==='POST'&&publicAuthPaths.has(req.path))void limitPublicAuth(req,res,next);else next();});
 authRouter.use((req,res,next)=>{if(['POST','PATCH'].includes(req.method)&&req.path!=='/logout-all'&&(!req.body||typeof req.body!=='object'||Array.isArray(req.body)))return void res.status(400).json({error:'invalid_request_body'});next();});
 authRouter.post('/register/initiate', registerInitiate);
@@ -22,6 +22,7 @@ authRouter.post('/login/staff/verify', staffLoginVerify);
 authRouter.post('/otp/resend', resend);
 authRouter.post('/refresh', refresh);
 authRouter.post('/google', google);
+authRouter.post('/google/web', webGoogle);
 authRouter.post('/google/staff', staffGoogle);
 authRouter.get('/me', requireAuth, me);
 authRouter.patch('/profile', requireAuth, profileUpdate);

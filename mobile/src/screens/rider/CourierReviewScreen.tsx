@@ -7,7 +7,7 @@ import { AppMap, type AppMapMarker } from '@/components/map';
 import { Button, Text } from '@/components/common';
 import { AddressIcon } from '@/components/map/AddressIcon';
 import { RideIcon } from '@/components/common/RideIcon';
-import { radius, spacing, useTheme } from '@/constants/theme';
+import { borderWidths, radius, spacing, useTheme } from '@/constants/theme';
 import { useCourierDraftStore } from '@/store/courierDraftStore';
 import { useMapStore } from '@/store/mapStore';
 import { useTripStore } from '@/store/tripStore';
@@ -72,7 +72,7 @@ export function CourierReviewScreen() {
   if (!draft || !pickup || !dropoff) return <SafeAreaView className="flex-1 items-center justify-center bg-background px-xl"><Text variant="h3">Delivery details are missing</Text><Text color="textMuted" className="mt-sm text-center">Start with the package details, then choose pickup and drop-off.</Text><Button label="Start again" className="mt-lg" onPress={() => router.replace('/courier')} /></SafeAreaView>;
   const editDetails = () => router.push({ pathname: '/courier', params: { review: '1' } });
   return <View style={[styles.screen, { backgroundColor: colors.background }]}>
-    <View style={styles.map}><AppMap region={region} markers={markers} polyline={route} mapPadding={{ top: 64, right: 24, bottom: 48, left: 24 }} /></View>
+    <View style={styles.map}><AppMap region={region} markers={markers} polyline={route} fitRouteOnChange mapPadding={{ top: 64, right: 24, bottom: 48, left: 24 }} /></View>
     <SafeAreaView edges={['top']} style={styles.backArea}><Pressable accessibilityRole="button" accessibilityLabel="Edit delivery addresses" onPress={() => router.replace({ pathname: '/set-destination', params: { service: 'courier' } })} style={[styles.back, { backgroundColor: colors.surface }]}><AddressIcon name="back" size={19} /></Pressable></SafeAreaView>
     <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
       <View style={styles.handleArea}><View style={[styles.handle, { backgroundColor: colors.borderStrong }]} /></View>
@@ -115,12 +115,12 @@ const styles = StyleSheet.create({
   handleArea: { alignItems: 'center', paddingVertical: spacing.sm }, handle: { width: 36, height: 4, borderRadius: radius.full },
   content: { paddingHorizontal: spacing.xl, paddingTop: spacing.xs, paddingBottom: spacing.md, gap: spacing.md },
   heading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  packageCard: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.lg, padding: spacing.sm },
+  packageCard: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderWidth: borderWidths.divider, borderRadius: radius.lg, padding: spacing.sm },
   artwork: { width: 40, height: 40 }, editIcon: { width: 36, height: 36, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   route: { gap: spacing.md, paddingHorizontal: spacing.xs }, routeStop: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   pickupMarker: { alignSelf: 'stretch', width: 15, alignItems: 'center', gap: spacing.xs }, connector: { flex: 1, borderLeftWidth: 1, borderStyle: 'dashed', marginBottom: -spacing.sm },
-  recipient: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: spacing.sm },
+  recipient: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderTopWidth: borderWidths.divider, paddingTop: spacing.sm },
   codeNotice: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, borderRadius: radius.lg }, note: { marginTop: spacing.xs },
-  footer: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: spacing.md, gap: spacing.xs },
+  footer: { borderTopWidth: borderWidths.divider, paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: spacing.md, gap: spacing.xs },
   fareRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }, forward: { transform: [{ rotate: '180deg' }] },
 });

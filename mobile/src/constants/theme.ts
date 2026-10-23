@@ -61,5 +61,6 @@ export function useTheme(): Theme {
   return getTheme(scheme);
 }
 
+export { borderWidths } from './spacing';
 export { lightColors, darkColors, typography, spacing, radius };
 export type { AppColors };

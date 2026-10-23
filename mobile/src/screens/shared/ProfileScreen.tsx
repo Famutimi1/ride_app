@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, Button, Text } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
 import { AddressIcon } from '@/components/map/AddressIcon';
-import { radius, spacing, useTheme } from '@/constants/theme';
+import { borderWidths, radius, spacing, useTheme } from '@/constants/theme';
 import type { AuthUser } from '@/services/authService';
 import { useAuthStore } from '@/store/authStore';
 import { useTripStore } from '@/store/tripStore';
@@ -118,7 +118,7 @@ export function ProfileView(props: ProfileViewProps) {
       </Pressable> : null}
       <View style={[styles.account, { borderTopColor: colors.border }]}>
         <Text variant="button" accessibilityRole="header">Account</Text>
-        <View accessibilityLabel="Delete account, unavailable" accessibilityState={{ disabled: true }} style={[styles.unavailable, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
+        <View accessibilityLabel="Delete account, unavailable" accessibilityState={{ disabled: true }} style={[styles.unavailable, { backgroundColor: colors.surfaceMuted, borderColor: colors.danger }]}>
           <RideIcon name="trash" size={18} color="textMuted" />
           <Text variant="button" color="textMuted" style={styles.copy}>Delete account</Text>
           <View style={[styles.badge, { backgroundColor: colors.border }]}><Text variant="caption" color="textMuted">Unavailable</Text></View>
@@ -146,7 +146,7 @@ function ProfileField({ icon, label, locked = false, action, ...input }: Compone
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: borderWidths.divider },
   back: { width: 44, height: 44, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   content: { padding: spacing.xl, paddingBottom: spacing['2xl'] },
   summary: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   info: { marginTop: spacing.md, borderRadius: radius.lg, padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   feedback: { marginTop: spacing.sm },
   application: { marginTop: spacing.lg, borderWidth: 1, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm, flexDirection: 'row', alignItems: 'center' },
-  account: { marginTop: spacing.xl, paddingTop: spacing.lg, borderTopWidth: StyleSheet.hairlineWidth },
+  account: { marginTop: spacing.xl, paddingTop: spacing.lg, borderTopWidth: borderWidths.divider },
   unavailable: { marginTop: spacing.md, borderWidth: 1, borderRadius: radius.lg, padding: spacing.md, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full },
 });

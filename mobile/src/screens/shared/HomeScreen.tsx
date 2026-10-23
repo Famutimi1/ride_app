@@ -1,13 +1,13 @@
 /** Rider home: live map, destination search, and an adjustable address sheet. */
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/common';
-import { RideMap } from '@/components/map';
-import { useTheme } from '@/constants/theme';
+import { RideMap, type AppMapHandle } from '@/components/map';
+import { borderWidths, useTheme } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useMapStore } from '@/store/mapStore';
 import { useUiStore } from '@/store/uiStore';
@@ -27,6 +27,7 @@ const SERVICES = [
 
 export function HomeScreen() {
   const router = useRouter();
+  const mapRef = useRef<AppMapHandle>(null);
   const { colors, scheme } = useTheme();
   const setThemePreference = useUiStore((state) => state.setThemePreference);
   const { height } = useWindowDimensions();
@@ -91,7 +92,7 @@ export function HomeScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.surfaceMuted }]}>
       <View style={[StyleSheet.absoluteFill, { bottom: sheetHeight }]}>
-        <RideMap mapPadding={{ top: insets.top + 132, right: 20, bottom: 20, left: 20 }} />
+        <RideMap ref={mapRef} mapPadding={{ top: insets.top + 132, right: 20, bottom: 20, left: 20 }} />
       </View>
       <SafeAreaView edges={['top']} style={styles.topControls} pointerEvents="box-none">
         <View style={styles.toolbar} pointerEvents="box-none">
@@ -122,8 +123,14 @@ export function HomeScreen() {
         accessibilityLabel="Center map on my current location"
         onPress={() => {
           setLocationError(null);
+          const cached = useMapStore.getState().currentLocation;
+          if (cached) mapRef.current?.animateToRegion({ ...cached, latitudeDelta: 0.018, longitudeDelta: 0.014 });
           void focusOnCurrentLocation().then((permission) => {
             if (permission !== 'granted') setLocationError('Allow location access to center the map on your position.');
+            else {
+              const current = useMapStore.getState().currentLocation;
+              if (current) mapRef.current?.animateToRegion({ ...current, latitudeDelta: 0.018, longitudeDelta: 0.014 });
+            }
           }).catch((error: unknown) => {
             setLocationError(error instanceof LocationUnavailableError ? error.message : 'Could not refresh your location. Please try again.');
           });
@@ -145,7 +152,7 @@ export function HomeScreen() {
           </View>
           <View style={styles.services}>
             {SERVICES.map(service => (
-              <Pressable key={service.id} accessibilityRole="button" accessibilityLabel={`${service.label}: ${service.detail}`} onPress={() => service.id === 'schedule' ? router.push('/schedule') : service.id === 'courier' ? router.push('/courier') : openDestinationPage()}
+              <Pressable cssInterop={false} key={service.id} accessibilityRole="button" accessibilityLabel={`${service.label}: ${service.detail}`} onPress={() => service.id === 'schedule' ? router.push('/schedule') : service.id === 'courier' ? router.push('/courier') : openDestinationPage()}
                 style={({ pressed }) => [styles.serviceTile, { backgroundColor: colors.primarySoft, opacity: pressed ? 0.7 : 1 }]}
               >
                 <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden>
@@ -165,8 +172,8 @@ export function HomeScreen() {
               </Pressable>
             </View>
             {repeatRides.map((ride, index) => (
-              <Pressable key={ride.trip.id} accessibilityRole="button" accessibilityLabel={`${ride.completedCount ? 'Ride again' : 'Try route again'} from ${ride.trip.pickup_address} to ${ride.trip.dropoff_address}`} onPress={() => repeatRide(ride)}
-                style={({ pressed }) => [styles.historyRow, { borderTopColor: colors.border, borderTopWidth: index ? StyleSheet.hairlineWidth : 0, opacity: pressed ? 0.6 : 1 }]}
+              <Pressable cssInterop={false} key={ride.trip.id} accessibilityRole="button" accessibilityLabel={`${ride.completedCount ? 'Ride again' : 'Try route again'} from ${ride.trip.pickup_address} to ${ride.trip.dropoff_address}`} onPress={() => repeatRide(ride)}
+                style={({ pressed }) => [styles.historyRow, { borderTopColor: colors.border, borderTopWidth: index ? borderWidths.divider : 0, opacity: pressed ? 0.6 : 1 }]}
               >
                 <View style={[styles.historyIcon, { backgroundColor: colors.primarySoft }]}>
                   <HomeIcon name="history" size={19} color="primary" />

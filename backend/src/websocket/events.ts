@@ -1,5 +1,6 @@
 export const SOCKET_EVENTS = {
   JOIN_TRIP: 'trip:join',
+  LEAVE_TRIP: 'trip:leave',
   DRIVER_LOCATION_UPDATE: 'driver:location:update',
   DRIVER_LOCATION: 'driver:location',
   DRIVER_OFFLINE: 'driver:offline',

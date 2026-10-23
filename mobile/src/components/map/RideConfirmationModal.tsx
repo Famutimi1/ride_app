@@ -2,7 +2,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } f
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Text } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
-import { nativeWindTheme, radius, spacing, useTheme } from '@/constants/theme';
+import { borderWidths, nativeWindTheme, radius, spacing, useTheme } from '@/constants/theme';
 import { formatNaira } from '@/services/paymentService';
 import { AddressIcon } from './AddressIcon';
 
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
   rideSummary: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: radius.lg },
   car: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
   scheduled: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  route: { borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: spacing.md },
+  route: { borderTopWidth: borderWidths.divider, borderBottomWidth: borderWidths.divider, paddingVertical: spacing.md },
   location: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   connector: { height: 12, marginLeft: 7, marginVertical: spacing.xs, borderLeftWidth: 1, borderStyle: 'dashed' },
   payment: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.md },

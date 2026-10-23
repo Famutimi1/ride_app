@@ -1,3 +1,6 @@
+const { platformSelect } = require('nativewind/theme');
+const androidSize = (android, other) => platformSelect({ android: `${android}px`, default: `${other}px` });
+
 const semanticColorTokens = [
   'primary',
   'secondary',
@@ -63,12 +66,12 @@ module.exports = {
         'inter-bold': ['Inter_700Bold'],
       },
       fontSize: {
-        h1: ['30px', { lineHeight: '36px', letterSpacing: '-0.7px' }],
-        h2: ['24px', { lineHeight: '30px', letterSpacing: '-0.5px' }],
-        h3: ['20px', { lineHeight: '26px', letterSpacing: '-0.3px' }],
-        body: ['15px', { lineHeight: '22px' }],
-        caption: ['13px', { lineHeight: '18px' }],
-        button: ['14px', { lineHeight: '20px' }],
+        h1: [androidSize(33, 30), { lineHeight: androidSize(40, 36), letterSpacing: '-0.7px' }],
+        h2: [androidSize(27, 24), { lineHeight: androidSize(34, 30), letterSpacing: '-0.5px' }],
+        h3: [androidSize(23, 20), { lineHeight: androidSize(30, 26), letterSpacing: '-0.3px' }],
+        body: [androidSize(17, 15), { lineHeight: androidSize(26, 22) }],
+        caption: [androidSize(15, 13), { lineHeight: androidSize(22, 18) }],
+        button: [androidSize(16, 14), { lineHeight: androidSize(24, 20) }],
       },
       boxShadow: {
         sm: '0px 1px 4px var(--shadow-sm)',

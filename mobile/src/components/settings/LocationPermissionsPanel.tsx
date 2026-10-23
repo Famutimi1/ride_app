@@ -3,7 +3,7 @@ import { ActivityIndicator, AppState, Linking, Platform, StyleSheet, View } from
 import { Button, Text } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
 import type { SettingsRole } from '@/constants/settings';
-import { radius, spacing, useTheme } from '@/constants/theme';
+import { borderWidths, radius, spacing, useTheme } from '@/constants/theme';
 import { areLocationServicesEnabled, getDriverBackgroundLocationPermission, getForegroundLocationPermission, type AppPermissionState } from '@/services/locationService';
 import { permissionLabel, settingsLocationNotice } from '@/utils/settings';
 
@@ -75,6 +75,6 @@ function PermissionStatus({ label, value, allowed }: { label: string; value: str
 }
 const styles = StyleSheet.create({
   content: { gap: spacing.md }, notice: { padding: spacing.md, borderRadius: radius.xl, gap: spacing.md }, status: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  group: { borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.xl, overflow: 'hidden' }, permission: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth },
+  group: { borderWidth: borderWidths.divider, borderRadius: radius.xl, overflow: 'hidden' }, permission: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderBottomWidth: borderWidths.divider },
   copy: { flexGrow: 1, flexShrink: 1 }, value: { flexShrink: 1 },
 });

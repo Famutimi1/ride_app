@@ -6,7 +6,7 @@ import { Button, Text } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
 import { AppMap, RideConfirmationModal, type AppMapMarker } from '@/components/map';
 import { AddressIcon } from '@/components/map/AddressIcon';
-import { nativeWindTheme, useTheme } from '@/constants/theme';
+import { borderWidths, nativeWindTheme, useTheme } from '@/constants/theme';
 import { useTripQuote } from '@/hooks/useTripQuote';
 import { apiErrorMessage } from '@/lib/apiClient';
 import { useMapStore } from '@/store/mapStore';
@@ -144,7 +144,7 @@ export function RideDetailsScreen() {
         {fareChange ? <Text accessibilityRole="alert" variant="caption" color="danger" style={styles.notice}>Fare changed from {formatNaira(fareChange.previousFareKobo)} to {formatNaira(fareChange.newFareKobo)}. Review the new price before booking.</Text> : null}
 
         <View style={[styles.metrics, { borderColor: colors.border }]}>
-          <View style={[styles.metricRow, { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
+          <View style={[styles.metricRow, { borderBottomColor: colors.border, borderBottomWidth: borderWidths.divider }]}>
             <DetailMetric icon="distance" label="Est. distance" value={estimate ? `${estimate.distanceKm.toFixed(1)} km` : quotePendingLabel} />
             <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
             <DetailMetric icon="clock" label="Est. trip time" value={estimate ? `${Math.ceil(estimate.durationMin)} min` : quotePendingLabel} />
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   metricRow: { minHeight: 50, flexDirection: 'row', alignItems: 'stretch' },
   metric: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6, paddingHorizontal: 4 },
   metricCopy: { flex: 1, minWidth: 0 },
-  metricDivider: { width: StyleSheet.hairlineWidth, marginHorizontal: 8, marginVertical: 8 },
+  metricDivider: { width: borderWidths.divider, marginHorizontal: 8, marginVertical: 8 },
   routeSummary: { borderWidth: 1, borderRadius: 14, padding: 10 },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   locationCopy: { flex: 1, minWidth: 0 },
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   paymentHeader: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   paymentOptions: { flexGrow: 0, marginTop: 8 },
   iconButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
-  paymentOption: { minHeight: 72, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  paymentOption: { minHeight: 72, borderBottomWidth: borderWidths.divider, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 14 },
   radio: { width: 18, height: 18, borderRadius: 9, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   radioDot: { width: 10, height: 10, borderRadius: 5 },
 });

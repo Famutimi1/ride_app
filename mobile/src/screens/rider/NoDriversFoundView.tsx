@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Text } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
 import { AddressIcon } from '@/components/map/AddressIcon';
-import { radius, spacing, useTheme } from '@/constants/theme';
+import { borderWidths, radius, spacing, useTheme } from '@/constants/theme';
 
 interface NoDriversFoundViewProps {
   pickupAddress: string;
@@ -52,11 +52,11 @@ const styles = StyleSheet.create({
   back: { width: 44, height: 44, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: spacing.xl, paddingVertical: spacing['2xl'] },
   message: { width: '100%', maxWidth: 380, alignSelf: 'center', alignItems: 'center', gap: spacing.xl },
-  illustration: { width: 104, height: 104, borderRadius: radius.full, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  illustration: { width: 104, height: 104, borderRadius: radius.full, borderWidth: borderWidths.divider, alignItems: 'center', justifyContent: 'center' },
   car: { width: 76, height: 76, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   unavailable: { position: 'absolute', right: 0, bottom: 3, width: 30, height: 30, borderRadius: radius.full, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
   copy: { gap: spacing.sm, maxWidth: 300 }, centered: { textAlign: 'center' },
-  pickup: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.lg, padding: spacing.md },
+  pickup: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderWidth: borderWidths.divider, borderRadius: radius.lg, padding: spacing.md },
   pin: { width: 36, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' }, address: { flex: 1, minWidth: 0, gap: spacing.xs },
   footer: { width: '100%', maxWidth: 420, alignSelf: 'center', paddingHorizontal: spacing.xl, paddingBottom: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm },
   helper: { textAlign: 'center', marginTop: spacing.xs },

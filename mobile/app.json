@@ -58,6 +58,12 @@
       "eas": {
         "projectId": "fed34124-2ccf-4a63-93e0-ea317a1d5587"
       }
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/fed34124-2ccf-4a63-93e0-ea317a1d5587"
     }
   }
 }

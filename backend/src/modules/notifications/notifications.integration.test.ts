@@ -82,6 +82,8 @@ test('notification persistence, preferences and provider receipts', { skip: !pro
         assert.equal(created.record.data.audience, fixture.audience);
         ids.push(created.record.id);
       }
+      // Deliberately use distinct sub-millisecond times: JS Date must not truncate the cursor.
+      for(const [index,id] of ids.entries())await pool.query("UPDATE notifications SET created_at='2026-10-23T08:00:00Z'::timestamptz+($2::int*interval '1 microsecond') WHERE id=$1",[id,index+1]);
       // Exercise the pre-existing rows too, without a migration or destructive backfill.
       await pool.query("UPDATE notifications SET data=data-'audience' WHERE user_id=$1", [both.id]);
       for (const role of ['rider', 'driver'] as const) {

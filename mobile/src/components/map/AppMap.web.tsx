@@ -2,10 +2,11 @@ import { createElement, forwardRef, useEffect, useImperativeHandle, useRef, useS
 import { View } from 'react-native';
 import { Text } from '@/components/common';
 import { useTheme } from '@/constants/theme';
-import { LAGOS_REGION, type MapCoordinate, type MapRegion } from '@/store/mapStore';
+import { LAGOS_REGION, type MapCoordinate } from '@/store/mapStore';
 import type { AppMapHandle, AppMapMarker, AppMapProps } from './mapTypes';
-import { markerAnchor, markerColor, markerSize } from './markerStyle';
-import { locationPin, locationPinSvg } from './locationPin';
+import { markerAnchor, markerSize } from './markerStyle';
+import { markerSvg } from './markerSvg';
+import { zoomForRegion } from './mapCamera';
 
 export type { AppMapHandle, AppMapMarker, AppMapProps, MarkerKind } from './mapTypes';
 
@@ -57,28 +58,12 @@ function loadGoogleMaps(): Promise<GoogleMaps> {
 }
 
 const point = ({ latitude, longitude }: MapCoordinate): LatLng => ({ lat: latitude, lng: longitude });
-const zoomFor = (region: MapRegion) => Math.max(4, Math.min(19, Math.round(Math.log2(360 / Math.max(region.longitudeDelta, 0.001)))));
 
 function markerIcon(marker: AppMapMarker, colors: ReturnType<typeof useTheme>['colors'], maps: GoogleMaps) {
   const { kind } = marker;
   const anchor = markerAnchor(kind);
-  if (kind === 'pickup' || kind === 'dropoff') {
-    const size = locationPin.size;
-    return {
-      url: `data:image/svg+xml,${encodeURIComponent(locationPinSvg(kind, colors))}`,
-      scaledSize: new maps.Size(size, size),
-      anchor: new maps.Point(size * anchor.x, size * anchor.y),
-    };
-  }
-  const color = markerColor(kind, colors);
-  const surface = colors.surface;
-  const inverse = colors.textInverse;
   const size = markerSize(kind);
-  const heading = Number.isFinite(marker.heading) ? marker.heading! : 0;
-  const glyph = kind === 'rider'
-        ? `<path d="M5 5 24 43 43 5 24 14Z" fill="${color}" stroke="${colors.mapMarkerOutline}" stroke-width="3" stroke-linejoin="round"/>`
-        : `<g transform="rotate(${heading} 24 24)"><rect x="12" y="3" width="24" height="42" rx="9" fill="${kind === 'driver' ? color : surface}" stroke="${color}" stroke-width="3"/><path d="M17 12h14l2 10H15zM17 31h14l-2 8H19z" fill="${kind === 'driver' ? inverse : color}"/><path d="M10 15h3m22 0h3M10 34h3m22 0h3" stroke="${color}" stroke-width="3" stroke-linecap="round"/></g>`;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">${glyph}</svg>`;
+  const svg = markerSvg(kind, colors, marker.heading);
   return { url: `data:image/svg+xml,${encodeURIComponent(svg)}`, scaledSize: new maps.Size(size, size), anchor: new maps.Point(size * anchor.x, size * anchor.y) };
 }
 
@@ -100,7 +85,7 @@ export const AppMap = forwardRef<AppMapHandle, AppMapProps>(function AppMap({
   callbacks.current = { onRegionChangeComplete, onUserRegionChangeComplete };
 
   useImperativeHandle(ref, () => ({
-    animateToRegion: (next) => { map.current?.setCenter(point(next)); map.current?.setZoom(zoomFor(next)); },
+    animateToRegion: (next) => { map.current?.setCenter(point(next)); map.current?.setZoom(zoomForRegion(next)); },
     fitToCoordinates: (coordinates) => {
       if (!map.current || !google.current || !coordinates.length) return;
       const bounds = new google.current.LatLngBounds();
@@ -118,7 +103,7 @@ export const AppMap = forwardRef<AppMapHandle, AppMapProps>(function AppMap({
     void loadGoogleMaps().then((maps) => {
       if (disposed || !container.current) return;
       google.current = maps;
-      map.current = new maps.Map(container.current, { center: point(initialRegion.current), zoom: zoomFor(initialRegion.current), disableDefaultUI: true, clickableIcons: false });
+      map.current = new maps.Map(container.current, { center: point(initialRegion.current), zoom: zoomForRegion(initialRegion.current), disableDefaultUI: true, clickableIcons: false });
       dragListener = map.current.addListener('dragstart', () => { userMovedMap = true; });
       idleListener = map.current.addListener('idle', () => {
         const center = map.current?.getCenter();
@@ -144,7 +129,7 @@ export const AppMap = forwardRef<AppMapHandle, AppMapProps>(function AppMap({
     }
     // Interactive maps report their own viewport bounds. Deriving zoom back from those
     // bounds changes it by a step on narrow screens and creates an idle/update loop.
-    if (!onRegionChangeComplete && map.current.getZoom() !== zoomFor(region)) map.current.setZoom(zoomFor(region));
+    if (!onRegionChangeComplete && map.current.getZoom() !== zoomForRegion(region)) map.current.setZoom(zoomForRegion(region));
   }, [ready, region, onRegionChangeComplete, fitRouteOnChange, polyline, secondaryPolyline]);
   useEffect(() => {
     if (!ready || !map.current || !google.current) return;

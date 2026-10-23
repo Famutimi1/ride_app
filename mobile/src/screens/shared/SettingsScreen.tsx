@@ -10,7 +10,7 @@ import { AddressIcon } from '@/components/map/AddressIcon';
 import { DriverServicePreferences } from '@/components/common/DriverServiceSettings';
 import { NotificationPreferencesPanel } from '@/components/notifications';
 import { getSettingsContent, type SettingsDestination, type SettingsRole } from '@/constants/settings';
-import { radius, spacing, useTheme } from '@/constants/theme';
+import { borderWidths, radius, spacing, useTheme } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { settingsDestination } from '@/utils/settings';
 import { LocationPermissionsPanel } from '@/components/settings/LocationPermissionsPanel';
@@ -140,7 +140,7 @@ function SectionLabel({ children }: { children: string }) {
 
 function SettingsRow({ icon, label, detail, onPress, disabled = false, last = false }: { icon: ComponentProps<typeof RideIcon>['name']; label: string; detail: string; onPress: () => void; disabled?: boolean; last?: boolean }) {
   const { colors } = useTheme();
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityHint={detail} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={[styles.row, { opacity: disabled ? 0.5 : 1, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityHint={detail} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={[styles.row, { opacity: disabled ? 0.5 : 1, borderBottomWidth: last ? 0 : borderWidths.divider, borderBottomColor: colors.border }]}>
     <View style={[styles.icon, { backgroundColor: colors.primarySoft }]}><RideIcon name={icon} size={18} color="primary" /></View>
     <View style={styles.copy}><Text variant="button">{label}</Text><Text variant="caption" color="textMuted" style={styles.smallGap}>{detail}</Text></View>
     <RideIcon name="chevron" size={16} color="textMuted" />
@@ -148,10 +148,10 @@ function SettingsRow({ icon, label, detail, onPress, disabled = false, last = fa
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth },
+  screen: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: borderWidths.divider },
   back: { width: 44, height: 44, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   content: { padding: spacing.lg, paddingBottom: spacing['2xl'] }, section: { marginTop: spacing.lg, marginBottom: spacing.sm },
-  group: { borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.xl, overflow: 'hidden' },
+  group: { borderWidth: borderWidths.divider, borderRadius: radius.xl, overflow: 'hidden' },
   row: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   icon: { width: 32, height: 32, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' }, copy: { flex: 1, minWidth: 0 }, smallGap: { marginTop: spacing.xs },
   logout: { marginTop: spacing.xl, borderWidth: 1, borderRadius: radius.lg, minHeight: 48, padding: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },

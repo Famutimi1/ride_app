@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth, requireStaffRole } from "../auth/auth.middleware";
+import * as customer from './customerCare.controller';
 import {
   careList,
   careDetail,
@@ -13,6 +14,10 @@ export const careCustomerRouter = Router();
 careCustomerRouter.use(requireAuth);
 careCustomerRouter.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 careCustomerRouter.get('/settings', supportSettingsRead);
+careCustomerRouter.get('/support', customer.list);
+careCustomerRouter.post('/support', customer.create);
+careCustomerRouter.get('/support/:id', customer.detail);
+careCustomerRouter.post('/support/:id/messages', customer.reply);
 careAdminRouter.use(requireAuth);
 careAdminRouter.use((_req, res, next) => {
   res.set("Cache-Control", "no-store");

@@ -16,11 +16,11 @@ export async function verifyStaffGoogleToken(idToken: string, expectedNonce: str
     throw new ApiError(401, 'invalid_google_token');
   }
 }
-export async function verifyGoogleToken(idToken: string) {
-  const audience = [env.GOOGLE_CLIENT_ID_IOS, env.GOOGLE_CLIENT_ID_ANDROID, env.GOOGLE_CLIENT_ID_WEB].filter(Boolean);
+export async function verifyGoogleToken(idToken: string, expectedNonce?: string) {
+  const audience = (expectedNonce ? [env.GOOGLE_CLIENT_ID_WEB] : [env.GOOGLE_CLIENT_ID_IOS, env.GOOGLE_CLIENT_ID_ANDROID, env.GOOGLE_CLIENT_ID_WEB]).filter(Boolean);
   if (!audience.length) throw new ApiError(503, 'google_sign_in_not_configured');
   const ticket = await client.verifyIdToken({ idToken, audience });
   const payload = ticket.getPayload();
-  if (!payload?.sub || !payload.email || !payload.name || payload.email_verified !== true) throw new ApiError(401, 'invalid_google_token');
+  if (!payload?.sub || !payload.email || !payload.name || payload.email_verified !== true || (expectedNonce && payload.nonce !== expectedNonce)) throw new ApiError(401, 'invalid_google_token');
   return payload;
 }

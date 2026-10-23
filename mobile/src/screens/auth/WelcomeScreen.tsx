@@ -1,3 +1,4 @@
+import { svgDataUri } from '@/utils/svgDataUri';
 /** Three short benefit-led pages, based on the generated full-page design studies. */
 import { Image, type ImageSource } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -82,9 +83,7 @@ export function WelcomeScreen() {
     }
   };
 
-  const glow = `data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="320" viewBox="0 0 400 320"><defs><radialGradient id="halo"><stop stop-color="${colors.primarySoft}"/><stop offset="1" stop-color="${colors.background}" stop-opacity="0"/></radialGradient></defs><ellipse cx="200" cy="160" rx="200" ry="160" fill="url(#halo)"/></svg>`,
-  )}`;
+  const glow = svgDataUri(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="320" viewBox="0 0 400 320"><defs><radialGradient id="halo"><stop stop-color="${colors.primarySoft}"/><stop offset="1" stop-color="${colors.background}" stop-opacity="0"/></radialGradient></defs><ellipse cx="200" cy="160" rx="200" ry="160" fill="url(#halo)"/></svg>`);
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={[styles.screen, { backgroundColor: colors.background }]}>

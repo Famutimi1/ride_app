@@ -8,7 +8,7 @@ import { RideIcon } from '@/components/common/RideIcon';
 import { AddressIcon } from '@/components/map/AddressIcon';
 import { getCareContent, type CareContent, type CareDestination } from '@/constants/care';
 import { careDestination, careServiceContext, careTripForRole, supportContactUrl } from '@/utils/careCenter';
-import { radius, spacing, useTheme } from '@/constants/theme';
+import { borderWidths, radius, spacing, useTheme } from '@/constants/theme';
 import { getSupportSettings, type SupportSettings } from '@/services/careService';
 import { useAuthStore } from '@/store/authStore';
 import { useTripStore } from '@/store/tripStore';
@@ -143,20 +143,20 @@ export function HelpSupportView({ content: suppliedContent, safety = false, onNa
 type SupportIcon = ComponentProps<typeof RideIcon>['name'];
 function SupportShortcut({ icon, label, onPress, disabled = false, last = false }: { icon: SupportIcon; label: string; onPress: () => void; disabled?: boolean; last?: boolean }) {
   const { colors } = useTheme();
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityHint={disabled ? 'Available after your current trip' : undefined} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={[styles.shortcut, { borderBottomColor: colors.border, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth }]}><View style={[styles.icon, { backgroundColor: colors.surfaceMuted }]}><RideIcon name={icon} size={18} color="icon" /></View><Text variant="button" color={disabled ? 'textMuted' : 'text'} style={styles.copy}>{label}</Text><RideIcon name={disabled ? 'lock' : 'chevron'} size={16} color="icon" /></Pressable>;
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityHint={disabled ? 'Available after your current trip' : undefined} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={[styles.shortcut, { borderBottomColor: colors.border, borderBottomWidth: last ? 0 : borderWidths.divider }]}><View style={[styles.icon, { backgroundColor: colors.surfaceMuted }]}><RideIcon name={icon} size={18} color="icon" /></View><Text variant="button" color={disabled ? 'textMuted' : 'text'} style={styles.copy}>{label}</Text><RideIcon name={disabled ? 'lock' : 'chevron'} size={16} color="icon" /></Pressable>;
 }
 
 function QuickAnswer({ question, answer, last = false }: { question: string; answer: string; last?: boolean }) {
   const { colors } = useTheme();
   const [expanded, setExpanded] = useState(false);
-  return <View style={{ borderBottomColor: colors.border, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth }}><Pressable accessibilityRole="button" accessibilityLabel={question} accessibilityState={{ expanded }} aria-expanded={expanded} onPress={() => setExpanded(value => !value)} style={styles.question}><Text variant="caption" style={styles.copy}>{question}</Text><RideIcon name={expanded ? 'minus' : 'plus'} size={16} color="icon" /></Pressable>{expanded ? <Text variant="caption" color="textMuted" style={styles.answer}>{answer}</Text> : null}</View>;
+  return <View style={{ borderBottomColor: colors.border, borderBottomWidth: last ? 0 : borderWidths.divider }}><Pressable accessibilityRole="button" accessibilityLabel={question} accessibilityState={{ expanded }} aria-expanded={expanded} onPress={() => setExpanded(value => !value)} style={styles.question}><Text variant="caption" style={styles.copy}>{question}</Text><RideIcon name={expanded ? 'minus' : 'plus'} size={16} color="icon" /></Pressable>{expanded ? <Text variant="caption" color="textMuted" style={styles.answer}>{answer}</Text> : null}</View>;
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth }, back: { width: 48, height: 48, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
+  screen: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: borderWidths.divider }, back: { width: 48, height: 48, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   content: { padding: spacing.lg }, welcome: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, borderRadius: radius.xl }, icon: { width: 32, height: 32, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' }, copy: { flex: 1, minWidth: 0 }, smallGap: { marginTop: spacing.xs },
-  heading: { marginTop: spacing.lg, marginBottom: spacing.md }, group: { borderRadius: radius.xl, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' }, shortcut: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  heading: { marginTop: spacing.lg, marginBottom: spacing.md }, group: { borderRadius: radius.xl, borderWidth: borderWidths.divider, overflow: 'hidden' }, shortcut: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   question: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm }, answer: { paddingHorizontal: spacing.md, paddingBottom: spacing.md },
   contact: { marginTop: spacing.lg, padding: spacing.md, borderRadius: radius.xl }, contactHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.md }, contactCopy: { marginTop: spacing.sm, gap: spacing.sm }, loading: { marginTop: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  urgent: { marginTop: spacing.lg, minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, borderRadius: radius.xl, borderWidth: StyleSheet.hairlineWidth },
+  urgent: { marginTop: spacing.lg, minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, borderRadius: radius.xl, borderWidth: borderWidths.divider },
 });

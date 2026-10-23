@@ -16,6 +16,10 @@ export const staffLoginVerify = run((req) => auth.verifyLogin(req.body.phone, re
 export const resend = run((req) => inTransaction((client) => auth.resendOtp(req.body.phone, req.body.purpose, client)));
 export const refresh = async (req: Request, res: Response, next: NextFunction) => { try { const result=await inTransaction((client)=>auth.rotateRefreshToken(req.body?.refreshToken,device(req),client));if(result.reuseDetected){disconnectSessionSockets(result.sessionId);throw new ApiError(401,'refresh_token_reuse_detected');}res.json({tokens:result.tokens}); } catch(error){next(error);} };
 export const google = run((req) => inTransaction((client) => auth.googleSignIn(req.body.idToken, device(req), client)));
+export const webGoogle = run((req) => {
+  if(typeof req.body?.expectedNonce !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(req.body.expectedNonce) || typeof req.body?.idToken !== 'string' || req.body.idToken.length > 12000)throw new ApiError(400,'invalid_google_sign_in');
+  return inTransaction(client=>auth.googleSignIn(req.body.idToken,device(req),client,req.body.expectedNonce));
+});
 export const staffGoogle = run((req) => inTransaction((client) => auth.staffGoogleSignIn(req.body?.idToken, req.body?.expectedNonce, device(req), client)));
 export const me = run((req) => inTransaction((client) => auth.getMe(req.userId!, client, req.sessionScope)));
 export const profileUpdate = run((req) => inTransaction((client) => auth.updateProfile(req.userId!, req.body, client)));

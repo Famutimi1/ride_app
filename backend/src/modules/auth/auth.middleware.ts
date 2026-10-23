@@ -26,7 +26,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   try {
     const user = await authenticatedSessionUser(payload);
     if (!user) return void res.status(401).json({ error: 'invalid_or_expired_token' });
-    req.userId = user.id; req.authUser = user; req.sessionScope = payload.sessionScope; next();
+    req.userId = user.id; req.authUser = user; req.sessionScope = payload.sessionScope; req.sessionId=payload.sessionId; next();
   } catch { next(new ApiError(503, 'authentication_service_unavailable')); }
 }
 

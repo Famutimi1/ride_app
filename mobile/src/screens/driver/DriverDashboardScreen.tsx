@@ -7,7 +7,7 @@ import { HomeLocationFallback } from '@/components/map/HomeLocationFallback';
 import { Button, Text } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
 import { DriverServicePreferences } from '@/components/common/DriverServiceSettings';
-import { radius, spacing, useTheme } from '@/constants/theme';
+import { borderWidths, radius, spacing, useTheme } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useMapStore } from '@/store/mapStore';
 import { useWalletStore } from '@/store/walletStore';
@@ -115,15 +115,15 @@ export function DriverDashboardView({ title, locationAvailable, map, online, onl
 
 function Stat({ label, value, unavailable = false, last = false }: { label: string; value: string; unavailable?: boolean; last?: boolean }) {
   const { colors } = useTheme();
-  return <View accessible accessibilityLabel={`${label}: ${unavailable ? 'not available' : value}`} style={[styles.stat, { borderRightColor: colors.border, borderRightWidth: last ? 0 : StyleSheet.hairlineWidth }]}><Text variant="bodyMedium">{value}</Text><Text variant="caption" color="textMuted">{label}</Text></View>;
+  return <View accessible accessibilityLabel={`${label}: ${unavailable ? 'not available' : value}`} style={[styles.stat, { borderRightColor: colors.border, borderRightWidth: last ? 0 : borderWidths.divider }]}><Text variant="bodyMedium">{value}</Text><Text variant="caption" color="textMuted">{label}</Text></View>;
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   topBar: { position: 'absolute', top: 0, left: spacing.lg, right: spacing.lg },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, paddingTop: spacing.sm },
-  roundButton: { width: 44, height: 44, borderRadius: radius.full, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
-  titlePill: { borderRadius: radius.full, paddingHorizontal: spacing.lg, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth },
+  roundButton: { width: 44, height: 44, borderRadius: radius.full, borderWidth: borderWidths.divider, alignItems: 'center', justifyContent: 'center' },
+  titlePill: { borderRadius: radius.full, paddingHorizontal: spacing.lg, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderWidth: borderWidths.divider },
   availability: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: spacing['2xl'] },
   fallback: { position: 'absolute', left: 0, right: 0, bottom: 130 },
   fallbackContent: { flexGrow: 1 },
@@ -144,5 +144,5 @@ const styles = StyleSheet.create({
   noticeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   work: { marginTop: spacing.md, padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderRadius: radius.xl },
   workIcon: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: radius.lg },
-  footer: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth },
+  footer: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm, borderTopWidth: borderWidths.divider },
 });

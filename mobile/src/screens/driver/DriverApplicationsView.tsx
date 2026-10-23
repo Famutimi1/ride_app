@@ -6,7 +6,7 @@ import { Text } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
 import { DriverVehicleSummary } from '@/components/common/DriverVehicleSummary';
 import { AddressIcon } from '@/components/map/AddressIcon';
-import { useTheme } from '@/constants/theme';
+import { borderWidths, useTheme } from '@/constants/theme';
 import type { DriverApplicationResponse, DriverService, DriverServiceSettings } from '@/services/driverService';
 import { applicationDate, applicationDecision, type ServiceApplicationChoice, validServiceApplication } from '@/utils/driverApplications';
 import { canApplyForDriverService, driverServiceStatus, driverVehicleServices, driverVehicleNeedsReview } from '@/utils/driverServices';
@@ -28,7 +28,7 @@ export function ApplicationAction({ label, icon, onPress, outline = false, busy 
   const { colors } = useTheme();
   const blocked = disabled || busy;
   const color = blocked ? 'textMuted' : outline ? 'primary' : 'textInverse';
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: blocked, busy }} disabled={blocked} onPress={onPress} style={({ pressed }) => [styles.action, { backgroundColor: blocked ? colors.surfaceMuted : outline ? colors.surface : colors.primary, borderColor: blocked ? colors.border : colors.primary, opacity: pressed ? 0.8 : 1 }]}>{busy ? <ActivityIndicator size="small" color={colors[color]} /> : <>{icon ? <RideIcon name={icon} size={18} color={color} /> : null}<Text variant="button" color={color} style={styles.actionText}>{label}</Text></>}</Pressable>;
+  return <Pressable cssInterop={false} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: blocked, busy }} disabled={blocked} onPress={onPress} style={({ pressed }) => [styles.action, { backgroundColor: blocked ? colors.surfaceMuted : outline ? colors.surface : colors.primary, borderColor: blocked ? colors.border : colors.primary, opacity: pressed ? 0.8 : 1 }]}>{busy ? <ActivityIndicator size="small" color={colors[color]} /> : <>{icon ? <RideIcon name={icon} size={18} color={color} /> : null}<Text variant="button" color={color} style={styles.actionText}>{label}</Text></>}</Pressable>;
 }
 
 function Card({ children, mint = false }: { children: ReactNode; mint?: boolean }) {
@@ -53,7 +53,7 @@ export function ServiceApprovalRows({ settings, hideNone = false }: { settings: 
     const state = settings.services[service];
     const tone = state.status === 'suspended' || state.status === 'rejected' ? 'danger' : state.status === 'pending' || (state.status === 'approved' && !state.consentAccepted) ? 'warning' : state.status === 'approved' ? 'success' : 'textMuted';
     const surface = tone === 'textMuted' ? 'surfaceMuted' : SURFACE[tone];
-    return <View key={service} style={[styles.serviceRow, { borderBottomColor: colors.border, borderBottomWidth: index === services.length - 1 ? 0 : StyleSheet.hairlineWidth }]}>
+    return <View key={service} style={[styles.serviceRow, { borderBottomColor: colors.border, borderBottomWidth: index === services.length - 1 ? 0 : borderWidths.divider }]}>
       <View style={styles.inline}><View style={[styles.iconBox, { backgroundColor: colors.surfaceMuted }]}><RideIcon name={service === 'ride' ? 'vehicle' : 'package'} size={18} color="primary" /></View><Text variant="button" style={styles.copy}>{serviceName(service)}</Text><View style={[styles.badge, { backgroundColor: colors[surface] }]}><Text variant="caption" color={tone}>{driverServiceStatus(state)}</Text></View></View>
       {state.review?.reason ? <Text variant="caption" color="textMuted" style={styles.reason}>{state.review.reason}</Text> : null}
     </View>;
@@ -81,7 +81,7 @@ export function DriverApplicationStatusView({ data, loading, error, busy, onRefr
 }
 function MetadataRow({ label, value, icon, last = false }: { label: string; value: string; icon: Icon; last?: boolean }) {
   const { colors } = useTheme();
-  return <View style={[styles.metadata, { borderBottomColor: colors.border, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth }]}><View style={[styles.iconBox, { backgroundColor: colors.surfaceMuted }]}><RideIcon name={icon} size={18} color="primary" /></View><View style={styles.copy}><Text variant="caption" color="textMuted">{label}</Text><Text variant="button">{value}</Text></View></View>;
+  return <View style={[styles.metadata, { borderBottomColor: colors.border, borderBottomWidth: last ? 0 : borderWidths.divider }]}><View style={[styles.iconBox, { backgroundColor: colors.surfaceMuted }]}><RideIcon name={icon} size={18} color="primary" /></View><View style={styles.copy}><Text variant="caption" color="textMuted">{label}</Text><Text variant="button">{value}</Text></View></View>;
 }
 
 interface EnrollmentViewProps {

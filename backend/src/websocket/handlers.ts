@@ -6,6 +6,7 @@ import { ensureRedis } from '../shared/config/redis';
 import { env } from '../config/env';
 import { SOCKET_EVENTS } from './events';
 import { db } from '../shared/config/db';
+import {sendTripMessage} from '../modules/trips/tripMessages.service';
 import { assertDriverCanGoOnline } from '../modules/payments/ledger.service';
 
 interface TripMessage {
@@ -28,12 +29,16 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
   const userId = String(socket.data.userId);
   socket.join(`driver:${userId}`);
   socket.join(`user:${userId}`);
+  socket.on(SOCKET_EVENTS.LEAVE_TRIP,(tripId:unknown)=>{if(typeof tripId==='string'&&/^[0-9a-f-]{36}$/i.test(tripId))void socket.leave(`trip:${tripId}`);});
 
   socket.on(SOCKET_EVENTS.JOIN_TRIP, async (tripId: string, acknowledge?: (result: { ok: boolean; error?: string }) => void) => {
-    const { rows } = await db.query('SELECT 1 FROM trips WHERE id=$1 AND (rider_id=$2 OR driver_id=$2)', [tripId, userId]);
-    if (!rows[0]) return acknowledge?.({ ok: false, error: 'trip_access_denied' });
-    await socket.join(`trip:${tripId}`);
-    acknowledge?.({ ok: true });
+    try {
+      if(typeof tripId!=='string'||!/^[0-9a-f-]{36}$/i.test(tripId))return acknowledge?.({ok:false,error:'invalid_trip_id'});
+      const { rows } = await db.query('SELECT 1 FROM trips WHERE id=$1 AND (rider_id=$2 OR driver_id=$2)', [tripId, userId]);
+      if (!rows[0]) return acknowledge?.({ ok: false, error: 'trip_access_denied' });
+      await socket.join(`trip:${tripId}`);
+      acknowledge?.({ ok: true });
+    } catch { acknowledge?.({ok:false,error:'trip_connection_unavailable'}); }
   });
 
   const locationHandler = async (payload: Partial<DriverCoordinate>, acknowledge?: (result: { ok: boolean; error?: string }) => void) => {
@@ -66,20 +71,11 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
   socket.on(SOCKET_EVENTS.DRIVER_LOCATION,locationHandler);
   socket.on(SOCKET_EVENTS.DRIVER_OFFLINE,async(acknowledge?:(result:{ok:boolean;error?:string})=>void)=>{try{const active=(await db.query("SELECT 1 FROM trips WHERE driver_id=$1 AND status IN ('driver_assigned','driver_arrived','in_progress','returning')",[userId])).rows[0];if(active)return acknowledge?.({ok:false,error:'active_trip_must_remain_online'});const redis=await ensureRedis();await redis.multi().del(`driver:${userId}:status`,`driver:${userId}:location`).zrem('drivers:locations',userId).exec();acknowledge?.({ok:true});}catch(error){acknowledge?.({ok:false,error:error instanceof Error?error.message:'offline_update_failed'});}});
 
-  socket.on(SOCKET_EVENTS.TRIP_MESSAGE_SEND, async (payload: TripMessage) => {
-    const text = typeof payload?.text === 'string' ? payload.text.trim() : '';
-    const validRole = payload?.senderRole === 'rider' || payload?.senderRole === 'driver';
-    if (!payload?.tripId || !payload?.id || !payload?.senderId || !validRole || !text || text.length > 1000) {
-      socket.emit(SOCKET_EVENTS.TRIP_MESSAGE_ERROR, 'Invalid trip message');
-      return;
-    }
-
-    const participant=await db.query('SELECT 1 FROM trips WHERE id=$1 AND (rider_id=$2 OR driver_id=$2)',[payload.tripId,userId]);
-    if(!participant.rows[0])return socket.emit(SOCKET_EVENTS.TRIP_MESSAGE_ERROR,'Trip access denied');
-    const trip=await db.query<{rider_id:string;driver_id:string|null}>('SELECT rider_id,driver_id FROM trips WHERE id=$1',[payload.tripId]);
-    const senderRole=trip.rows[0]?.driver_id===userId?'driver':'rider';
-    const message: TripMessage = { ...payload, senderId: userId, senderRole, text };
-    await socket.join(`trip:${message.tripId}`);
-    io.to(`trip:${message.tripId}`).emit(SOCKET_EVENTS.TRIP_MESSAGE, message);
+  socket.on(SOCKET_EVENTS.TRIP_MESSAGE_SEND, async (payload: TripMessage, acknowledge?: (result:{ok:boolean;error?:string;message?:unknown})=>void) => {
+    try {
+      if(!payload?.tripId)throw new Error('invalid_trip_message');
+      const result=await sendTripMessage(userId,payload.tripId,payload);
+      acknowledge?.({ok:true,message:result.message});
+    }catch(error){const code=error as {code?:string};const message=code.code??'trip_message_unavailable';socket.emit(SOCKET_EVENTS.TRIP_MESSAGE_ERROR,message);acknowledge?.({ok:false,error:message});}
   });
 }

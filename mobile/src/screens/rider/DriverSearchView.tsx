@@ -8,7 +8,7 @@ import { AppMap } from '@/components/map';
 import type { AppMapProps } from '@/components/map/mapTypes';
 import { AddressIcon } from '@/components/map/AddressIcon';
 import { DriverSearchRadar } from '@/components/trip/DriverSearchRadar';
-import { useTheme } from '@/constants/theme';
+import { borderWidths, useTheme } from '@/constants/theme';
 import { formatNaira } from '@/services/paymentService';
 import type { Trip } from '@/services/tripService';
 
@@ -132,5 +132,5 @@ const styles = StyleSheet.create({
   courierPayment: { minHeight: 44 },
   paymentCopy: { flex: 1, minWidth: 0 },
   fare: { flexShrink: 1, textAlign: 'right' },
-  footer: { paddingHorizontal: 16, paddingTop: 2, borderTopWidth: StyleSheet.hairlineWidth },
+  footer: { paddingHorizontal: 16, paddingTop: 2, borderTopWidth: borderWidths.divider },
 });

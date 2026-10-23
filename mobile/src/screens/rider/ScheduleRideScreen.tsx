@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Text } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
 import { AddressIcon } from '@/components/map/AddressIcon';
-import { radius, spacing, useTheme } from '@/constants/theme';
+import { borderWidths, radius, spacing, useTheme } from '@/constants/theme';
 import { apiErrorMessage } from '@/lib/apiClient';
 import { cancelTrip, getScheduledTrips, type Trip } from '@/services/tripService';
 import { formatScheduledTime, scheduleDays, scheduleSlots, SCHEDULE_MAX_LEAD_MS, SCHEDULE_MIN_LEAD_MS } from '@/utils/scheduleTime';
@@ -240,7 +240,7 @@ function ScheduledRideCard({ trip, confirmingCancel, cancelling, onCancel, onKee
 
 const styles = StyleSheet.create({
   screen: { flex: 1 }, copy: { flex: 1, minWidth: 0 }, caption: { marginTop: spacing.xs },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.xl, paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.xl, paddingVertical: spacing.sm, borderBottomWidth: borderWidths.divider },
   back: { width: 44, height: 44, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   content: { paddingHorizontal: spacing.xl, paddingVertical: spacing.lg, gap: spacing.lg },
   intro: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
@@ -256,9 +256,9 @@ const styles = StyleSheet.create({
   time: { width: '31%', minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: spacing.xs, paddingVertical: spacing.sm },
   notice: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md },
   refresh: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  empty: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.lg, padding: spacing.md },
+  empty: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderWidth: borderWidths.divider, borderRadius: radius.lg, padding: spacing.md },
   emptyIcon: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full },
-  trip: { gap: spacing.sm, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.xl, padding: spacing.md },
+  trip: { gap: spacing.sm, borderWidth: borderWidths.divider, borderRadius: radius.xl, padding: spacing.md },
   tripHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   statusBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full },
   route: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -267,9 +267,9 @@ const styles = StyleSheet.create({
   expandUp: { transform: [{ rotate: '180deg' }] },
   tripFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, flexWrap: 'wrap' },
   fare: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' }, paymentMethod: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  cancelRide: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, paddingHorizontal: spacing.sm },
+  cancelRide: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderWidth: borderWidths.divider, borderRadius: radius.md, paddingHorizontal: spacing.sm },
   cancel: { padding: spacing.sm, gap: spacing.sm, borderRadius: radius.md },
   cancelActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  footer: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, gap: spacing.sm },
+  footer: { borderTopWidth: borderWidths.divider, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, gap: spacing.sm },
   forward: { transform: [{ rotate: '180deg' }] },
 });

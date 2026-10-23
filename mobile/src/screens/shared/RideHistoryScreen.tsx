@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Text } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
 import { AddressIcon } from '@/components/map/AddressIcon';
-import { useTheme, type AppColors } from '@/constants/theme';
+import { borderWidths, useTheme, type AppColors } from '@/constants/theme';
 import { formatNaira } from '@/services/paymentService';
 import { getTripHistory, type Trip, type TripStatus } from '@/services/tripService';
 import { groupHistoryTrips, historyChargeState, historyDate, type HistoryFilter } from '@/utils/tripHistory';
@@ -129,7 +129,7 @@ function HistoryCard({ trip, onPress, driver = false }: { trip: Trip; onPress: (
     if (driverDetails.fulfilled) amount = driverDetails.earnings === null ? 'Unavailable' : formatNaira(driverDetails.earnings);
   }
   const action = receipt ? `${payment} · View receipt` : 'View details';
-  return <Pressable accessibilityRole="button" accessibilityLabel={`${trip.service_type === 'courier' ? 'Delivery' : 'Ride'}, ${status.label}, ${date.toLocaleString()}, from ${trip.pickup_address} to ${trip.dropoff_address}, ${driver && driverDetails.fulfilled ? 'Your earnings ' : ''}${amount}. ${action}`} onPress={onPress} style={({ pressed }) => [styles.card, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.75 : 1 }]}>
+  return <Pressable cssInterop={false} accessibilityRole="button" accessibilityLabel={`${trip.service_type === 'courier' ? 'Delivery' : 'Ride'}, ${status.label}, ${date.toLocaleString()}, from ${trip.pickup_address} to ${trip.dropoff_address}, ${driver && driverDetails.fulfilled ? 'Your earnings ' : ''}${amount}. ${action}`} onPress={onPress} style={({ pressed }) => [styles.card, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.75 : 1 }]}>
     <View style={styles.cardHeader}>
       <View style={styles.cardLeading}><View style={[styles.rideIcon, { backgroundColor: colors.primarySoft }]}><RideIcon name={trip.service_type === 'courier' ? 'package' : 'car'} size={trip.service_type === 'courier' ? 18 : 26} color="primary" /></View><View style={styles.timeCopy}><Text variant="button">{time}</Text>{trip.service_type === 'courier' ? <Text variant="caption" color="textMuted">Courier</Text> : null}</View></View>
       <View style={styles.cardTrailing}><View style={[styles.status, { backgroundColor: colors[status.background] }]}><Text variant="caption" color={status.color}>{status.label}</Text></View><RideIcon name="chevron" size={14} color="icon" /></View>
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   status: { borderRadius: 14, paddingHorizontal: 8, paddingVertical: 4, flexShrink: 1 },
   route: { marginTop: 12, gap: 8 }, routeRow: { flexDirection: 'row', gap: 8 }, marker: { width: 14, paddingTop: 2, alignSelf: 'stretch' },
   connector: { position: 'absolute', left: 6.5, width: 1, top: 18, bottom: -8 }, address: { flex: 1, minWidth: 0 },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, borderTopWidth: StyleSheet.hairlineWidth, marginTop: 12, paddingTop: 8 },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, borderTopWidth: borderWidths.divider, marginTop: 12, paddingTop: 8 },
   action: { flexShrink: 1 }, amount: { flexShrink: 1, textAlign: 'right' },
   olderButton: { minHeight: 44, borderWidth: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 8 },
   footerAction: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }, driverAmount: { alignItems: 'flex-end', flexShrink: 1, maxWidth: '46%', gap: 2 },

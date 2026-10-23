@@ -11,7 +11,7 @@
  * component (src/components/common/Text.tsx) with a `variant` prop that pulls
  * from this table.
  */
-import type { TextStyle } from 'react-native';
+import { Platform, type TextStyle } from 'react-native';
 
 // The exact family strings exported by @expo-google-fonts/inter.
 export const fontFamily = {
@@ -21,7 +21,7 @@ export const fontFamily = {
   bold: 'Inter_700Bold',
 } as const;
 
-export const typography = {
+const baseTypography = {
   // Restrained semibold headings and tighter tracking keep titles crisp without
   // overpowering the map, forms, or financial information. Mirror in Tailwind.
   h1: { fontFamily: fontFamily.semibold, fontSize: 30, lineHeight: 36, fontWeight: '600', letterSpacing: -0.7 },
@@ -32,5 +32,17 @@ export const typography = {
   caption: { fontFamily: fontFamily.regular, fontSize: 13, lineHeight: 18, fontWeight: '400' },
   button: { fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 20, fontWeight: '600' },
 } satisfies Record<string, TextStyle>;
+
+// Keep the web scale unchanged; Android needs a slightly roomier reading scale.
+// Mirror these values in tailwind.config.js, which also styles native inputs.
+export const typography = Platform.OS === 'android' ? {
+  h1: { ...baseTypography.h1, fontSize: 33, lineHeight: 40 },
+  h2: { ...baseTypography.h2, fontSize: 27, lineHeight: 34 },
+  h3: { ...baseTypography.h3, fontSize: 23, lineHeight: 30 },
+  body: { ...baseTypography.body, fontSize: 17, lineHeight: 26 },
+  bodyMedium: { ...baseTypography.bodyMedium, fontSize: 17, lineHeight: 26 },
+  caption: { ...baseTypography.caption, fontSize: 15, lineHeight: 22 },
+  button: { ...baseTypography.button, fontSize: 16, lineHeight: 24 },
+} : baseTypography;
 
 export type TypographyVariant = keyof typeof typography;

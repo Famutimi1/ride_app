@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Text } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
 import { AddressIcon } from '@/components/map/AddressIcon';
-import { useTheme, type AppColors } from '@/constants/theme';
+import { borderWidths, useTheme, type AppColors } from '@/constants/theme';
 import { formatNaira } from '@/services/paymentService';
 import { getTrip, type Trip } from '@/services/tripService';
 import { historyDate } from '@/utils/tripHistory';
@@ -132,7 +132,7 @@ function DriverReceiptEarnings({ trip }: { trip: Trip }) {
       <Text variant="button" accessibilityRole="header" style={styles.breakdownHeading}>Earnings breakdown</Text>
       <DriverMoneyRow label={trip.service_type === 'courier' ? 'Delivery fare' : 'Trip fare'} value={amount(fare)} />
       <DriverMoneyRow label="Commission" value={commission} tone={details.commission === null || details.commission === 0 ? 'textMuted' : 'danger'} />
-      <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }}><DriverMoneyRow label="Your earnings" value={amount(details.earnings)} tone={details.earnings === null ? 'textMuted' : 'success'} strong /></View>
+      <View style={{ borderTopWidth: borderWidths.divider, borderTopColor: colors.border }}><DriverMoneyRow label="Your earnings" value={amount(details.earnings)} tone={details.earnings === null ? 'textMuted' : 'success'} strong /></View>
     </View>
     <View style={[styles.details, styles.settlement, { borderColor: colors.border, backgroundColor: colors.surfaceMuted }]}>
       <View style={styles.settlementHeading}><RideIcon name={trip.payment_method} size={18} color="icon" /><Text variant="button">{details.payment} payment</Text></View>
@@ -154,7 +154,7 @@ function DriverMoneyRow({ label, value, tone = 'text', strong = false }: { label
 
 function ReceiptRow({ label, value, icon, last = false, selectable = false }: { label: string; value: string; icon?: ComponentProps<typeof RideIcon>['name']; last?: boolean; selectable?: boolean }) {
   const { colors } = useTheme();
-  return <View style={[styles.row, { borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
+  return <View style={[styles.row, { borderBottomWidth: last ? 0 : borderWidths.divider, borderBottomColor: colors.border }]}>
     {icon ? <RideIcon name={icon} size={17} color="icon" /> : null}
     <View style={styles.rowCopy}><Text variant="caption" color="textMuted" style={styles.rowLabel}>{label}</Text><Text variant="caption" selectable={selectable} accessibilityLabel={selectable ? `${label}: ${value}` : undefined} style={styles.rowValue}>{value}</Text></View>
   </View>;
@@ -164,12 +164,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 8 },
   back: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' }, title: { flex: 1 },
   scroll: { flex: 1 }, content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16, gap: 12 },
-  summary: { flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 14, minHeight: 112 },
-  summaryIcon: { width: 52, alignSelf: 'stretch', alignItems: 'flex-start', justifyContent: 'center', borderRightWidth: StyleSheet.hairlineWidth },
+  summary: { flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: borderWidths.divider, borderRadius: 14, padding: 14, minHeight: 112 },
+  summaryIcon: { width: 52, alignSelf: 'stretch', alignItems: 'flex-start', justifyContent: 'center', borderRightWidth: borderWidths.divider },
   summaryCopy: { flex: 1, minWidth: 0, gap: 4 }, badge: { alignSelf: 'flex-start', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 },
   route: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 14 }, routeRow: { flexDirection: 'row', gap: 12 }, routeCopy: { flex: 1, minWidth: 0, gap: 4 },
   marker: { width: 16, paddingTop: 2, alignSelf: 'stretch' }, connector: { position: 'absolute', left: 7.5, width: 1, top: 20, bottom: -14 },
-  metrics: { borderWidth: 1, borderRadius: 14, flexDirection: 'row', alignItems: 'center' }, metric: { flex: 1, minWidth: 0, padding: 12, gap: 4 }, metricDivider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch' },
+  metrics: { borderWidth: 1, borderRadius: 14, flexDirection: 'row', alignItems: 'center' }, metric: { flex: 1, minWidth: 0, padding: 12, gap: 4 }, metricDivider: { width: borderWidths.divider, alignSelf: 'stretch' },
   details: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 12 }, row: { minHeight: 48, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   rowCopy: { flex: 1, minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: 4 }, rowLabel: { flexBasis: 86, flexGrow: 1 }, rowValue: { flexBasis: 130, flexGrow: 2, flexShrink: 1, textAlign: 'right', minWidth: 0 },
   feedback: { alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20 }, footer: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 },

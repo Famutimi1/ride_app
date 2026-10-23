@@ -6,7 +6,7 @@ import { Button, Text } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
 import { AppMap, RideConfirmationModal, type AppMapMarker } from '@/components/map';
 import { AddressIcon } from '@/components/map/AddressIcon';
-import { nativeWindTheme, useTheme } from '@/constants/theme';
+import { borderWidths, nativeWindTheme, useTheme } from '@/constants/theme';
 import { getTripRoute } from '@/services/mapsService';
 import { useTripQuote } from '@/hooks/useTripQuote';
 import { apiErrorMessage } from '@/lib/apiClient';
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   routeOverlay: { position: 'absolute', top: 0, left: 16, right: 16, paddingTop: 8 },
   routeBar: { minHeight: 76, paddingVertical: 8, paddingHorizontal: 4, borderRadius: 18, flexDirection: 'row', alignItems: 'center', gap: 4, elevation: 3 },
   iconButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
-  routeDivider: { width: StyleSheet.hairlineWidth, height: 36, marginRight: 6 },
+  routeDivider: { width: borderWidths.divider, height: 36, marginRight: 6 },
   routeAddresses: { flex: 1, minWidth: 0, gap: 6 },
   addressRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   addressText: { flex: 1 },
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
   fareGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   fareCopy: { alignItems: 'flex-end', maxWidth: 140 },
   selectedCheck: { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  detailsLink: { minHeight: 44, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  detailsLink: { minHeight: 44, borderTopWidth: borderWidths.divider, flexDirection: 'row', alignItems: 'center', gap: 6 },
   footer: { paddingHorizontal: 16, paddingTop: 8, gap: 12 },
   paymentRow: { minHeight: 60, borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 12 },
   paymentCopy: { flex: 1, minWidth: 0, gap: 2 },
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   paymentSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 16, maxHeight: '80%' },
   paymentHeader: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   paymentOptions: { flexGrow: 0, marginTop: 8 },
-  paymentOption: { minHeight: 72, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  paymentOption: { minHeight: 72, borderBottomWidth: borderWidths.divider, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 14 },
   radio: { width: 18, height: 18, borderRadius: 9, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   radioDot: { width: 10, height: 10, borderRadius: 5 },
 });

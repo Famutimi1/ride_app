@@ -1,3 +1,4 @@
+import { svgDataUri } from '@/utils/svgDataUri';
 import { Image } from 'expo-image';
 import { View } from 'react-native';
 
@@ -67,6 +68,6 @@ export function RideIcon({ name, size = 18, color = 'text' }: { name: RideIconNa
     : SHAPES[name];
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${height}" viewBox="${name === 'car' ? '0 0 64 34' : '0 0 24 24'}" fill="none" color="${colors[color]}" stroke="${colors[color]}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${shape}</svg>`;
   return <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden style={{ width: size, height }}>
-    <Image source={{ uri: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}` }} contentFit="contain" style={{ width: size, height }} />
+    <Image source={{ uri: svgDataUri(svg) }} contentFit="contain" style={{ width: size, height }} />
   </View>;
 }

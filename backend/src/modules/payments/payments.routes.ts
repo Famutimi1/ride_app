@@ -44,3 +44,10 @@ driverEarningsRouter.get('/summary',requireAuth,requireApprovedDriver,run(async(
      FROM trips WHERE driver_id=$1 AND status IN ('completed','returned') AND payment_status='settled' AND (CASE WHEN status='returned' THEN returned_at ELSE completed_at END)>=${since}`,[req.userId])).rows[0];
   return {range,trips:Number(row.trips),grossKobo:Number(row.gross_kobo),commissionKobo:Number(row.commission_kobo),netKobo:Number(row.net_kobo),cashTrips:Number(row.cash_trips),walletTrips:Number(row.wallet_trips)};
 }));
+
+// Show the configured charges and limits before a driver confirms a withdrawal.
+paymentsRouter.get('/withdrawal-policy',requireApprovedDriver,run(async()=>{
+ const row=(await db.query<{min_withdrawal_kobo:string;max_daily_withdrawal_kobo:string;withdrawal_fee_kobo:string;new_payout_account_cooldown_hours:number}>('SELECT min_withdrawal_kobo,max_daily_withdrawal_kobo,withdrawal_fee_kobo,new_payout_account_cooldown_hours FROM payment_settings WHERE id=true')).rows[0];
+ if(!row)throw new Error('withdrawal_policy_unavailable');
+ return {minWithdrawalKobo:Number(row.min_withdrawal_kobo),maxDailyWithdrawalKobo:Number(row.max_daily_withdrawal_kobo),withdrawalFeeKobo:Number(row.withdrawal_fee_kobo),newAccountCooldownHours:row.new_payout_account_cooldown_hours};
+}));

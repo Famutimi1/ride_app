@@ -212,7 +212,7 @@ export function PhoneScreen() {
 function AccountOption({ label, selected, disabled, onPress }: { label: string; selected: boolean; disabled: boolean; onPress: () => void }) {
   const { colors } = useTheme();
   return (
-    <Pressable
+    <Pressable cssInterop={false}
       accessibilityRole="radio"
       accessibilityLabel={label}
       accessibilityState={{ checked: selected, disabled }}

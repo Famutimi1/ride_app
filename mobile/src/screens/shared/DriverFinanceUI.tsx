@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, type ButtonProps } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
 import { AddressIcon } from '@/components/map/AddressIcon';
-import { radius, spacing, useTheme } from '@/constants/theme';
+import { borderWidths, radius, spacing, useTheme } from '@/constants/theme';
 import { formatNaira, type PayoutAccount, type WalletEntry, type Withdrawal } from '@/services/paymentService';
 import { driverActivityLabel, withdrawalStatus } from '@/utils/driverFinance';
 import { walletActivityDate } from '@/utils/walletActivity';
@@ -45,7 +45,7 @@ export function MoneySummary({ label, amount, loading, error, onRetry, children,
 }
 export function FinanceLink({ icon, label, onPress, grouped = false, last = false, subtle = false, tintedIcon = false }: { icon: Icon; label: string; onPress: () => void; grouped?: boolean; last?: boolean; subtle?: boolean; tintedIcon?: boolean }) {
   const { colors } = useTheme();
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[financeStyles.link, { borderBottomColor: colors.border, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth, paddingHorizontal: grouped ? spacing.lg : 0 }]}><View style={tintedIcon ? [financeStyles.icon, { backgroundColor: colors.surfaceMuted }] : undefined}><RideIcon name={icon} size={18} color={subtle ? 'textMuted' : 'text'} /></View><Text variant={subtle ? 'caption' : 'bodyMedium'} color={subtle ? 'textMuted' : 'text'} style={financeStyles.copy}>{label}</Text><RideIcon name="chevron" size={16} color="textMuted" /></Pressable>;
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[financeStyles.link, { borderBottomColor: colors.border, borderBottomWidth: last ? 0 : borderWidths.divider, paddingHorizontal: grouped ? spacing.lg : 0 }]}><View style={tintedIcon ? [financeStyles.icon, { backgroundColor: colors.surfaceMuted }] : undefined}><RideIcon name={icon} size={18} color={subtle ? 'textMuted' : 'text'} /></View><Text variant={subtle ? 'caption' : 'bodyMedium'} color={subtle ? 'textMuted' : 'text'} style={financeStyles.copy}>{label}</Text><RideIcon name="chevron" size={16} color="textMuted" /></Pressable>;
 }
 export function FinanceEmpty({ icon, title, detail }: { icon: Icon; title: string; detail?: string }) {
   const { colors } = useTheme();
@@ -103,17 +103,17 @@ export function WithdrawalRow({ item }: { item: Withdrawal }) {
   </View>;
 }
 export const financeStyles = StyleSheet.create({
-  screen: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth },
+  screen: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: borderWidths.divider },
   back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full },
   content: { padding: spacing.xl, paddingBottom: spacing['2xl'], gap: spacing.lg, width: '100%', maxWidth: 560, alignSelf: 'center' },
   card: { borderRadius: radius.xl, borderWidth: 1, padding: spacing.lg, gap: spacing.sm },
   heading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   copy: { flex: 1, minWidth: 0 }, inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   feedback: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
-  link: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: spacing.sm },
+  link: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: borderWidths.divider, paddingVertical: spacing.sm },
   bank: { borderWidth: 1, borderRadius: radius.lg, padding: spacing.md, minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   radio: { width: 20, height: 20, borderRadius: radius.full, borderWidth: 1, alignItems: 'center', justifyContent: 'center' }, dot: { width: 12, height: 12, borderRadius: radius.full },
-  entry: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth },
+  entry: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: borderWidths.divider },
   icon: { width: 32, height: 32, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   entryHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.sm }, amount: { maxWidth: '55%', flexShrink: 1, textAlign: 'right' },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.md, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
@@ -121,9 +121,9 @@ export const financeStyles = StyleSheet.create({
   action: { minHeight: 44, borderRadius: radius.lg, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, alignItems: 'center', justifyContent: 'center' },
   payoutAmount: { maxWidth: '42%', alignItems: 'flex-end', gap: spacing.xs },
   navGroup: { borderWidth: 1, borderRadius: radius.xl, overflow: 'hidden' },
-  netLine: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: spacing.md },
+  netLine: { borderTopWidth: borderWidths.divider, paddingTop: spacing.md },
   stat: { flex: 1, minWidth: 0, padding: spacing.md, borderRadius: radius.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 56 },
-  sectionDivider: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: spacing.lg, gap: spacing.md },
+  sectionDivider: { borderTopWidth: borderWidths.divider, paddingTop: spacing.lg, gap: spacing.md },
   textAction: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   summaryStrip: { borderRadius: radius.lg, padding: spacing.md },
   stack: { gap: spacing.md }, smallStack: { gap: spacing.sm },

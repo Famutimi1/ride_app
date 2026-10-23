@@ -231,9 +231,9 @@ export async function switchActiveRole(userId: string, requestedRole: unknown, c
   return { activeRole: requestedRole };
 }
 
-export async function googleSignIn(idToken: unknown, deviceInfo: string | undefined, client: PoolClient) {
+export async function googleSignIn(idToken: unknown, deviceInfo: string | undefined, client: PoolClient, expectedNonce?: string) {
   if (typeof idToken !== 'string') throw new ApiError(400, 'missing_google_token');
-  const profile = await verifyGoogleToken(idToken);
+  const profile = await verifyGoogleToken(idToken, expectedNonce);
   let user = (await client.query('SELECT * FROM users WHERE google_id=$1 FOR UPDATE', [profile.sub])).rows[0] as AuthUserRow | undefined;
   if (!user) {
     const emailMatches = (await client.query<AuthUserRow>('SELECT * FROM users WHERE lower(email)=lower($1) FOR UPDATE', [profile.email])).rows;

@@ -1,3 +1,4 @@
+import { svgDataUri } from '@/utils/svgDataUri';
 import { useEffect, useMemo, useState } from 'react';
 import { AccessibilityInfo, Animated, AppState, Easing, Platform, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
@@ -55,7 +56,7 @@ export function DriverSearchRadar({ courier = false, compact = false }: { courie
       const x2 = 54 + 54 * Math.cos(end), y2 = 54 + 54 * Math.sin(end);
       return `<path d="M54 54L${x1.toFixed(3)} ${y1.toFixed(3)}A54 54 0 0 1 ${x2.toFixed(3)} ${y2.toFixed(3)}Z" fill="${colors.primary}" fill-opacity="${((index + 1) / 24 * 0.26).toFixed(3)}"/>`;
     }).join('');
-    return { uri: `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">${sectors}</svg>`)}` };
+    return { uri: svgDataUri(`<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">${sectors}</svg>`) };
   }, [colors.primary]);
 
   const diameter = compact ? 84 : DIAMETER;

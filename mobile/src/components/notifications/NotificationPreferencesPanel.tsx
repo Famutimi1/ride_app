@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Button, Text } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
 import { getAlertPreferences, type SettingsRole } from '@/constants/settings';
-import { radius, spacing, useTheme } from '@/constants/theme';
+import { borderWidths, radius, spacing, useTheme } from '@/constants/theme';
 import { configureNotificationChannels, notificationPermissionMessage, registerCurrentDevice, requestNotificationPermission, type NotificationPermissionState, type NotificationPreferences } from '@/services/notificationService';
 import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
@@ -139,7 +139,7 @@ function PreferenceSwitch({ label, detail, value, disabled, onChange }: { label:
 
 function PreferenceRow({ icon, label, detail, value, disabled, onChange, last = false }: { icon: ComponentProps<typeof RideIcon>['name']; label: string; detail: string; value: boolean; disabled: boolean; onChange: (value: boolean) => void; last?: boolean }) {
   const { colors } = useTheme();
-  return <View style={[styles.preference, { borderBottomColor: colors.border, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth }]}>
+  return <View style={[styles.preference, { borderBottomColor: colors.border, borderBottomWidth: last ? 0 : borderWidths.divider }]}>
     <View style={[styles.icon, { backgroundColor: colors.primarySoft }]}><RideIcon name={icon} size={18} color="primary" /></View>
     <Text variant="caption" style={styles.copy}>{label}</Text>
     <PreferenceSwitch label={label} detail={detail} value={value} disabled={disabled} onChange={onChange} />

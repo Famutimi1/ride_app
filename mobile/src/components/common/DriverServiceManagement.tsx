@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { nativeWindTheme, radius, spacing, useTheme } from '@/constants/theme';
+import { borderWidths, nativeWindTheme, radius, spacing, useTheme } from '@/constants/theme';
 import type { DriverService, DriverServiceSettings } from '@/services/driverService';
 import { canApplyForDriverService, driverServiceAvailable, driverServiceEnabled, driverServiceStatus, driverVehicleServices, driverVehicleNeedsReview } from '@/utils/driverServices';
 import { DriverVehicleSummary } from './DriverVehicleSummary';
@@ -63,7 +63,7 @@ function ServiceSummary(props: DriverServicesViewProps) {
       {driverVehicleServices(settings.vehicleCategory).map((service, index, services) => {
         const state = settings.services[service];
         const available = driverServiceAvailable(settings, service);
-        return <View key={service} style={[styles.summaryRow, { borderBottomColor: colors.border, borderBottomWidth: index < services.length - 1 ? StyleSheet.hairlineWidth : 0 }]}>
+        return <View key={service} style={[styles.summaryRow, { borderBottomColor: colors.border, borderBottomWidth: index < services.length - 1 ? borderWidths.divider : 0 }]}>
           <ServiceIcon service={service} available={available} />
           <View style={styles.copy}><Text variant="caption">{service === 'ride' ? 'Passenger rides' : 'Courier deliveries'}</Text><Text variant="caption" color={state.status === 'rejected' || state.status === 'suspended' ? 'danger' : available ? 'success' : 'textMuted'}>{driverServiceStatus(state)}{state.status === 'none' ? ' · Apply in Manage' : ` · Requests ${driverServiceEnabled(settings, service) ? 'on' : 'off'}`}</Text></View>
           <ServiceSwitch label={service === 'ride' ? 'Receive passenger ride requests' : 'Receive courier requests'} value={driverServiceEnabled(settings, service)} disabled={saving || refreshing || !available} onChange={() => onToggle(service)} />
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: radius.xl, padding: spacing.md }, cardHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   badge: { borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, maxWidth: '40%' },
   requestRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
-  consentRow: { marginTop: spacing.md, paddingTop: spacing.xs, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  consentRow: { marginTop: spacing.md, paddingTop: spacing.xs, borderTopWidth: borderWidths.divider, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   info: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginTop: spacing.md },
   modalRoot: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },
   sheet: { width: '100%', maxWidth: 560, maxHeight: '88%', borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },

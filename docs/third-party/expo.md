@@ -22,6 +22,8 @@ caveats in `docs/setup/dependencies.md`.
 - expo-image-picker (license / vehicle photos; set `microphonePermission: false`)
 
 ## Config
+- EAS Update is configured with separate preview/production channels and native
+  fingerprint compatibility. See [the update and release runbook](../setup/eas-update.md).
 - Brand config is in `mobile/app.config.ts`, using `nativeBrandColors` from the
   palette and the original logo in `mobile/assets/images/brand/`. Use Node 24 for
   this configuration's native TypeScript module loading (verified on 24.20.0).

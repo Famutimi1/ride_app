@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Text } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
 import { AddressIcon } from '@/components/map/AddressIcon';
-import { useTheme, type AppColors } from '@/constants/theme';
+import { borderWidths, useTheme, type AppColors } from '@/constants/theme';
 import { useFinanceResource } from '@/hooks/useFinanceResource';
 import { getDriverApplicationStatus, type DriverApplicationResponse } from '@/services/driverService';
 
@@ -75,7 +75,7 @@ export function VehicleDocumentsView({ data, loading, error, onRetry, onBack, on
         <View style={styles.documentSection}>
           <View style={styles.sectionHeading}><Text variant="button" accessibilityRole="header" style={styles.copy}>Submitted documents</Text><Text variant="caption" color="textMuted">{uploaded} of {DOCUMENTS.length} uploaded</Text></View>
           <View style={[styles.group, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-            {documents.map((document, index) => <View key={document.kind} style={[styles.documentRow, { borderBottomColor: colors.border, borderBottomWidth: index === documents.length - 1 ? 0 : StyleSheet.hairlineWidth }]}>
+            {documents.map((document, index) => <View key={document.kind} style={[styles.documentRow, { borderBottomColor: colors.border, borderBottomWidth: index === documents.length - 1 ? 0 : borderWidths.divider }]}>
               <View style={[styles.iconBox, { backgroundColor: colors.surfaceMuted }]}><RideIcon name={document.icon} size={18} color="primary" /></View>
               <Text variant="button" style={styles.copy}>{document.title}</Text>
               <View style={[styles.documentBadge, { backgroundColor: document.available ? colors.successSoft : colors.warningSoft }]}><Text variant="caption" color={document.available ? 'success' : 'warning'}>{document.available ? 'Uploaded' : 'Not uploaded'}</Text></View>
@@ -96,7 +96,7 @@ export function VehicleDocumentsView({ data, loading, error, onRetry, onBack, on
 
 function VehicleLink({ label, detail, icon, onPress, last = false }: { label: string; detail?: string; icon: IconName; onPress: () => void; last?: boolean }) {
   const { colors } = useTheme();
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityHint={detail} onPress={onPress} style={({ pressed }) => [styles.link, { borderBottomColor: colors.border, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth, opacity: pressed ? 0.7 : 1 }]}>
+  return <Pressable cssInterop={false} accessibilityRole="button" accessibilityLabel={label} accessibilityHint={detail} onPress={onPress} style={({ pressed }) => [styles.link, { borderBottomColor: colors.border, borderBottomWidth: last ? 0 : borderWidths.divider, opacity: pressed ? 0.7 : 1 }]}>
     <View style={[styles.iconBox, { backgroundColor: colors.surfaceMuted }]}><RideIcon name={icon} size={18} color="primary" /></View><View style={styles.copy}><Text variant="button">{label}</Text>{detail ? <Text variant="caption" color="textMuted">{detail}</Text> : null}</View><RideIcon name="chevron" size={16} color="icon" />
   </Pressable>;
 }
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 8 }, back: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }, copy: { flex: 1, minWidth: 0 },
   content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 20, gap: 20, width: '100%', maxWidth: 560, alignSelf: 'center' },
   vehicleCard: { padding: 14, borderRadius: 14, gap: 12 }, vehicleHeading: { flexDirection: 'row', alignItems: 'center', gap: 14 }, illustration: { width: 72, height: 50, alignItems: 'center', justifyContent: 'center' }, car: { width: 72, height: 50 }, subtitle: { marginTop: 4 },
-  vehicleDetails: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10, flexDirection: 'row', gap: 14 }, detail: { flex: 1, minWidth: 0, gap: 2 }, detailDivider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch' },
+  vehicleDetails: { borderTopWidth: borderWidths.divider, paddingTop: 10, flexDirection: 'row', gap: 14 }, detail: { flex: 1, minWidth: 0, gap: 2 }, detailDivider: { width: borderWidths.divider, alignSelf: 'stretch' },
   applicationBadge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', maxWidth: '100%', gap: 6, borderRadius: 14, paddingHorizontal: 8, paddingVertical: 4 }, badgeText: { flexShrink: 1 },
   documentSection: { gap: 10 }, sectionHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 4 }, group: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 12 },
   documentRow: { minHeight: 60, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 10 }, iconBox: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }, documentBadge: { flexShrink: 1, maxWidth: '42%', borderRadius: 14, paddingHorizontal: 8, paddingVertical: 4 },

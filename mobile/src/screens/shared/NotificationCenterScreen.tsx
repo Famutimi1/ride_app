@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Text } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
 import { AddressIcon } from '@/components/map/AddressIcon';
-import { radius, spacing, useTheme } from '@/constants/theme';
+import { borderWidths, radius, spacing, useTheme } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { notificationDestination, type AppNotification } from '@/services/notificationService';
@@ -154,13 +154,13 @@ function NotificationRow({ item, disabled, onPress }: { item: AppNotification; d
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth },
+  screen: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: borderWidths.divider },
   back: { width: 48, height: 48, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' }, title: { flex: 1, minWidth: 0 },
   readAll: { minHeight: 44, minWidth: 52, justifyContent: 'center', alignItems: 'center' },
   filters: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   filter: { flex: 1, minHeight: 44, borderRadius: radius.xl, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.sm, paddingVertical: spacing.sm },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg }, date: { marginTop: spacing.sm, marginBottom: spacing.md },
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, borderRadius: radius.xl, borderWidth: StyleSheet.hairlineWidth, padding: spacing.md, marginBottom: spacing.sm, minHeight: 80 },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, borderRadius: radius.xl, borderWidth: borderWidths.divider, padding: spacing.md, marginBottom: spacing.sm, minHeight: 80 },
   icon: { width: 32, height: 32, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' }, copy: { flex: 1, minWidth: 0, gap: spacing.xs },
   rowHeading: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }, rowTitle: { flex: 1, minWidth: 0 },
   new: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingTop: 1 }, dot: { width: 5, height: 5, borderRadius: radius.full },

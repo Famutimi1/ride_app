@@ -4,7 +4,9 @@ import { Queue, Worker } from 'bullmq';
 import { env } from '../../config/env';
 import { db } from '../../shared/config/db';
 import { observeWorker, queueHealth } from '../../shared/utils/queueHealth';
-import type { NotificationCategory } from './notifications.types';
+import {notificationCategoryEnabled,type DeliveryPreferences} from './notificationPolicy';
+export {notificationCategoryEnabled,type DeliveryPreferences} from './notificationPolicy';
+import {processBrowserNotification} from './webPush.service';
 
 let connection:IORedis|null=null;
 let queue:Queue|null=null;
@@ -18,25 +20,12 @@ function notificationQueueResources(){
   return{connection,queue};
 }
 
-export interface DeliveryPreferences {
-  category:NotificationCategory;push_enabled:boolean;trip_updates_enabled:boolean;driver_offers_enabled:boolean;
-  scheduled_reminders_enabled:boolean;wallet_updates_enabled:boolean;promotions_enabled:boolean;sound_enabled:boolean;vibration_enabled:boolean;
-}
 interface DeliveryRow extends DeliveryPreferences {
   id:string;user_id:string;type:string;priority:'low'|'normal'|'high';title:string;body:string;data:Record<string,unknown>;deep_link:string|null;expires_at:Date|null;
 }
 interface ExpoTicket {status:'ok'|'error';id?:string;message?:string;details?:{error?:string}}
 interface ExpoReceipt {status:'ok'|'error';message?:string;details?:{error?:string}}
 
-export function notificationCategoryEnabled(row:DeliveryPreferences){
-  if(row.category==='safety_security'||row.category==='support')return row.push_enabled;
-  if(!row.push_enabled)return false;
-  if(row.category==='trip_updates')return row.trip_updates_enabled;
-  if(row.category==='driver_offers')return row.driver_offers_enabled;
-  if(row.category==='scheduled_reminders')return row.scheduled_reminders_enabled;
-  if(row.category==='wallet_updates')return row.wallet_updates_enabled;
-  return row.promotions_enabled;
-}
 
 export function buildExpoPushMessage(row:Pick<DeliveryRow,'type'|'category'|'priority'|'title'|'body'|'data'|'deep_link'|'sound_enabled'>,token:string,id:string,ttl?:number){const{sendPush:_sendPush,...data}=row.data;return{to:token,title:row.title,body:row.body,data:{...data,notificationId:id,type:row.type,category:row.category,priority:row.priority,deepLink:row.deep_link},priority:row.priority==='high'?'high':'default',sound:row.sound_enabled?'default':null,channelId:row.category,...(ttl===undefined?{}:{ttl})};}
 
@@ -115,8 +104,8 @@ async function recoverQueued(){
   await Promise.all(rows.map(row=>enqueueNotification(row.id)));
 }
 
-export async function enqueueNotification(id:string){if(process.env.RAKKY_TEST_ISOLATED==='true')return;const resources=notificationQueueResources();const jobId=`notification-${id}`;const existing=await resources.queue.getJob(jobId);if(existing){const state=await existing.getState();if(state==='failed'){await existing.retry('failed');return;}if(state!=='completed')return;await existing.remove();}await resources.queue.add('deliver',{id},{jobId,attempts:5,backoff:{type:'exponential',delay:2000},removeOnComplete:1000,removeOnFail:1000});}
-export async function startNotificationWorkers(){if(started)return;const resources=notificationQueueResources();started=true;worker=new Worker('notifications',async job=>{if(job.name==='deliver')await processNotification(String(job.data.id));else if(job.name==='receipts')await processNotificationReceipts();else if(job.name==='recovery')await recoverQueued();},{connection:resources.connection,prefix:env.TRIP_QUEUE_PREFIX});observeWorker(resources.queue,worker,resources.connection);worker.on('error',error=>console.error('[notifications] worker error',error.message));await worker.waitUntilReady();await resources.queue.upsertJobScheduler('notification-receipts',{every:60_000},{name:'receipts'});await resources.queue.upsertJobScheduler('notification-recovery',{every:60_000},{name:'recovery'});await recoverQueued();}
+export async function enqueueNotification(id:string){if(process.env.RAKKY_TEST_ISOLATED==='true')return;const resources=notificationQueueResources();await resources.queue.add('deliver-web',{id},{jobId:`web-notification-${id}`,attempts:5,backoff:{type:'exponential',delay:2000},removeOnComplete:1000,removeOnFail:1000});const jobId=`notification-${id}`;const existing=await resources.queue.getJob(jobId);if(existing){const state=await existing.getState();if(state==='failed'){await existing.retry('failed');return;}if(state!=='completed')return;await existing.remove();}await resources.queue.add('deliver',{id},{jobId,attempts:5,backoff:{type:'exponential',delay:2000},removeOnComplete:1000,removeOnFail:1000});}
+export async function startNotificationWorkers(){if(started)return;const resources=notificationQueueResources();started=true;worker=new Worker('notifications',async job=>{if(job.name==='deliver-web')await processBrowserNotification(String(job.data.id));else if(job.name==='deliver')await processNotification(String(job.data.id));else if(job.name==='receipts')await processNotificationReceipts();else if(job.name==='recovery')await recoverQueued();},{connection:resources.connection,prefix:env.TRIP_QUEUE_PREFIX});observeWorker(resources.queue,worker,resources.connection);worker.on('error',error=>console.error('[notifications] worker error',error.message));await worker.waitUntilReady();await resources.queue.upsertJobScheduler('notification-receipts',{every:60_000},{name:'receipts'});await resources.queue.upsertJobScheduler('notification-recovery',{every:60_000},{name:'recovery'});await recoverQueued();}
 export async function stopNotificationWorkers(){await worker?.close();worker=null;await queue?.close();queue=null;await connection?.quit();connection=null;started=false;}
 export function notificationWorkersReady(){return started&&connection?.status==='ready'&&worker!==null&&worker.isRunning()&&!worker.isPaused();}
 export async function notificationQueueAccepting(){return notificationWorkersReady()&&Boolean(queue)&&!await queue!.isPaused();}

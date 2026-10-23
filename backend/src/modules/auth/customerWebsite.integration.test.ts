@@ -1,0 +1,55 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {randomUUID} from 'node:crypto';
+import {readFile,readdir} from 'node:fs/promises';
+import {resolve} from 'node:path';
+import {Pool} from 'pg';
+import {OAuth2Client,LoginTicket,type TokenPayload} from 'google-auth-library';
+import express from 'express';
+import type {AddressInfo} from 'node:net';
+
+test('passenger support ownership, private staff notes, safe retries and Google web nonce',{skip:!process.env.RAKKY_TEST_ISOLATED},async t=>{
+  process.env.GOOGLE_CLIENT_ID_WEB='web-fixture.apps.googleusercontent.com';
+  const schema=`customer_web_${process.pid}_${Date.now()}`,owner=new Pool({connectionString:process.env.DATABASE_URL});
+  await owner.query(`CREATE SCHEMA ${schema}`);
+  const pool=new Pool({connectionString:process.env.DATABASE_URL,options:`-c search_path=${schema},public`});
+  const {db}=await import('../../shared/config/db.js'),originalQuery=db.query,originalConnect=db.connect;
+  db.query=pool.query.bind(pool) as typeof db.query;db.connect=pool.connect.bind(pool) as typeof db.connect;
+  let server:ReturnType<typeof express.application.listen>|undefined;
+  try{
+    for(const file of (await readdir(resolve('migrations'))).filter(n=>/^\d+_.*\.sql$/.test(n)).sort())await pool.query(await readFile(resolve('migrations',file),'utf8'));
+    const users=(await pool.query<{id:string}>("INSERT INTO users(full_name) VALUES('Passenger A'),('Passenger B'),('Staff') RETURNING id")).rows;
+    const {signAccessToken}=await import('./jwt.service.js');
+    const {careCustomerRouter}=await import('../care/care.routes.js');
+    const {authRouter}=await import('./auth.routes.js');
+    const app=express();app.use(express.json());app.use('/care',careCustomerRouter);app.use('/auth',authRouter);
+    app.use((error:{status?:number;statusCode?:number;code?:string},_req:express.Request,res:express.Response,_next:express.NextFunction)=>{res.status(error.status??error.statusCode??500).json({error:error.code??'internal_error'});});
+    server=app.listen(0,'127.0.0.1');await new Promise<void>(done=>server!.once('listening',done));
+    const base=`http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const request=(path:string,user=users[0].id,body?:object)=>fetch(base+path,{method:body?'POST':'GET',headers:{...(user?{Authorization:`Bearer ${signAccessToken({id:user})}`} :{}),'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+    const payload={subject:'Help with a passenger account',category:'account',body:'Please help me with this account question.',requestKey:randomUUID(),customerId:users[1].id,severity:'critical'};
+    assert.equal((await request('/care/support','')).status,401);
+    const responses=await Promise.all([request('/care/support',users[0].id,payload),request('/care/support',users[0].id,payload)]);
+    for(const response of responses)assert.equal(response.status,200,await response.clone().text());
+    const first=await responses[0].json(),second=await responses[1].json();assert.equal(first.id,second.id);
+    const row=(await pool.query('SELECT customer_id,severity FROM support_cases WHERE id=$1',[first.id])).rows[0];assert.equal(row.customer_id,users[0].id);assert.equal(row.severity,'medium');
+    assert.equal((await request('/care/support',users[0].id,{...payload,body:'Different retry content'})).status,409);
+    assert.equal((await request('/care/support',users[0].id,{...payload,requestKey:randomUUID(),tripId:randomUUID()})).status,404);
+    assert.equal((await request(`/care/support/${first.id}`,users[1].id)).status,404);
+    await pool.query("INSERT INTO care_activity(case_id,actor_id,kind,visibility,body) VALUES($1,$2,'note','internal','Private staff investigation'),($1,$2,'note','customer','A reply for the passenger')",[first.id,users[2].id]);
+    const detail=await (await request(`/care/support/${first.id}`)).json();assert.equal(detail.messages.length,2);assert.equal(JSON.stringify(detail).includes('Private staff'),false);assert.equal(detail.messages[1].from,'support');
+    const reply={body:'Thank you for the helpful response.',requestKey:randomUUID()};
+    assert.equal((await request(`/care/support/${first.id}/messages`,users[1].id,reply)).status,404);
+    assert.equal((await request(`/care/support/${first.id}/messages`,users[0].id,reply)).status,200);
+    assert.equal((await request(`/care/support/${first.id}/messages`,users[0].id,reply)).status,200);
+    const counts=(await pool.query("SELECT count(*)::int AS count FROM care_activity WHERE metadata->>'customerRequestKey'=$1",[reply.requestKey])).rows[0];assert.equal(counts.count,1);
+    await pool.query("UPDATE support_cases SET status='resolved' WHERE id=$1",[first.id]);
+    assert.equal((await request(`/care/support/${first.id}/messages`,users[0].id,{...reply,requestKey:randomUUID()})).status,409);
+    const {env}=await import('../../config/env.js');
+    const nonce='x'.repeat(43);let profile:TokenPayload={iss:'https://accounts.google.com',sub:'web-google-fixture',aud:env.GOOGLE_CLIENT_ID_WEB,email:'web-fixture@gmail.com',name:'Google passenger',email_verified:true,iat:1,exp:9999999999,nonce:'incorrect'};
+    t.mock.method(OAuth2Client.prototype,'verifyIdToken',async(options:{audience:string|string[]})=>{assert.deepEqual(options.audience,[env.GOOGLE_CLIENT_ID_WEB]);return new LoginTicket('',profile);});
+    const google=(expectedNonce=nonce)=>request('/auth/google/web','',{idToken:'fixture-id-token',expectedNonce});
+    assert.equal((await google('bad')).status,400);assert.equal((await google()).status,401);
+    profile={...profile,nonce};const signed=await google();assert.equal(signed.status,200,await signed.clone().text());assert.equal((await signed.json()).needsPhoneVerification,true);
+  }finally{await new Promise<void>(done=>server?server.close(()=>done()):done());db.query=originalQuery;db.connect=originalConnect;await pool.end();await owner.query(`DROP SCHEMA ${schema} CASCADE`);await owner.end();const {redis}=await import("../../shared/config/redis.js");await redis?.quit();await db.end();}
+});

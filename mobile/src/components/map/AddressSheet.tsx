@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Text } from '@/components/common';
-import { useTheme } from '@/constants/theme';
+import { borderWidths, useTheme } from '@/constants/theme';
 import { autocompletePlaces, getPlaceDetails, getTripRoute, type PlacePrediction } from '@/services/mapsService';
 import { useMapStore, type MapLocation } from '@/store/mapStore';
 import { AddressSearchInput } from './AddressSearchInput';
@@ -201,12 +201,12 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingBottom: 16 },
   fields: { gap: 12 },
   swap: { position: 'absolute', right: 0, top: 46, width: 48, height: 48, borderRadius: 24, borderWidth: 1, alignItems: 'center', justifyContent: 'center', elevation: 2 },
-  currentLocation: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  currentLocation: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8, paddingVertical: 10, borderBottomWidth: borderWidths.divider },
   resultIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   resultCopy: { flex: 1, minWidth: 0, gap: 2 },
   resultsLabel: { marginTop: 16, marginBottom: 4 },
-  resultRow: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  resultRow: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: borderWidths.divider },
   status: { paddingVertical: 12 },
   retry: { alignSelf: 'flex-end', minHeight: 48, justifyContent: 'center' },
-  footer: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingTop: 12 },
+  footer: { borderTopWidth: borderWidths.divider, paddingHorizontal: 16, paddingTop: 12 },
 });

@@ -1,9 +1,14 @@
 import { Router } from 'express';
 import { requireAuth } from '../auth/auth.middleware';
 import * as controller from './notifications.controller';
+import * as browser from './webPush.controller';
 
 export const notificationsRouter=Router();
 notificationsRouter.use(requireAuth);
+notificationsRouter.get('/browser/config',browser.config);
+notificationsRouter.post('/browser/status',browser.status);
+notificationsRouter.post('/browser/subscriptions',browser.register);
+notificationsRouter.delete('/browser/subscriptions/:id',browser.revoke);
 notificationsRouter.post('/devices',controller.registerDevice);
 notificationsRouter.delete('/devices/:id',controller.revokeDevice);
 notificationsRouter.get('/preferences',controller.preferences);

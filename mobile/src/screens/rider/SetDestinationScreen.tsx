@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '@/components/common';
 import { AddressSheet, AppMap, type AppMapHandle, type AppMapMarker } from '@/components/map';
@@ -13,10 +13,16 @@ import { useNearbyDrivers } from '@/hooks/useNearbyDrivers';
 import { useTheme } from '@/constants/theme';
 
 const LOCATION_ERROR_DURATION_MS = 6_000;
+// Mobile uses zoom 17; web retains zoom 15. Route previews still fit both endpoints.
+const DESTINATION_FOCUS_SPAN = Platform.OS === 'web'
+  ? { latitudeDelta: 0.018, longitudeDelta: 0.014 }
+  : { latitudeDelta: 0.0045, longitudeDelta: 0.0035 };
 
 export function SetDestinationScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { height: windowHeight } = useWindowDimensions();
+  const [screenHeight, setScreenHeight] = useState(windowHeight);
   const { scheduledAt, service } = useLocalSearchParams<{ scheduledAt?: string; service?: string }>();
   const mapRef = useRef<AppMapHandle>(null);
   const reverseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -28,6 +34,7 @@ export function SetDestinationScreen() {
   const [mapSelection, setMapSelection] = useState<{ field: AddressField; location: MapLocation; revision: number } | null>(null);
   const [mapSelectionPending, setMapSelectionPending] = useState(false);
   const [previewingTrip, setPreviewingTrip] = useState(false);
+  const [autoFitRoute, setAutoFitRoute] = useState(true);
   const [showMapHint, setShowMapHint] = useState(true);
   const [permission, setPermission] = useState<AppPermissionState | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -45,7 +52,15 @@ export function SetDestinationScreen() {
   const setRoute = useMapStore((state) => state.setRouteCoordinates);
   const setLocating = useMapStore((state) => state.setLocating);
   useNearbyDrivers(current ?? pickup ?? undefined, !dropoff, service==='courier'?'courier':'ride');
-  useFocusEffect(useCallback(() => { setPreviewingTrip(false); }, []));
+  useFocusEffect(useCallback(() => {
+    setPreviewingTrip(false);
+    setAutoFitRoute(true);
+    const { pickupLocation, currentLocation, routeCoordinates } = useMapStore.getState();
+    const center = pickupLocation ?? currentLocation;
+    if (center && routeCoordinates.length < 2) {
+      setRegion({ ...center, ...DESTINATION_FOCUS_SPAN });
+    }
+  }, [setRegion]));
 
   const goBack = () => router.canGoBack() ? router.back() : router.replace(service === 'courier' ? '/courier' : '/home');
 
@@ -76,9 +91,6 @@ export function SetDestinationScreen() {
       if (locationErrorTimer.current) clearTimeout(locationErrorTimer.current);
     };
   }, []);
-  useEffect(() => {
-    if (route.length > 1) mapRef.current?.fitToCoordinates(route);
-  }, [route]);
 
   const enableLocation = async () => {
     const version = ++pickupSelectionVersion.current;
@@ -96,7 +108,8 @@ export function SetDestinationScreen() {
       const location = address ?? { ...coordinate, address: 'Current location' };
       setCurrent(location);
       setPickup(location);
-      const nextRegion = { ...coordinate, latitudeDelta: 0.018, longitudeDelta: 0.014 };
+      const nextRegion = { ...coordinate, ...DESTINATION_FOCUS_SPAN };
+      setAutoFitRoute(false);
       setRegion(nextRegion); mapRef.current?.animateToRegion(nextRegion);
     } catch (error) {
       if (version !== pickupSelectionVersion.current) return;
@@ -114,6 +127,7 @@ export function SetDestinationScreen() {
   };
 
   const adjustMapLocation = (nextRegion: MapRegion) => {
+    setAutoFitRoute(true);
     revealMapHint();
     const version = ++pickupSelectionVersion.current;
     const field = activeMapField;
@@ -130,6 +144,7 @@ export function SetDestinationScreen() {
   };
 
   const changeActiveMapField = (field: AddressField) => {
+    setAutoFitRoute(true);
     revealMapHint();
     pickupSelectionVersion.current += 1;
     if (reverseTimer.current) clearTimeout(reverseTimer.current);
@@ -138,10 +153,21 @@ export function SetDestinationScreen() {
   };
 
   const pickupChosen = () => {
+    setAutoFitRoute(true);
     pickupSelectionVersion.current += 1;
     if (reverseTimer.current) clearTimeout(reverseTimer.current);
     setMapSelectionPending(false);
     clearLocationError();
+  };
+
+  const recenterOnCurrentLocation = () => {
+    setAutoFitRoute(false);
+    pickupSelectionVersion.current += 1;
+    if (reverseTimer.current) clearTimeout(reverseTimer.current);
+    setMapSelectionPending(false);
+    if (!current) { void enableLocation(); return; }
+    clearLocationError();
+    mapRef.current?.animateToRegion({ ...current, ...DESTINATION_FOCUS_SPAN });
   };
 
   const markers: AppMapMarker[] = [
@@ -152,9 +178,9 @@ export function SetDestinationScreen() {
     ...(!previewingTrip && !dropoff && supplyService===(service==='courier'?'courier':'ride') ? drivers.map((driver) => ({ ...driver, id: driver.driverId, kind: 'nearby-driver' as const })) : []),
   ];
 
-  return <View className="flex-1 bg-background">
+  return <View className="flex-1 bg-background" onLayout={event => setScreenHeight(event.nativeEvent.layout.height)}>
     <View className="h-[40%]">
-      <AppMap ref={mapRef} region={region} markers={markers} polyline={route} showsUserLocation={false}
+      <AppMap ref={mapRef} region={region} markers={markers} polyline={route} fitRouteOnChange={autoFitRoute} showsUserLocation={false}
         onRegionChangeComplete={setRegion} onUserRegionChangeComplete={adjustMapLocation} mapPadding={{ top: 48, right: 28, bottom: 48, left: 28 }} />
     </View>
     <SafeAreaView edges={['top']} className="absolute left-lg right-lg top-0 flex-row items-center justify-between pt-sm">
@@ -170,10 +196,15 @@ export function SetDestinationScreen() {
     {!previewingTrip && showMapHint ? <View pointerEvents="none" className="absolute right-lg top-[7%] items-end">
       <View className="rounded-full bg-surface px-sm py-xs shadow-sm"><Text variant="caption" color="textMuted">Drag map to adjust {activeMapField === 'pickup' ? 'pickup' : 'destination'}</Text></View>
     </View> : null}
-    <Pressable onPress={() => current ? mapRef.current?.animateToRegion({ ...current, latitudeDelta: 0.018, longitudeDelta: 0.014 }) : void enableLocation()}
+    <Pressable cssInterop={false} onPress={recenterOnCurrentLocation}
       accessibilityRole="button" accessibilityLabel="Center map on my location"
-      style={{ top: '40%', transform: [{ translateY: -72 }] }}
-      className="absolute right-lg h-12 w-12 items-center justify-center rounded-full bg-surface shadow-md"><AddressIcon name="locate" size={18} /></Pressable>
+      accessibilityState={{ selected: !autoFitRoute }}
+      style={{ position: 'absolute', top: screenHeight * 0.4 - 72, right: 16, width: 48, height: 48,
+        borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: autoFitRoute ? colors.surface : colors.primarySoft,
+        borderWidth: 1, borderColor: autoFitRoute ? colors.border : colors.primary,
+        elevation: 5, zIndex: 10, shadowColor: colors.text, shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width: 0, height: 2 } }}>
+      <AddressIcon name="locate" size={18} color={autoFitRoute ? 'text' : 'primary'} />
+    </Pressable>
     {(permission === 'denied' || permission === 'restricted') ? <View className="absolute left-lg right-lg top-[18%] rounded-lg bg-surface p-md shadow-md"><Text variant="caption">Location is off. Search your pickup manually or enable it for faster pickup.</Text><Pressable onPress={() => void enableLocation()}><Text variant="caption" color="primary" className="mt-xs">Enable location</Text></Pressable></View> : null}
     {permission === 'blocked' ? <View className="absolute left-lg right-lg top-[18%] rounded-lg bg-surface p-md shadow-md"><Text variant="caption">Location access is blocked. You can still search manually.</Text><Pressable onPress={openLocationSettings}><Text variant="caption" color="primary" className="mt-xs">Open settings</Text></Pressable></View> : null}
     {locationError ? <View className="absolute left-lg right-lg top-[18%] rounded-lg bg-surface p-md shadow-md"><Text variant="caption">{locationError} You can also tap From and search for your pickup address.</Text><View className="mt-sm flex-row gap-md"><Pressable accessibilityRole="button" onPress={() => void enableLocation()}><Text variant="caption" color="primary">Try again</Text></Pressable>{locationServicesDisabled ? <Pressable accessibilityRole="button" onPress={() => void openDeviceLocationSettings().catch(() => showLocationError('Open device settings and turn on location, or enter your pickup address manually.'))}><Text variant="caption" color="primary">Location settings</Text></Pressable> : null}</View></View> : null}

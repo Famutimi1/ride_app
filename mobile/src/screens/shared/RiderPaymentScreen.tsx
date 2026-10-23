@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Text } from '@/components/common';
 import { RideIcon } from '@/components/common/RideIcon';
 import { AddressIcon } from '@/components/map/AddressIcon';
-import { radius, spacing, useTheme } from '@/constants/theme';
+import { borderWidths, radius, spacing, useTheme } from '@/constants/theme';
 import { apiErrorMessage } from '@/lib/apiClient';
 import { formatNaira, getWalletTransactions, type WalletEntry } from '@/services/paymentService';
 import { useWalletStore } from '@/store/walletStore';
@@ -140,7 +140,7 @@ function ActivityRow({ entry }: { entry: WalletEntry }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: borderWidths.divider },
   back: { width: 48, height: 48, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.lg, flexGrow: 1 },
   wallet: { borderRadius: radius.xl, padding: spacing.lg }, walletHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
@@ -149,11 +149,11 @@ const styles = StyleSheet.create({
   inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, balanceError: { gap: spacing.sm, marginBottom: spacing.md },
   paystack: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md, marginBottom: spacing.xl },
   activityHeading: { marginBottom: spacing.xs },
-  entry: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth },
+  entry: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: borderWidths.divider },
   activityIcon: { width: 36, height: 36, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   entryCopy: { flex: 1, minWidth: 0, gap: 2 }, entryHeading: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   entryTitle: { flex: 1, minWidth: 0 }, amount: { flexShrink: 1, maxWidth: '55%', textAlign: 'right' },
   empty: { alignItems: 'center', gap: spacing.sm, padding: spacing.xl, borderRadius: radius.xl, marginTop: spacing.md }, centered: { textAlign: 'center' },
   footer: { flexGrow: 1, justifyContent: 'flex-end', paddingTop: spacing.lg }, more: { gap: spacing.sm, marginBottom: spacing.xl },
-  help: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingTop: spacing.md, borderTopWidth: StyleSheet.hairlineWidth }, helpCopy: { flex: 1 },
+  help: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingTop: spacing.md, borderTopWidth: borderWidths.divider }, helpCopy: { flex: 1 },
 });
