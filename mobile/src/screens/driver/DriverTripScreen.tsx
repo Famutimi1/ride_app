@@ -8,6 +8,7 @@ import { RideIcon } from '@/components/common/RideIcon';
 import { useTripMapRoute } from '@/hooks/useTripMapRoute';
 import { useMapStore } from '@/store/mapStore';
 import { useTripStore } from '@/store/tripStore';
+import { activeTripRegion } from '@/utils/tripCamera';
 
 export function DriverTripScreen() {
   const router = useRouter();
@@ -25,6 +26,7 @@ export function DriverTripScreen() {
   const [issueOpen, setIssueOpen] = useState(false);
   const courier = trip?.service_type === 'courier';
   const route = useTripMapRoute(trip, current);
+  const followRegion = activeTripRegion(trip?.status, current);
   const markers = useMemo<AppMapMarker[]>(() => trip ? [
     { id: 'pickup', kind: 'pickup', latitude: trip.pickup_lat, longitude: trip.pickup_lng, title: trip.pickup_address },
     { id: 'dropoff', kind: 'dropoff', latitude: trip.dropoff_lat, longitude: trip.dropoff_lng, title: trip.dropoff_address },
@@ -76,7 +78,7 @@ export function DriverTripScreen() {
   ]);
 
   return <View className="flex-1 bg-background">
-    <View className="h-[48%]"><AppMap region={region} markers={markers} polyline={route.primary} secondaryPolyline={route.secondary} fitRouteOnChange followsUserLocation mapPadding={{ top: 90, right: 32, bottom: 90, left: 32 }} /></View>
+    <View className="h-[48%]"><AppMap region={followRegion ?? region} markers={markers} polyline={route.primary} secondaryPolyline={route.secondary} fitRouteOnChange={!followRegion} mapPadding={{ top: 90, right: 32, bottom: 90, left: 32 }} /></View>
     <SafeAreaView edges={['top']} className="absolute left-lg right-lg top-0"><View className="flex-row items-center gap-md"><Pressable onPress={() => router.replace('/driver-dashboard')} className="h-12 w-12 items-center justify-center rounded-full bg-surface shadow-md"><Text variant="h3">←</Text></Pressable><View className="flex-1 rounded-xl bg-surface px-lg py-md shadow-md"><Text variant="bodyMedium">{copy.title}</Text><Text variant="caption" color="textMuted">{copy.detail}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Open driver safety" onPress={() => router.push({ pathname: '/account/[section]', params: { section: 'safety' } })} className="h-11 w-11 items-center justify-center rounded-full bg-surface shadow-md"><RideIcon name="safety" size={20} color="primary" /></Pressable></View></SafeAreaView>
     <View className="absolute bottom-0 left-0 right-0 h-[57%] rounded-t-[28px] bg-surface shadow-lg"><View className="items-center py-md"><View className="h-1 w-12 rounded-full bg-borderStrong" /></View><ScrollView contentContainerClassName="px-xl pb-xl" showsVerticalScrollIndicator={false}>
       <Text variant="caption" color="secondary" className="uppercase tracking-widest">{courier ? 'Courier delivery' : trip.status.replaceAll('_', ' ')}</Text><Text variant="h2" className="mt-xs">{copy.title}</Text>

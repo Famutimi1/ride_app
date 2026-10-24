@@ -14,6 +14,7 @@ import { apiErrorMessage } from '@/lib/apiClient';
 import { DriverSearchView } from './DriverSearchView';
 import { NoDriversFoundView } from './NoDriversFoundView';
 import { prepareTripRetry } from '@/utils/tripRetry';
+import { activeTripRegion } from '@/utils/tripCamera';
 import { TripCancellationModal } from '@/components/trip/TripCancellationModal';
 
 export function OngoingTripScreen(){
@@ -32,6 +33,7 @@ export function OngoingTripScreen(){
   const driverName=trip?.driver_name??'Your driver',hasDriver=Boolean(trip?.driver_id);
   const liveDriver=driverLocation&&driverLocation.driverId===trip?.driver_id && now>0 && now-driverLocation.timestamp<45_000 ? driverLocation:null;
   const route=useTripMapRoute(trip,liveDriver);
+  const followRegion=activeTripRegion(trip?.status,liveDriver);
   const markers=useMemo<AppMapMarker[]>(()=>trip?[
     {id:'pickup',kind:'pickup',latitude:trip.pickup_lat,longitude:trip.pickup_lng,title:'Pickup'},
     {id:'dropoff',kind:'dropoff',latitude:trip.dropoff_lat,longitude:trip.dropoff_lng,title:'Destination'},
@@ -59,7 +61,7 @@ export function OngoingTripScreen(){
 
   return <View className="flex-1 bg-background">
     {trip.status==='searching' ? <DriverSearchView trip={trip} deliveryCode={deliveryCode} onShareCode={()=>void Share.share({message:`Rakky Ride delivery to ${trip.courier_details?.recipientName}: give code ${deliveryCode} to the driver only when your package arrives.`})} mapProps={{region,markers,polyline:route.primary,secondaryPolyline:route.secondary,followsUserLocation:true}} onBack={()=>router.replace('/home')} onCancel={()=>setCancelOpen(true)} /> : <>
-    <AppMap region={region} markers={markers} polyline={route.primary} secondaryPolyline={route.secondary} fitRouteOnChange followsUserLocation mapPadding={{top:100,right:36,bottom:390,left:36}}/>
+    <AppMap region={followRegion??region} markers={markers} polyline={route.primary} secondaryPolyline={route.secondary} fitRouteOnChange={!followRegion} mapPadding={{top:100,right:36,bottom:390,left:36}}/>
     {hasDriver&&!liveDriver?<View className="absolute left-lg right-lg top-24 rounded-lg bg-surface px-md py-sm shadow-sm"><Text variant="caption" color="textMuted">Waiting for the driver’s live location</Text></View>:null}
     <SafeAreaView edges={['top']} className="absolute left-lg right-lg top-0"><View className="flex-row items-center gap-md"><Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={()=>router.replace('/home')} className="h-12 w-12 items-center justify-center rounded-full bg-surface shadow-md"><Text variant="h3">←</Text></Pressable><View className="flex-1 rounded-xl bg-surface px-lg py-md shadow-md"><Text variant="bodyMedium" numberOfLines={1}>{trip.status==='returning'?'Returning to sender':trip.status==='in_progress'?courier?'Package on its way':'On the way to destination':'Driver tracking active'}</Text><Text variant="caption" color="textMuted" numberOfLines={1}>{trip.status==='returning'?trip.pickup_address:trip.dropoff_address}</Text></View></View></SafeAreaView>
     <View className="absolute bottom-0 left-0 right-0 max-h-[70%] rounded-t-[28px] bg-surface shadow-lg"><View className="items-center py-md"><View className="h-1 w-12 rounded-full bg-borderStrong"/></View><ScrollView contentContainerClassName="px-xl pb-xl" showsVerticalScrollIndicator={false}>

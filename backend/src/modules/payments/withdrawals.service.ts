@@ -13,7 +13,8 @@ import { createNotificationRecord, publishNotification } from '../notifications/
 import { walletNotification } from '../notifications/notificationTemplates';
 
 interface WithdrawalRow {id:string;user_id:string;amount_kobo:string;fee_kobo:string;status:string;provider_reference:string;provider_transfer_code:string|null;recipient_code:string;attempts:number;request_tx_id:string|null}
-export async function requestWithdrawal(userId:string,payoutAccountId:string,amountKobo:number,otpCode:string) {
+export async function requestWithdrawal(userId:string,payoutAccountId:string,amountKobo:number,otpCode:string,expectedFeeKobo?:unknown) {
+  if(expectedFeeKobo!==undefined&&(!Number.isSafeInteger(expectedFeeKobo)||Number(expectedFeeKobo)<0))throw new ApiError(400,'invalid_withdrawal_fee');
   if(paymentMode()==='live'&&!env.ENABLE_LIVE_PAYMENTS)throw new ApiError(503,'live_payments_disabled');
   const user=await approvedDriver(userId);
   if (!user.phone||!Number.isSafeInteger(amountKobo)||amountKobo<=0) throw new ApiError(400,'invalid_withdrawal');
@@ -23,6 +24,7 @@ export async function requestWithdrawal(userId:string,payoutAccountId:string,amo
     await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE',[userId]);
     const settings=(await client.query<{min_withdrawal_kobo:string;max_daily_withdrawal_kobo:string;withdrawal_fee_kobo:string;new_payout_account_cooldown_hours:number;transfer_fee_tiers:{maxKobo:number|null;feeKobo:number}[]}>(
       'SELECT min_withdrawal_kobo,max_daily_withdrawal_kobo,withdrawal_fee_kobo,new_payout_account_cooldown_hours,transfer_fee_tiers FROM payment_settings WHERE id=true')).rows[0];
+    if(settings&&expectedFeeKobo!==undefined&&expectedFeeKobo!==Number(settings.withdrawal_fee_kobo))throw new ApiError(409,'withdrawal_fee_changed');
     if (!settings||amountKobo<Number(settings.min_withdrawal_kobo)) throw new ApiError(400,'withdrawal_below_minimum');
     const payout=(await client.query<{id:string}>(`SELECT id FROM payout_accounts WHERE id=$1 AND user_id=$2 AND is_active=true
       AND created_at <= now()-($3*interval '1 hour') FOR UPDATE`,[payoutAccountId,userId,settings.new_payout_account_cooldown_hours])).rows[0];

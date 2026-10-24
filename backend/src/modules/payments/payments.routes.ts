@@ -29,7 +29,7 @@ payoutAccountsRouter.delete('/:id',run((req)=>deactivatePayoutAccount(req.userId
 export const withdrawalsRouter=Router();
 withdrawalsRouter.use(requireAuth,requireApprovedDriver);
 withdrawalsRouter.post('/otp',run((req)=>sendStepUpOtp(req.userId!,'withdrawal')));
-withdrawalsRouter.post('/',run((req)=>requestWithdrawal(req.userId!,String(req.body.payoutAccountId??''),Number(req.body.amountKobo),String(req.body.otpCode??''))));
+withdrawalsRouter.post('/',run((req)=>requestWithdrawal(req.userId!,String(req.body.payoutAccountId??''),Number(req.body.amountKobo),String(req.body.otpCode??''),req.body.expectedFeeKobo)));
 withdrawalsRouter.get('/',run((req)=>listWithdrawals(req.userId!)));
 withdrawalsRouter.get('/:id',run((req)=>getWithdrawal(req.userId!,String(req.params.id))));
 

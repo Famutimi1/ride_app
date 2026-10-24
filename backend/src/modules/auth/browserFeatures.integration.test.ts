@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {randomUUID,randomBytes,createECDH} from 'node:crypto';
+import {randomUUID,randomBytes,randomInt,createHash,createECDH} from 'node:crypto';
 import {readFile,readdir} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import type {AddressInfo} from 'node:net';
@@ -25,6 +25,10 @@ test('saved chat and browser push enforce identity, retries, browser ownership a
     const trip=(await pool.query<{id:string}>("INSERT INTO trips(rider_id,driver_id,status,payment_method,pickup_lat,pickup_lng,pickup_address,dropoff_lat,dropoff_lng,dropoff_address,estimated_distance_m,estimated_duration_s,fare_kobo,idempotency_key) VALUES($1,$2,'driver_assigned','cash',6.4,3.4,'Fixture pickup',6.5,3.5,'Fixture destination',1000,300,100000,'browser-feature-fixture') RETURNING id",[users[0].id,users[1].id])).rows[0].id;
     await t.test('withdrawal policy is authenticated, approval guarded and contains reviewable fees only',async()=>{
       assert.equal((await request('/payments/withdrawal-policy',-1)).status,401);assert.equal((await request('/payments/withdrawal-policy')).status,403);await pool.query("INSERT INTO driver_profiles(user_id,status) VALUES($1,'approved')",[users[1].id]);const response=await request('/payments/withdrawal-policy',1);assert.equal(response.status,200);const policy=await response.json();assert.deepEqual(Object.keys(policy).sort(),['maxDailyWithdrawalKobo','minWithdrawalKobo','newAccountCooldownHours','withdrawalFeeKobo']);assert.ok(Number.isSafeInteger(policy.withdrawalFeeKobo));
+      const phone='+2348000000199',code=String(randomInt(100000,999999));await pool.query('UPDATE users SET phone=$2 WHERE id=$1',[users[1].id,phone]);
+      const otp=(await pool.query("INSERT INTO otp_codes(phone,code_hash,purpose,expires_at) VALUES($1,$2,'withdrawal',now()+interval '5 minutes') RETURNING id",[phone,createHash('sha256').update(code).digest('hex')])).rows[0];
+      const {requestWithdrawal}=await import('../payments/withdrawals.service.js');await assert.rejects(requestWithdrawal(users[1].id,randomUUID(),policy.minWithdrawalKobo,code,policy.withdrawalFeeKobo+1),/withdrawal_fee_changed/);
+      const unchanged=(await pool.query('SELECT consumed_at,attempts FROM otp_codes WHERE id=$1',[otp.id])).rows[0];assert.equal(unchanged.consumed_at,null);assert.equal(unchanged.attempts,0);assert.equal((await pool.query('SELECT id FROM withdrawals')).rowCount,0);
     });
     await t.test('messages survive reload, reject outsiders and deduplicate concurrent retries',async()=>{
       assert.equal((await request(`/trips/${trip}/messages`,-1)).status,401);assert.equal((await request(`/trips/${trip}/messages`,2)).status,404);
@@ -37,6 +41,7 @@ test('saved chat and browser push enforce identity, retries, browser ownership a
       await pool.query("INSERT INTO trip_messages(trip_id,sender_id,sender_role,client_message_id,body) SELECT $1,$2,'driver','history-'||n,'Earlier message '||n FROM generate_series(1,55) AS n",[trip,users[1].id]);
       const latest=await (await request(`/trips/${trip}/messages`)).json();assert.equal(latest.messages.length,50);assert.ok(latest.nextBefore);
       const older=await (await request(`/trips/${trip}/messages?before=${latest.nextBefore}`)).json();assert.equal(older.messages.length,6);assert.equal(older.nextBefore,null);
+      const driverReply=await request(`/trips/${trip}/messages`,1,{id:randomUUID(),text:'I am at the pickup.',senderRole:'rider',senderId:users[0].id});assert.equal(driverReply.status,201);const driverMessage=await driverReply.json();assert.equal(driverMessage.message.senderRole,'driver');assert.equal(driverMessage.message.senderId,users[1].id);
       await pool.query("UPDATE trips SET status='completed' WHERE id=$1",[trip]);assert.equal((await request(`/trips/${trip}/messages`,0,{id:randomUUID(),text:'Too late to send'})).status,409);assert.equal((await request(`/trips/${trip}/messages`)).status,200);
     });
     const {env}=await import('../../config/env.js'),vapid=webpush.generateVAPIDKeys();Object.assign(env,{WEB_PUSH_PUBLIC_KEY:vapid.publicKey,WEB_PUSH_PRIVATE_KEY:vapid.privateKey,WEB_PUSH_SUBJECT:'mailto:test@example.test'});
