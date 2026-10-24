@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppMap, DriverOnlineControl, type AppMapMarker } from '@/components/map';
 import { HomeLocationFallback } from '@/components/map/HomeLocationFallback';
@@ -32,6 +32,7 @@ export function DriverDashboardScreen() {
   const approved = driverApplication?.status === 'approved';
   const refresh = useCallback(() => {
     const generation = ++request.current.generation;
+    setEarningsLoading(true);
     void refreshWallet();
     void getEarningsSummary('today').then(value => {
       if (generation === request.current.generation) { setEarnings(value); setEarningsError(null); }
@@ -39,13 +40,13 @@ export function DriverDashboardScreen() {
       if (generation === request.current.generation) setEarningsError('Could not refresh today’s earnings.');
     }).finally(() => { if (generation === request.current.generation) setEarningsLoading(false); });
   }, [refreshWallet]);
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (!user?.id || !approved) return;
     refresh();
     const control = request.current;
     const listener = AppState.addEventListener('change', state => { if (state === 'active') { setEarningsLoading(true); refresh(); } });
     return () => { control.generation++; listener.remove(); };
-  }, [approved, refresh, user?.id]);
+  }, [approved, refresh, user?.id]));
 
   if (!user) return null;
   if (!approved) return <Redirect href={driverApplication?.status === 'pending' || driverApplication?.status === 'rejected' ? '/driver-status' : '/driver-onboarding'} />;
@@ -61,30 +62,30 @@ export function DriverDashboardScreen() {
     catch { setSwitchError('Could not switch modes. Please try again.'); }
     finally { switchingInFlight.current = false; setSwitching(false); }
   };
-  return <DriverOnlineControl driverId={user.id} render={(onlineControl, online) => <DriverDashboardView
-    title={deliveryOnly ? 'Delivery home' : 'Driver home'} locationAvailable={Boolean(region)} online={online} onlineControl={onlineControl}
+  return <DriverOnlineControl driverId={user.id} render={(onlineControl) => <DriverDashboardView
+    title={deliveryOnly ? 'Delivery home' : 'Driver home'} locationAvailable={Boolean(region)} onlineControl={onlineControl}
     map={region ? <AppMap region={region} markers={markers} mapPadding={{ top: 70, right: 24, bottom: 130, left: 24 }} /> : <HomeLocationFallback compact contained />}
     earnings={earnings} earningsLoading={earningsLoading} earningsError={earningsError} owedKobo={wallet.owedKobo} debtBlocked={!wallet.canGoOnline} walletError={wallet.error} walletLoading={wallet.loading}
     services={<DriverServicePreferences compact />} switching={switching} switchError={switchError} onRetry={() => { setEarningsLoading(true); refresh(); }}
     onMenu={() => router.push('/menu')} onWallet={() => router.push({ pathname: '/account/[section]', params: { section: 'driver-wallet' } })}
     onEarnings={() => router.push({ pathname: '/account/[section]', params: { section: 'driver-earnings' } })}
-    onSettleDebt={() => router.push({ pathname: '/account/[section]', params: { section: 'top-up', target: 'earnings' } })}
+    onTrips={() => router.push({ pathname: '/account/[section]', params: { section: 'driver-trips' } })}
     onSwitch={() => void switchMode()} />} />;
 }
 
 interface DriverDashboardViewProps {
-  title: string; locationAvailable: boolean; map: ReactNode; online: boolean; onlineControl: ReactNode; services: ReactNode;
+  title: string; locationAvailable: boolean; map: ReactNode; onlineControl: ReactNode; services: ReactNode;
   earnings: EarningsSummary | null; earningsLoading: boolean; earningsError: string | null;
   owedKobo: number; debtBlocked: boolean; walletError: string | null; walletLoading: boolean;
   switching: boolean; switchError: string | null;
-  onMenu: () => void; onWallet: () => void; onEarnings: () => void; onSettleDebt: () => void; onRetry: () => void; onSwitch: () => void;
+  onMenu: () => void; onWallet: () => void; onEarnings: () => void; onTrips: () => void; onRetry: () => void; onSwitch: () => void;
 }
 
-export function DriverDashboardView({ title, locationAvailable, map, online, onlineControl, services, earnings, earningsLoading, earningsError, owedKobo, debtBlocked, walletError, walletLoading, switching, switchError, onMenu, onWallet, onEarnings, onSettleDebt, onRetry, onSwitch }: DriverDashboardViewProps) {
+export function DriverDashboardView({ title, locationAvailable, map, onlineControl, services, earnings, earningsLoading, earningsError, owedKobo, debtBlocked, walletError, walletLoading, switching, switchError, onMenu, onWallet, onEarnings, onTrips, onRetry, onSwitch }: DriverDashboardViewProps) {
   const { colors } = useTheme();
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const mapHeight = Math.min(420, Math.max(locationAvailable ? 220 : 340, height * 0.40));
+  const mapHeight = Math.min(560, Math.max(locationAvailable ? 260 : 340, height * 0.54));
   return <View style={[styles.screen, { backgroundColor: colors.surfaceMuted }]}>
     <View style={{ height: mapHeight }}>
       {locationAvailable ? <View style={StyleSheet.absoluteFill}>{map}</View> : <ScrollView style={[styles.fallback, { top: insets.top + 60 }]} contentContainerStyle={styles.fallbackContent}>{map}</ScrollView>}
@@ -98,24 +99,30 @@ export function DriverDashboardView({ title, locationAvailable, map, online, onl
     <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
       <View style={styles.handleArea}><View style={[styles.handle, { backgroundColor: colors.borderStrong }]} /></View>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.earningsRow}><View style={styles.earningsCopy}><Text variant="caption" color="textMuted">Today’s earnings</Text>
-          {earnings ? <Text variant="h3">{formatNaira(earnings.netKobo)}</Text> : earningsLoading ? <View style={styles.loading}><ActivityIndicator size="small" color={colors.primary} /><Text variant="caption" color="textMuted">Loading…</Text></View> : <Text variant="h3">—</Text>}
-        </View><Pressable accessibilityRole="button" accessibilityLabel="View earnings" onPress={onEarnings} style={styles.textAction}><Text variant="caption" color="primary">View earnings</Text><RideIcon name="chevron" size={16} color="primary" /></Pressable></View>
+        <View style={[styles.summaryBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View pointerEvents="none" style={[styles.summaryAccent, { backgroundColor: colors.primary }]} />
+          <Pressable accessibilityRole="button" accessibilityLabel="View earnings" accessibilityState={{ busy: earningsLoading }} onPress={onEarnings} style={[styles.summaryItem, styles.earningsItem]}>
+            <RideIcon name="coins" size={18} color="primary" />
+            <View style={styles.summaryCopy}><Text variant="caption" color="textMuted" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.9}>Today’s earnings</Text>
+              {earnings ? <Text variant="bodyMedium" color="success" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{formatNaira(earnings.netKobo)}</Text> : earningsLoading ? <View style={styles.loading}><ActivityIndicator size="small" color={colors.primary} /><Text variant="caption" color="textMuted">Loading…</Text></View> : <Text variant="bodyMedium">—</Text>}
+            </View>
+            <RideIcon name="chevron" size={13} color="textMuted" />
+          </Pressable>
+          <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+          <Pressable accessibilityRole="button" accessibilityLabel="View trip history" accessibilityState={{ busy: earningsLoading }} onPress={onTrips} style={[styles.summaryItem, styles.tripsItem]}>
+            <RideIcon name="distance" size={18} color="primary" />
+            <View style={styles.summaryCopy}><Text variant="caption" color="textMuted" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.9}>Trips today</Text><Text variant="bodyMedium">{earnings ? earnings.trips : '—'}</Text></View>
+            <RideIcon name="chevron" size={13} color="textMuted" />
+          </Pressable>
+        </View>
         {earningsError ? <View style={styles.error}><Text variant="caption" color="danger" accessibilityRole="alert">{earningsError}{earnings ? ' Showing last loaded earnings.' : ''}</Text><Button label="Retry earnings" accessibilityLabel="Retry earnings" size="sm" variant="ghost" loading={earningsLoading} onPress={onRetry} /></View> : null}
-        <View style={[styles.stats, { backgroundColor: colors.surfaceMuted }]}><Stat label="Jobs" value={earnings ? String(earnings.trips) : '—'} /><Stat label="Online" value="—" unavailable /><Stat label="Rating" value="—" unavailable last /></View>
-        {owedKobo > 0 || debtBlocked ? <View style={[styles.debt, { backgroundColor: colors.dangerSoft }]}><View style={styles.noticeRow}><RideIcon name="cash" size={18} color="danger" /><Text variant="button" color="danger" style={styles.copy}>{debtBlocked ? 'Cash commission limit reached' : 'Cash commission due'}</Text></View><Text variant="caption" style={styles.smallGap}>{owedKobo > 0 ? `You owe ${formatNaira(owedKobo)} in cash commission.` : 'Review your wallet before going online.'}</Text>{debtBlocked ? <Text variant="caption" color="textMuted" style={styles.smallGap}>Settle your balance before going online.</Text> : null}<Button label="Pay now" size="sm" variant="outline" className="mt-sm" onPress={onSettleDebt} /></View> : null}
+        {debtBlocked ? <Pressable accessibilityRole="button" accessibilityLabel="Review commission limit in driver wallet" onPress={onWallet} style={[styles.debt, { backgroundColor: colors.dangerSoft }]}><RideIcon name="info" size={18} color="danger" /><View style={styles.copy}><Text variant="button" color="danger">Review wallet to go online</Text><Text variant="caption" color="textMuted">{formatNaira(owedKobo)} commission outstanding</Text></View><RideIcon name="chevron" size={16} color="danger" /></Pressable> : null}
         {walletError ? <View style={styles.error}><Text variant="caption" color="danger" accessibilityRole="alert">Could not refresh wallet status. Any balance shown is the last loaded value.</Text><Button label="Retry wallet status" accessibilityLabel="Retry wallet status" variant="ghost" size="sm" loading={walletLoading} onPress={onRetry} /></View> : null}
         {services}
-        <View style={[styles.work, { backgroundColor: colors.primarySoft }]}><View style={[styles.workIcon, { backgroundColor: colors.surface }]}><RideIcon name="vehicle" size={18} color="primary" /></View><View style={styles.copy}><Text variant="button">{online ? 'Your driver session is online' : 'Ready when you are'}</Text><Text variant="caption" color="textMuted" style={styles.smallGap}>{online ? 'New requests follow your service choices.' : 'Go online to start receiving requests.'}</Text></View></View>
       </ScrollView>
-      <SafeAreaView edges={['bottom']} style={[styles.footer, { borderTopColor: colors.border }]}><Button label="Switch to rider mode" accessibilityLabel="Switch to rider mode" variant="outline" size="sm" fullWidth loading={switching} leftIcon={<RideIcon name="swap" size={16} color="primary" />} onPress={onSwitch} />{switchError ? <Text variant="caption" color="danger" accessibilityRole="alert" style={styles.smallGap}>{switchError}</Text> : null}</SafeAreaView>
+      <SafeAreaView edges={['bottom']} style={[styles.footer, { borderTopColor: colors.border }]}><Button label="Switch to rider mode" accessibilityLabel="Switch to rider mode" variant="ghost" size="sm" fullWidth loading={switching} leftIcon={<RideIcon name="swap" size={16} color="primary" />} onPress={onSwitch} />{switchError ? <Text variant="caption" color="danger" accessibilityRole="alert" style={styles.smallGap}>{switchError}</Text> : null}</SafeAreaView>
     </View>
   </View>;
-}
-
-function Stat({ label, value, unavailable = false, last = false }: { label: string; value: string; unavailable?: boolean; last?: boolean }) {
-  const { colors } = useTheme();
-  return <View accessible accessibilityLabel={`${label}: ${unavailable ? 'not available' : value}`} style={[styles.stat, { borderRightColor: colors.border, borderRightWidth: last ? 0 : borderWidths.divider }]}><Text variant="bodyMedium">{value}</Text><Text variant="caption" color="textMuted">{label}</Text></View>;
 }
 
 const styles = StyleSheet.create({
@@ -131,18 +138,16 @@ const styles = StyleSheet.create({
   handleArea: { alignItems: 'center', paddingVertical: spacing.sm },
   handle: { width: 36, height: 4, borderRadius: radius.full },
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
-  earningsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  earningsCopy: { flex: 1, minWidth: 0 },
-  textAction: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  summaryBar: { flexDirection: 'row', minHeight: 68, borderWidth: 1, borderRadius: 14, overflow: 'hidden', marginBottom: spacing.xs },
+  summaryAccent: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 3 },
+  summaryItem: { minWidth: 0, minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 10 },
+  earningsItem: { flex: 1.5, paddingLeft: 14 }, tripsItem: { flex: 1 },
+  summaryDivider: { width: 1, marginVertical: spacing.md },
+  summaryCopy: { flex: 1, minWidth: 0, gap: 2 },
   loading: { minHeight: 26, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  stats: { flexDirection: 'row', borderRadius: radius.xl, paddingVertical: spacing.sm, marginTop: spacing.md },
-  stat: { flex: 1, minWidth: 0, alignItems: 'center', gap: spacing.xs },
   copy: { flex: 1, minWidth: 0 },
   smallGap: { marginTop: spacing.xs },
   error: { marginTop: spacing.sm },
-  debt: { padding: spacing.md, marginTop: spacing.md, borderRadius: radius.xl },
-  noticeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  work: { marginTop: spacing.md, padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderRadius: radius.xl },
-  workIcon: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: radius.lg },
+  debt: { padding: spacing.md, marginTop: spacing.md, borderRadius: radius.xl, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   footer: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm, borderTopWidth: borderWidths.divider },
 });

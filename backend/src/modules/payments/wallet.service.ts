@@ -3,6 +3,43 @@ import { ApiError } from '../../shared/errors';
 import { getBalances } from './ledger.service';
 
 export const walletSummary=getBalances;
+
+export interface DriverEarningsSummary {
+  range: 'today' | 'week' | 'month'; trips: number; grossKobo: number; commissionKobo: number; netKobo: number;
+  cashTrips: number; walletTrips: number; cashCollectedKobo: number; cashEarningsKobo: number;
+  walletEarningsKobo: number; cashCommissionKobo: number;
+}
+
+/** Trip income is separate from wallet movement and outstanding cash commission. */
+export async function driverEarningsSummary(userId: string, rangeValue: unknown): Promise<DriverEarningsSummary> {
+  const range = rangeValue === 'week' || rangeValue === 'month' ? rangeValue : 'today';
+  const period = range === 'today' ? 'day' : range;
+  const row = (await db.query<{
+    trips: string; gross_kobo: string; commission_kobo: string; net_kobo: string;
+    cash_trips: string; wallet_trips: string; cash_collected_kobo: string;
+    cash_earnings_kobo: string; wallet_earnings_kobo: string; cash_commission_kobo: string;
+  }>(`SELECT COUNT(*)::text AS trips,
+      COALESCE(SUM(fare_kobo),0)::text AS gross_kobo,
+      COALESCE(SUM(commission_kobo),0)::text AS commission_kobo,
+      COALESCE(SUM(COALESCE(driver_earning_kobo, fare_kobo - COALESCE(commission_kobo,0))),0)::text AS net_kobo,
+      COUNT(*) FILTER(WHERE payment_method='cash')::text AS cash_trips,
+      COUNT(*) FILTER(WHERE payment_method='wallet')::text AS wallet_trips,
+      COALESCE(SUM(fare_kobo) FILTER(WHERE payment_method='cash'),0)::text AS cash_collected_kobo,
+      COALESCE(SUM(COALESCE(driver_earning_kobo, fare_kobo - COALESCE(commission_kobo,0))) FILTER(WHERE payment_method='cash'),0)::text AS cash_earnings_kobo,
+      COALESCE(SUM(COALESCE(driver_earning_kobo, fare_kobo - COALESCE(commission_kobo,0))) FILTER(WHERE payment_method='wallet'),0)::text AS wallet_earnings_kobo,
+      COALESCE(SUM(commission_kobo) FILTER(WHERE payment_method='cash'),0)::text AS cash_commission_kobo
+    FROM trips WHERE driver_id=$1 AND status IN ('completed','returned') AND payment_status='settled'
+      AND (CASE WHEN status='returned' THEN returned_at ELSE completed_at END)
+        >= (date_trunc($2,now() AT TIME ZONE 'Africa/Lagos') AT TIME ZONE 'Africa/Lagos')`,
+  [userId, period])).rows[0];
+  return {
+    range, trips: Number(row.trips), grossKobo: Number(row.gross_kobo), commissionKobo: Number(row.commission_kobo),
+    netKobo: Number(row.net_kobo), cashTrips: Number(row.cash_trips), walletTrips: Number(row.wallet_trips),
+    cashCollectedKobo: Number(row.cash_collected_kobo), cashEarningsKobo: Number(row.cash_earnings_kobo),
+    walletEarningsKobo: Number(row.wallet_earnings_kobo), cashCommissionKobo: Number(row.cash_commission_kobo),
+  };
+}
+
 export async function walletTransactions(userId:string,account:'wallet'|'earnings',cursor?:number) {
   if (account!=='wallet'&&account!=='earnings') throw new ApiError(400,'invalid_account');
   if (cursor!==undefined&&(!Number.isSafeInteger(cursor)||cursor<1)) throw new ApiError(400,'invalid_cursor');

@@ -35,7 +35,6 @@ export function DriverServicesView(props: DriverServicesViewProps) {
   return <View className={compact ? 'mt-sm' : ''}>
     {compact ? <>
       <View style={styles.heading}><Text variant="button" accessibilityRole="header" style={styles.copy}>Your services</Text><Pressable ref={manageRef} accessibilityRole="button" accessibilityLabel="Manage services" accessibilityState={{ expanded, disabled: busy }} aria-expanded={expanded} disabled={busy} onPress={onManage} style={styles.textAction}><Text variant="caption" color="primary">Manage</Text><RideIcon name="chevron" size={16} color="primary" /></Pressable></View>
-      <Text variant="caption" color="textMuted" style={styles.summaryHint}>Switch new requests on or off.</Text>
       <ServiceSummary {...props} />
     </> : <ManagementContent {...props} registerWithdrawRef={registerWithdrawRef} />}
     <Modal visible={compact ? expanded : withdrawing !== null} transparent animationType="fade" onDismiss={() => { if (Platform.OS === 'web') requestAnimationFrame(() => { if (compact) manageRef.current?.focus(); else if (lastWithdrawal.current) withdrawRefs.current[lastWithdrawal.current]?.focus(); }); }} onShow={() => { if (compact && !withdrawing && Platform.OS === 'web') closeRef.current?.focus(); }} onRequestClose={withdrawing ? keep : close} accessibilityLabel={withdrawing ? 'Withdraw service consent' : 'Manage services'}>
@@ -151,7 +150,6 @@ const styles = StyleSheet.create({
   switchTarget: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
   track: { width: 40, height: 24, padding: 3, borderRadius: radius.full, justifyContent: 'center' }, thumb: { width: 18, height: 18, borderRadius: radius.full },
   gap: { marginTop: spacing.sm }, subtitle: { marginBottom: spacing.md }, cards: { gap: spacing.md },
-  summaryHint: { marginBottom: spacing.sm },
   card: { borderWidth: 1, borderRadius: radius.xl, padding: spacing.md }, cardHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   badge: { borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, maxWidth: '40%' },
   requestRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },

@@ -2,6 +2,8 @@
 
 Updated 23 October 2026 after checking the Pixel 10 Pro API 37.1 emulator.
 
+Driver trip follow-up, 24 October 2026: the trip screen now uses a compact progress strip, next-stop navigation, expandable trip details and a fixed fare/action footer. Its map viewport ends behind the rounded sheet so the followed driver stays visible on web as well as native. `DriverTripConfirmation` replaces native-only alerts for completion, cancellation and courier returns; courier completion still requires the handoff code. Errors remain in the dialog, repeated confirmation taps are blocked, and navigation to the receipt follows the store's server-confirmed trip status. The web completion alert bug was reproduced before the fix; opening/dismissing the replacement, expanding details, route overview and close following were checked in the browser without settling the active trip. Six controlled component/store regression tests cover confirmation, success, failure/retry, duplicate taps, courier codes, pickup actions and map/action placement. Native visual verification is blocked by the emulator's existing Expo startup error resolving `react-native/Libraries/Core/InitializeCore`; it has not been claimed as passed.
+
 ## Shared fixes
 
 - Generated SVG images use `svgDataUri()` in `mobile/src/utils/svgDataUri.ts`. Android's Expo Image data loader expects base64; percent-encoded SVG data URLs left icons blank. This applies to menu, home, booking and shared icons, the search radar and onboarding/login gradients. Google Maps web marker URLs keep their existing web format.

@@ -50,3 +50,18 @@ The app keeps its real Google Map and visible provider attribution. The generate
 
 
 The later approved [Manage services redesign](../driver-services-v1/README.md) replaces the inline expansion with a dedicated sheet, adds a Settings entry and exposes the courier application shortcut.
+
+## Earnings correction — 24 October 2026
+
+The earnings endpoint now reports the driver's share of all settled cash and wallet trips. Previously it reported wallet credits minus cash commission as “earnings”, which made a cash-only day negative. The read-only aggregation lives in `backend/src/modules/payments/wallet.service.ts`; periods still follow Africa/Lagos time and returned courier settlements remain included.
+
+- Today's earnings = cash earnings after commission + wallet earnings after commission.
+- Cash collected is the gross cash handed to the driver, including the platform's commission.
+- Available driver wallet and commission to repay come from the current ledger balance, across all dates. Wallet earnings and top-ups can offset debt; historical commission for a period is not necessarily still owed.
+- The dashboard refreshes both earnings and balances when focused, including after completing a trip. Earnings breakdown uses the same definitions and labels period commission separately.
+
+No ledger entries, settlement rules or withdrawal/debt limits were changed. Isolated PostgreSQL tests cover cash-only debt, mixed payments and offsets, wallet-only returned deliveries, zero commission, empty summaries, unsettled exclusion and period filters. Three mobile rendering checks cover positive income, separate current debt and the earnings breakdown. Browser QA confirmed the real cash trip shows ₦13,894.95 earned from ₦16,347 collected; the existing wallet credit leaves ₦0 outstanding. Screenshots are in the ignored local `design-reference-archive/driver-earnings-2026-10-24` folder.
+
+### Home simplification
+
+The follow-up home layout keeps a larger map, the online control, and the service switches/Manage entry. The approved connected-bar proposal replaces the tall metric tiles with a white summary bar, inline green icons, a thin divider and a green edge accent. The bar measures 68px high in the 379px-wide browser preview, with separate 66px-high touch areas: today's earnings links to Earnings breakdown, and today's completed-trip count links to driver trip history. Cash versus wallet earnings, cash collected, balances and non-blocking commission details remain on Earnings and Driver wallet. A commission warning appears on home only when it blocks going online and links directly to Wallet. Removed the unavailable Online/Rating statistics, duplicate readiness card, repeated switch instructions and outlined mode-switch button. The quieter rider-mode action keeps its full touch target. Four mobile rendering checks verify the separate summary links, absence of financial clutter, actionable blocking-debt guidance and preserved earnings breakdown. Both links were also checked in the live browser; mobile TypeScript, lint and whitespace checks passed.
