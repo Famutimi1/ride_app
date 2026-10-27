@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import type { ComponentProps } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
@@ -55,7 +56,7 @@ export function VehicleDocumentsView({ data, loading, error, onRetry, onBack, on
   return <SafeAreaView edges={['top', 'bottom']} style={[styles.screen, { backgroundColor: colors.background }]}>
     <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="Back to account" onPress={onBack} style={[styles.back, { backgroundColor: colors.surfaceMuted }]}><AddressIcon name="back" size={20} /></Pressable><Text variant="bodyMedium" accessibilityRole="header" style={styles.copy}>Vehicle & documents</Text></View>
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-      {loading && !data ? <View style={styles.feedback}><ActivityIndicator color={colors.primary} /><Text variant="caption" color="textMuted" accessibilityLiveRegion="polite">Loading vehicle and documents…</Text></View> : error || !data ? <View style={[styles.feedback, { backgroundColor: colors.dangerSoft }]}><Text variant="caption" color="danger" accessibilityRole="alert">{error ?? 'Vehicle details are unavailable.'}</Text><Button label="Reload vehicle details" size="sm" onPress={onRetry} /></View> : <>
+      {loading && !data ? <View style={styles.feedback}><ActivityIndicator color={colors.primary} /><Text variant="caption" color="textMuted" accessibilityLiveRegion="polite">Loading vehicle and documents…</Text></View> : error || !data ? <View style={[styles.feedback, { backgroundColor: colors.dangerSoft }]}><AppMessage message={error ?? 'Vehicle details are unavailable.'} /><Button label="Reload vehicle details" size="sm" onPress={onRetry} /></View> : <>
         {loading ? <Text variant="caption" color="textMuted" accessibilityLiveRegion="polite">Refreshing details…</Text> : null}
         <View style={[styles.vehicleCard, { backgroundColor: colors.primarySoft }]}>
           <View style={styles.vehicleHeading}>

@@ -1,3 +1,5 @@
+import { feedback } from '@/store/feedbackStore';
+import { AppMessage } from '@/components/common/AppMessage';
 import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
@@ -36,6 +38,8 @@ function SettingsController({ userId, role }: { userId?: string; role: SettingsR
   const signOut = async () => {
     if (logoutInFlight.current || !ownsScreen()) return;
     logoutInFlight.current = true;
+    const confirmed = await feedback.confirm({ title: 'Log out?', message: 'You’ll need to sign in again to use your account.', confirmLabel: 'Log out', cancelLabel: 'Stay signed in' });
+    if (!confirmed || !ownsScreen()) { logoutInFlight.current = false; return; }
     setLoggingOut(true); setError(null);
     try {
       await logout();
@@ -94,7 +98,7 @@ export function SettingsView({ role, loggingOut, error, onBack, onNavigate, onLo
       {loggingOut ? <ActivityIndicator size="small" color={colors.danger} /> : <RideIcon name="logout" size={18} color="danger" />}
       <Text variant="button" color="danger">{loggingOut ? 'Logging out…' : 'Log out'}</Text>
     </Pressable>
-    {error ? <Text variant="caption" color="danger" accessibilityRole="alert" style={styles.notice}>{error}</Text> : null}
+    {error ? <AppMessage message={error} style={styles.notice} /> : null}
   </SettingsPage>;
 }
 

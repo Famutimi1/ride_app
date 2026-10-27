@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useState, type ComponentProps, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
@@ -42,7 +43,7 @@ function Notice({ children, icon = 'info' }: { children: string; icon?: Icon }) 
 }
 function Feedback({ loading, error, onRetry }: { loading?: boolean; error?: string | null; onRetry: () => void }) {
   const { colors } = useTheme();
-  return <View style={styles.stack}>{loading ? <View style={styles.feedback}><ActivityIndicator color={colors.primary} /><Text variant="caption" color="textMuted">Loading application details…</Text></View> : null}{error ? <><Text variant="caption" color="danger" accessibilityRole="alert">{error}</Text><ApplicationAction label="Reload application details" outline onPress={onRetry} /></> : null}</View>;
+  return <View style={styles.stack}>{loading ? <View style={styles.feedback}><ActivityIndicator color={colors.primary} /><Text variant="caption" color="textMuted">Loading application details…</Text></View> : null}{error ? <><AppMessage message={error} /><ApplicationAction label="Reload application details" outline onPress={onRetry} /></> : null}</View>;
 }
 
 export function ServiceApprovalRows({ settings, hideNone = false }: { settings: DriverServiceSettings; hideNone?: boolean }) {

@@ -1,3 +1,4 @@
+import { mobileFeedbackDependency } from '../../shared/testing/mobileFeedback';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -31,7 +32,7 @@ const jsx = (type: string, props: Props): Element => ({ type, props });
 function load<T>(path: string, mocks: Record<string, unknown> = {}): T {
   const exports: Props = {};
   const code = compiler.transpileModule(readFileSync(resolve('../mobile/src', path), 'utf8'), { fileName: path, compilerOptions: { module: compiler.ModuleKind.CommonJS, target: compiler.ScriptTarget.ES2022, jsx: compiler.JsxEmit.ReactJSX } }).outputText;
-  runInNewContext(code, { exports, require: (name: string) => {
+  runInNewContext(code, { exports, require: (name: string) => { const feedbackModule = mobileFeedbackDependency(name); if (feedbackModule) return feedbackModule;
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx };
     if (name in mocks) return mocks[name];
     throw new Error(`Unexpected mobile dependency ${name}`);
@@ -79,12 +80,12 @@ function harness(trip = fixture()) {
     '@/store/mapStore': { useMapStore: selectMap }, '@/store/tripStore': { useTripStore: (select: (state: typeof store) => unknown) => select({ ...store, trip: current }) },
     '@/hooks/useLiveDriverTracking': { useLiveDriverTracking: () => undefined }, '@/hooks/useTripMapRoute': { useTripMapRoute: () => ({ primary: [], secondary: [] }) },
     '@/services/tripService': {}, '@/lib/apiClient': {}, './DriverSearchView': {}, './NoDriversFoundView': { NoDriversFoundView: 'NoDriversFoundView' },
-    '@/utils/tripRetry': retry, '@/components/trip/TripCancellationModal': {},
+    '@/components/communication/TripCallOptions':{}, '@/utils/tripCamera': {activeTripRegion:()=>undefined}, '@/utils/tripRetry': retry, '@/components/trip/TripCancellationModal': {},
   });
   const review = () => load<{ CourierReviewScreen: () => Element }>('screens/rider/CourierReviewScreen.tsx', {
     react, 'react-native': rn, 'expo-image': { Image: 'Image' }, 'expo-router': { useRouter: () => router }, 'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
     '@/components/map': { AppMap: 'AppMap' }, '@/components/common': { Text: 'Text', Button: 'Button' }, '@/components/map/AddressIcon': {}, '@/components/common/RideIcon': {},
-    '@/constants/theme': { useTheme: () => ({ colors: {} }), radius: {}, spacing: {} }, '@/lib/apiClient': { apiErrorMessage: (error: Error) => error.message },
+    '@/constants/theme': { useTheme: () => ({ colors: {} }), radius: {}, spacing: {}, borderWidths:{divider:1} }, '@/lib/apiClient': { apiErrorMessage: (error: Error) => error.message },
     '@/store/courierDraftStore': { useCourierDraftStore: selectDraft }, '@/store/mapStore': { useMapStore: selectMap },
     '@/store/tripStore': { useTripStore: (select: (state: typeof store) => unknown) => select(store) },
     '@/store/walletStore': { useWalletStore: (select: (state: Props) => unknown) => select({ walletKobo: 1000000, refresh: async () => undefined }) },

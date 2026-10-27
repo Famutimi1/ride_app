@@ -1,3 +1,4 @@
+import { UserFacingError } from '@/utils/userMessage';
 import { useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
@@ -10,7 +11,7 @@ async function loadServices() {
   const owner = useAuthStore.getState().session?.user.id;
   await useAuthStore.getState().refreshDriverServices();
   const state = useAuthStore.getState();
-  if (!owner || state.session?.user.id !== owner || !state.driverServices) throw new Error('Sign in again to load your services.');
+  if (!owner || state.session?.user.id !== owner || !state.driverServices) throw new UserFacingError('Sign in again to load your services.');
   return state.driverServices;
 }
 

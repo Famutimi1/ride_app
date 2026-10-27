@@ -1,3 +1,4 @@
+import { mobileFeedbackDependency } from '../../shared/testing/mobileFeedback';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -9,7 +10,7 @@ import test from 'node:test';
 const mobileRequire = createRequire(resolve('../mobile/package.json'));
 const compiler = mobileRequire('typescript') as { transpileModule: (source: string, options: object) => { outputText: string }; ModuleKind: { CommonJS: number }; ScriptTarget: { ES2022: number }; JsxEmit: { ReactJSX: number } };
 type Props = Record<string, unknown>;
-interface Element { type: string; props: Props }
+interface Element { type: string | ((props: Props) => Element); props: Props }
 interface Trip extends Props { id: string; driver_id: string | null; rider_id: string; status: string; service_type: string; payment_method: string }
 interface State { trip: Trip | null; loading: boolean; error: string | null; complete: (code?: string) => Promise<void> }
 interface Store { getState: () => State; setState: (value: Partial<State>) => void }
@@ -18,7 +19,7 @@ const jsx = (type: string, props: Props): Element => ({ type, props });
 function load<T>(path: string, mocks: Record<string, unknown> = {}): T {
   const exports: Props = {};
   const code = compiler.transpileModule(readFileSync(resolve('../mobile/src', path), 'utf8'), { fileName: path, compilerOptions: { module: compiler.ModuleKind.CommonJS, target: compiler.ScriptTarget.ES2022, jsx: compiler.JsxEmit.ReactJSX } }).outputText;
-  runInNewContext(code, { exports, require: (name: string) => {
+  runInNewContext(code, { exports, require: (name: string) => { const feedbackModule = mobileFeedbackDependency(name); if (feedbackModule) return feedbackModule;
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx };
     if (name in mocks) return mocks[name];
     throw new Error(`Unexpected mobile dependency ${name}`);
@@ -37,6 +38,7 @@ function elements(root: unknown): Element[] {
   if (Array.isArray(root)) return root.flatMap(elements);
   if (!root || typeof root !== 'object' || !('props' in root)) return [];
   const node = root as Element;
+  if (typeof node.type === 'function') return elements(node.type(node.props));
   return [node, ...elements(node.props.children)];
 }
 function button(tree: Element, label: string): Element {
@@ -49,8 +51,8 @@ const fixture = (overrides: Partial<Trip> = {}): Trip => ({ id: 'trip', rider_id
 const rn = { View: 'View', Pressable: 'Pressable', ScrollView: 'ScrollView', Modal: 'Modal', KeyboardAvoidingView: 'KeyboardAvoidingView', Platform: { OS: 'web' }, StyleSheet: { create: (value: unknown) => value }, useWindowDimensions: () => ({ height: 804, width: 405 }) };
 const shared = {
   'react-native': rn, '@/components/common': { Button: 'Button', Input: 'Input', Text: 'Text', Avatar: 'Avatar' },
-  '@/components/common/RideIcon': { RideIcon: 'RideIcon' }, '@/constants/theme': { useTheme: () => ({ colors: {}, scheme: 'light' }), nativeWindTheme: { light: {} } },
-  '@/lib/apiClient': { apiErrorMessage: (error: Error) => error.message }, '@/services/paymentService': { formatNaira: (amount: number) => `NGN ${amount / 100}` },
+  '@/components/common/RideIcon': { RideIcon: 'RideIcon' }, '@/constants/theme': { useTheme: () => ({ colors: {}, typography: {}, scheme: 'light' }), nativeWindTheme: { light: {} } },
+  '@/lib/apiClient': { apiErrorMessage: (error: unknown) => (mobileFeedbackDependency('@/utils/userMessage') as { userErrorMessage: (value: unknown) => string }).userErrorMessage(error) }, '@/services/paymentService': { formatNaira: (amount: number) => `NGN ${amount / 100}` },
   'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView', useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) },
 };
 function harness(trip = fixture()) {
@@ -71,7 +73,7 @@ function harness(trip = fixture()) {
   store.setState({ trip });
   const screenHooks = hooks();
   const screen = load<{ DriverTripScreen: () => Element }>('screens/driver/DriverTripScreen.tsx', {
-    ...shared, react: screenHooks.react, 'expo-router': { Redirect: 'Redirect', useRouter: () => ({ replace: () => undefined, push: () => undefined }) },
+    ...shared, '@/components/communication/TripCallOptions': {TripCallOptions:'TripCallOptions'}, react: screenHooks.react, 'expo-router': { Redirect: 'Redirect', useRouter: () => ({ replace: () => undefined, push: () => undefined }) },
     '@/components/map': { AppMap: 'AppMap' }, '@/components/map/AddressIcon': { AddressIcon: 'AddressIcon' }, '@/components/trip/DriverTripConfirmation': { DriverTripConfirmation: 'DriverTripConfirmation' },
     '@/hooks/useTripMapRoute': { useTripMapRoute: () => ({ primary: [], secondary: [] }) }, '@/utils/tripCamera': load('utils/tripCamera.ts'),
     '@/store/tripStore': { useTripStore: (select: (state: State) => unknown) => select(store.getState()) },
@@ -110,7 +112,7 @@ test('confirmation calls completion once and redirects only after server success
 test('failed completion stays in the dialog, shows an error and allows retry', async () => {
   const h = harness(); h.respond(async () => { throw new Error('Connection unavailable'); });
   const dialog = h.open(); press(button(dialog(), 'Complete trip')); await tick();
-  assert.ok(elements(dialog()).some(node => node.props.children === 'Connection unavailable'));
+  assert.ok(elements(dialog()).some(node => node.props.children === 'We couldn’t complete that. Please try again.'));
   assert.equal(h.store.getState().trip?.status, 'in_progress'); assert.equal(h.render().type, 'View');
   h.respond(async () => fixture({ status: 'completed' })); press(button(dialog(), 'Complete trip')); await tick();
   assert.equal(h.calls.length, 2); assert.equal(h.render().props.href, '/trip-complete');

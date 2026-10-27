@@ -1,3 +1,4 @@
+import { UserFacingError } from '@/utils/userMessage';
 const GOOGLE_IDENTITY_SCRIPT = 'https://accounts.google.com/gsi/client';
 const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
@@ -36,7 +37,7 @@ export async function renderGoogleButton(
   onCredential: (token: string) => void,
 ): Promise<void> {
   if (!googleWebClientId) {
-    throw new Error('Google sign-in is not configured. Add EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID to mobile/.env.');
+    throw new UserFacingError('Google sign-in is temporarily unavailable. Try signing in with your phone number.');
   }
   const google = await loadGoogleIdentity();
   if (!parent.isConnected) return;
@@ -74,10 +75,10 @@ function loadGoogleIdentity(): Promise<GoogleIdentityApi> {
   scriptPromise = new Promise<GoogleIdentityApi>((resolve, reject) => {
     const existing = document.querySelector<HTMLScriptElement>(`script[src="${GOOGLE_IDENTITY_SCRIPT}"]`);
     const script = existing ?? document.createElement('script');
-    const onLoad = () => window.google?.accounts?.id ? resolve(window.google) : reject(new Error('Google sign-in could not be loaded.'));
+    const onLoad = () => window.google?.accounts?.id ? resolve(window.google) : reject(new UserFacingError('Google sign-in could not be loaded.'));
     const onError = () => {
       script.remove();
-      reject(new Error('Google sign-in could not be loaded. Check your connection and try again.'));
+      reject(new UserFacingError('Google sign-in could not be loaded. Check your connection and try again.'));
     };
 
     script.addEventListener('load', onLoad, { once: true });
@@ -98,5 +99,5 @@ function loadGoogleIdentity(): Promise<GoogleIdentityApi> {
 // Web sign-in must start from Google's rendered button. One Tap's prompt() is
 // optional browser-mediated UI and is not a replacement for a sign-in button.
 export async function getGoogleIdToken(): Promise<string> {
-  throw new Error('Use the Google sign-in button to continue in your browser.');
+  throw new UserFacingError('Use the Google sign-in button to continue in your browser.');
 }

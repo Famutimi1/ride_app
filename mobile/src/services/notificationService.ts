@@ -61,6 +61,7 @@ export function getNotificationsModule():Promise<NotificationsModule|null>{
 }
 
 async function installationId(){let value=await SecureStore.getItemAsync(INSTALLATION_KEY);if(!value){value=`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;await SecureStore.setItemAsync(INSTALLATION_KEY,value);}return value;}
+export {installationId as notificationInstallationId};
 
 export async function configureNotificationChannels(vibration=true){if(Platform.OS!=='android')return;const Notifications=await getNotificationsModule();if(!Notifications)return;const channels:[NotificationCategory,string,ExpoNotifications.AndroidImportance][]=[['driver_offers','Ride offers',Notifications.AndroidImportance.MAX],['trip_updates','Trip updates',Notifications.AndroidImportance.HIGH],['scheduled_reminders','Scheduled rides',Notifications.AndroidImportance.HIGH],['wallet_updates','Wallet and payouts',Notifications.AndroidImportance.DEFAULT],['safety_security','Safety and security',Notifications.AndroidImportance.HIGH],['support','Support updates',Notifications.AndroidImportance.DEFAULT],['promotions','Promotions',Notifications.AndroidImportance.LOW]];await Promise.all(channels.map(([id,name,importance])=>Notifications.setNotificationChannelAsync(id,{name,importance,vibrationPattern:vibration&&importance>=Notifications.AndroidImportance.HIGH?[0,250,150,250]:undefined,enableVibrate:vibration,showBadge:true})))}
 
@@ -130,6 +131,7 @@ export function notificationFromNative(notification:ExpoNotifications.Notificati
 export function notificationDestination(notification: Pick<AppNotification, 'type' | 'category' | 'data'> & Partial<Pick<AppNotification, 'eventKey' | 'deepLink' | 'title'>>): Href {
   const audience = notificationAudience(notification);
   const tripId = typeof notification.data.tripId === 'string' ? notification.data.tripId : null;
+  if (notification.type === 'trip_message' && tripId) return { pathname: '/trip-chat', params: { tripId } };
   if (notification.type === 'ride_offer' || notification.type === 'offer_expired') return '/driver-dashboard';
   if (notification.type.startsWith('driver_application_')) return '/driver-status';
   if (notification.category === 'support') return { pathname: '/account/[section]', params: { section: 'support' } };

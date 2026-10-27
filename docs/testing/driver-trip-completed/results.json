@@ -1,0 +1,86 @@
+{
+  "kind": "Actual Expo UI and real Google Maps, isolated PostgreSQL and Redis",
+  "browser": "Chromium, separate rider and driver sessions",
+  "checks": [
+    {
+      "name": "actual cash completion opens driver summary with server earnings and commission",
+      "status": "passed",
+      "durationMs": 321
+    },
+    {
+      "name": "small phone scrolls details while the exit and submit buttons stay visible",
+      "status": "passed",
+      "durationMs": 126
+    },
+    {
+      "name": "rating failure keeps the summary and entered feedback available for retry",
+      "status": "passed",
+      "durationMs": 141
+    },
+    {
+      "name": "dark theme and desktop show the same readable earnings and fixed actions",
+      "status": "passed",
+      "durationMs": 904
+    },
+    {
+      "name": "missing settlement remains pending and fare preserves kobo precision",
+      "status": "passed",
+      "durationMs": 827
+    },
+    {
+      "name": "returned courier summary shows the original fare and exits without rating",
+      "status": "passed",
+      "durationMs": 780
+    },
+    {
+      "name": "rider completion keeps its existing rating and fare screen",
+      "status": "passed",
+      "durationMs": 13474
+    }
+  ],
+  "status": "passed",
+  "pageErrors": [],
+  "apiErrors": [
+    {
+      "session": "driver",
+      "path": "/api/geocode/reverse",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/trips/route",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/trips/329e8912-bed2-4cec-ab77-41e1e378a47f/rating",
+      "status": 503
+    },
+    {
+      "session": "driver",
+      "path": "/api/geocode/reverse",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/geocode/reverse",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/geocode/reverse",
+      "status": 500
+    },
+    {
+      "session": "rider",
+      "path": "/api/geocode/reverse",
+      "status": 500
+    },
+    {
+      "session": "rider",
+      "path": "/api/geocode/reverse",
+      "status": 500
+    }
+  ],
+  "dataIsolation": "Disposable database and Redis; fictional users. Cash completion and rating use real endpoints; synthetic completed/returned records restore through a test-only active-trip response for visual edge cases."
+}

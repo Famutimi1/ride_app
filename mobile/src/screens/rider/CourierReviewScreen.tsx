@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -92,8 +93,8 @@ export function CourierReviewScreen() {
           <RideIcon name="passenger" size={18} /><View style={styles.copy}><Text variant="button">{draft.recipientName}</Text><Text variant="caption" color="textMuted">{draft.recipientPhone}</Text></View><RideIcon name="chevron" size={16} color="textMuted" />
         </Pressable>
         <View style={[styles.codeNotice, { backgroundColor: colors.primarySoft }]}><RideIcon name="safety" size={21} color="primary" /><View style={styles.copy}><Text variant="button" color="primary">Delivery code</Text><Text variant="caption" color="textMuted" style={styles.note}>After booking, share the 6-digit code with your recipient.</Text></View></View>
-        {fareChange ? <Text accessibilityRole="alert" variant="caption" color="danger">Fare changed from {formatNaira(fareChange.previousFareKobo)} to {formatNaira(fareChange.newFareKobo)}. Review the new price before sending.</Text> : null}
-        {error || quoteError ? <Text accessibilityRole="alert" variant="caption" color="danger">{error ?? quoteError}</Text> : null}
+        {fareChange ? <AppMessage tone="warning" message={`Fare changed from ${formatNaira(fareChange.previousFareKobo)} to ${formatNaira(fareChange.newFareKobo)}. Review the new price before sending.`} /> : null}
+        {error || quoteError ? <AppMessage message={error ?? quoteError} /> : null}
         {quoteError ? <Button label="Retry fare estimate" size="sm" variant="outline" fullWidth onPress={retryQuote} /> : null}
       </ScrollView>
       <SafeAreaView edges={['bottom']} style={[styles.footer, { borderTopColor: colors.border }]}>

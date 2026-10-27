@@ -1,3 +1,6 @@
+import { feedback } from '@/store/feedbackStore';
+import { userErrorMessage } from '@/utils/userMessage';
+import { AppMessage } from '@/components/common/AppMessage';
 import { useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -41,8 +44,8 @@ function ProfileForm({ user }: { user?: AuthUser }) {
     try {
       const locked = profileIdentityNotice(useAuthStore.getState().driverApplication?.status === 'approved', useTripStore.getState().trip?.status);
       await useAuthStore.getState().updateProfile({ ...(!locked ? { name } : {}), email });
-      setNotice('Your details have been saved.');
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not save your profile. Please try again.'); }
+      feedback.success('Your profile has been updated.');
+    } catch (reason) { setError(userErrorMessage(reason, 'Could not save your profile. Please try again.')); }
     finally { saveInFlight.current = false; setSaving(false); }
   };
 
@@ -58,7 +61,7 @@ function ProfileForm({ user }: { user?: AuthUser }) {
     try {
       const changed = await useAuthStore.getState().setRole('driver');
       if (changed) router.replace('/driver-dashboard');
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not switch to driver mode. Please try again.'); }
+    } catch (reason) { setError(userErrorMessage(reason, 'Could not switch to driver mode. Please try again.')); }
     finally { switchInFlight.current = false; setSwitching(false); }
   };
 
@@ -108,8 +111,8 @@ export function ProfileView(props: ProfileViewProps) {
       {props.phoneChange}
       {props.identityNotice ? <View style={[styles.info, { backgroundColor: colors.primarySoft }]}><RideIcon name="safety" size={18} color="primary" /><Text variant="caption" style={styles.copy}>{props.identityNotice}</Text></View> : null}
       <Button label="Save changes" accessibilityLabel="Save changes" size="sm" fullWidth loading={props.saving} disabled={props.switching} onPress={props.onSave} className="mt-lg" />
-      {props.error ? <Text variant="caption" color="danger" accessibilityRole="alert" style={styles.feedback}>{props.error}</Text> : null}
-      {props.notice ? <Text variant="caption" color="success" accessibilityRole="alert" style={styles.feedback}>{props.notice}</Text> : null}
+      {props.error ? <AppMessage message={props.error} style={styles.feedback} /> : null}
+      {props.notice ? <AppMessage tone="success" message={props.notice} style={styles.feedback} /> : null}
       {props.application ? <Pressable accessibilityRole="button" accessibilityLabel={`${props.application.action}: Drive with Rakky Ride`} accessibilityState={{ busy: props.switching, disabled: props.switching || props.saving }} disabled={props.switching || props.saving} onPress={props.application.onPress}
         style={[styles.application, { borderColor: colors.border, backgroundColor: colors.surface }]}>
         <RideIcon name="vehicle" size={18} color="primary" />

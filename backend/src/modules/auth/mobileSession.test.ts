@@ -1,3 +1,4 @@
+import { mobileFeedbackDependency } from '../../shared/testing/mobileFeedback';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -151,6 +152,8 @@ function harness(overrides: Record<string, unknown> = {}) {
     '@/store/courierDraftStore': { useCourierDraftStore: { getState: () => ({ clearDraft: () => undefined }) } },
     '@/services/notificationService': { currentDeviceRegistrationId: async () => null, revokeCurrentDevice: async () => undefined },
     '@/store/notificationStore': { useNotificationStore: { getState: () => ({ reset: () => undefined, setContext: () => undefined }) } },
+    '@/store/chatStore': { useChatStore: { getState: () => ({ setContext: () => undefined }) } },
+    '@/store/callStore': { useCallStore: { getState: () => ({ call:null,controller:null }) } },
   };
   Object.assign(mocks, overrides);
   function load(path: string): Record<string, unknown> {
@@ -159,7 +162,7 @@ function harness(overrides: Record<string, unknown> = {}) {
     modules.set(path, exports);
     const source = readFileSync(resolve('../mobile/src', path), 'utf8');
     const code = compiler.transpileModule(source, { compilerOptions: { module: compiler.ModuleKind.CommonJS, target: compiler.ScriptTarget.ES2022 } }).outputText;
-    runInNewContext(code, { exports, require: (name: string) => {
+    runInNewContext(code, { exports, require: (name: string) => { const feedbackModule = mobileFeedbackDependency(name); if (feedbackModule) return feedbackModule;
       if (name === './secureTokenStore' || name === '@/lib/secureTokenStore') return load('lib/secureTokenStore.ts');
       if (name === '@/lib/apiClient') return load('lib/apiClient.ts');
       if (name === './socket') return mocks['@/services/socket'];
@@ -310,7 +313,7 @@ test('mobile refresh preserves sessions on outages and cannot restore credential
     await h.tokens.setTokens({ accessToken: 'access', refreshToken: 'refresh' });
     await h.auth().hydrate();
     h.save(async () => { throw new Error('offline'); });
-    await assert.rejects(h.auth().updateProfile({ name: 'Unsaved' }), /offline/);
+    await assert.rejects(h.auth().updateProfile({ name: 'Unsaved' }), /Please try again/);
     assert.equal((h.auth().session as { user: { name: string } }).user.name, 'Rider');
     let complete!: (result: unknown) => void;
     let started!: () => void;

@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-27",
+  "focusedTests": {
+    "passed": 160,
+    "failed": 0,
+    "skipped": 0,
+    "newRegressionTests": 9
+  },
+  "fullSuite": {
+    "passed": 389,
+    "failed": 3,
+    "skipped": 0,
+    "total": 392,
+    "remainingFailures": [
+      "notifications/email.test.ts: canonical palette hash differs from generated email tokens",
+      "notifications/mobileCareRoles.test.ts: stale theme mock lacks borderWidths.divider",
+      "notifications/mobileSettingsRoles.test.ts: stale theme mock lacks borderWidths.divider"
+    ]
+  },
+  "browser": {
+    "messagingAndAudioScenarios": 18,
+    "videoScenarios": 8,
+    "engine": "Chromium",
+    "separateAuthenticatedSessions": true,
+    "realWebRTCTransport": true,
+    "syntheticMicrophonesAndCameras": true,
+    "turnConfigured": false
+  },
+  "android": {
+    "build": "passed",
+    "emulator": "emulator-5554",
+    "assertionsPassed": 9,
+    "nativeCallingBuildFlag": true,
+    "cameraAndMicrophoneManifestPermissionsVerified": true,
+    "providerPushTested": false,
+    "nativeTwoPeerMediaTested": false
+  },
+  "staticAndBuild": {
+    "backendTypes": "passed",
+    "backendScriptTypes": "passed",
+    "mobileTypes": "passed",
+    "mobileLint": "passed",
+    "webExport": "passed",
+    "androidDebugBuild": "passed",
+    "gitDiffCheck": "passed"
+  },
+  "limits": [
+    "Physical Android/iPhone microphone, speaker, camera and Bluetooth behavior",
+    "iOS compilation: Xcode unavailable",
+    "Production TURN relay connectivity and carrier/Wi-Fi handover",
+    "FCM/APNs/PushKit delivery and real locked/background phone behavior",
+    "Firefox/Safari browser engine coverage",
+    "Production load, bandwidth and battery measurements"
+  ],
+  "runtimeRecheck": "A migration concurrency check timed out during the first loaded run, passed alone, and passed in the final full suite."
+}

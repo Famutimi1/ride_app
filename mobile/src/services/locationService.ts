@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Linking, Platform } from 'react-native';
 import { getSocket, SOCKET_EVENTS } from './socket';
 import { useMapStore, type MapCoordinate } from '@/store/mapStore';
+import { useCallStore } from '@/store/callStore';
 
 export const DRIVER_LOCATION_TASK = 'driver-background-location';
 const DRIVER_CONTEXT_KEY = 'driver-location-context';
@@ -83,6 +84,7 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(DRIVER_LOCATION
     longitude: latest.coords.longitude,
     heading: latest.coords.heading ?? undefined,
     timestamp: latest.timestamp,
+    sampleTimestamp: latest.timestamp, accuracy: latest.coords.accuracy, speed: latest.coords.speed,
   });
 });
 
@@ -233,6 +235,7 @@ export async function startDriverLocationUpdates(driverId: string, tripId?: stri
   const generation = trackingGeneration;
   const assertCurrent = () => { if (generation !== trackingGeneration) throw new Error('Driver tracking session ended.'); };
   const initialPosition = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+  let previousVideoPosition = initialPosition;
   assertCurrent();
   updateLocalDriverPosition(initialPosition.coords.latitude, initialPosition.coords.longitude);
   let latestLocation: Record<string, unknown> = {
@@ -242,14 +245,26 @@ export async function startDriverLocationUpdates(driverId: string, tripId?: stri
     longitude: initialPosition.coords.longitude,
     heading: initialPosition.coords.heading ?? undefined,
     timestamp: initialPosition.timestamp,
+    sampleTimestamp: initialPosition.timestamp, accuracy: initialPosition.coords.accuracy, speed: initialPosition.coords.speed,
   };
   await confirmInitialDriverLocation(latestLocation);
   assertCurrent();
 
   const watcher = await Location.watchPositionAsync(
-    { accuracy: Location.Accuracy.High, timeInterval: 4_000, distanceInterval: 10 },
+    { accuracy: Location.Accuracy.High, timeInterval: 4_000, distanceInterval: 0 },
     (position) => {
       if (generation !== trackingGeneration) return;
+      if (useCallStore.getState().call?.media === 'video') {
+        const seconds = (position.timestamp - previousVideoPosition.timestamp) / 1000;
+        const latitudeRadians = Math.PI / 180;
+        const north = (position.coords.latitude - previousVideoPosition.coords.latitude) * 111_195;
+        const east = (position.coords.longitude - previousVideoPosition.coords.longitude) * 111_195 * Math.cos(position.coords.latitude * latitudeRadians);
+        const derivedSpeed = seconds > 0 ? Math.hypot(north, east) / seconds : north === 0 && east === 0 ? 0 : Infinity;
+        if (position.coords.accuracy == null || !Number.isFinite(position.coords.accuracy) || position.coords.accuracy < 0 || position.coords.accuracy > 20
+          || Date.now() - position.timestamp > 10_000 || (position.coords.speed ?? 0) > 0.5 || derivedSpeed > 0.5)
+          void useCallStore.getState().controller?.audioOnly();
+      }
+      previousVideoPosition = position;
       updateLocalDriverPosition(position.coords.latitude, position.coords.longitude);
       latestLocation = {
         driverId, tripId,
@@ -257,6 +272,7 @@ export async function startDriverLocationUpdates(driverId: string, tripId?: stri
         longitude: position.coords.longitude,
         heading: position.coords.heading ?? undefined,
         timestamp: position.timestamp,
+        sampleTimestamp: position.timestamp, accuracy: position.coords.accuracy, speed: position.coords.speed,
       };
       emitDriverLocation(latestLocation, onError);
     },

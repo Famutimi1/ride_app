@@ -1,3 +1,5 @@
+import { feedback } from '@/store/feedbackStore';
+import { userErrorMessage } from '@/utils/userMessage';
 import { Redirect, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { TextInput } from 'react-native';
@@ -45,7 +47,7 @@ export function OtpScreen() {
       } as const;
       router.replace(destinationPath[destination]);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Verification failed. Try again.');
+      setError(userErrorMessage(reason, 'Verification failed. Try again.'));
       setCode('');
       requestAnimationFrame(() => inputRef.current?.focus());
     } finally {
@@ -69,9 +71,10 @@ export function OtpScreen() {
     try {
       await requestOtp(phone);
       setSeconds(RESEND_SECONDS);
+      feedback.success('A new verification code has been sent.');
       requestAnimationFrame(() => inputRef.current?.focus());
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not resend your code. Try again.');
+      setError(userErrorMessage(reason, 'Could not resend your code. Try again.'));
     } finally {
       inFlight.current = false;
       setResending(false);

@@ -17,6 +17,7 @@ type LatLng = { lat: number; lng: number };
 type MapInstance = {
   setCenter: (point: LatLng) => void;
   setZoom: (zoom: number) => void;
+  panBy: (x: number, y: number) => void;
   fitBounds: (bounds: BoundsInstance, padding?: number | { top: number; right: number; bottom: number; left: number }) => void;
   addListener: (name: string, callback: () => void) => { remove: () => void };
   getCenter: () => { lat: () => number; lng: () => number } | undefined;
@@ -83,9 +84,19 @@ export const AppMap = forwardRef<AppMapHandle, AppMapProps>(function AppMap({
   const [failed, setFailed] = useState(false);
   const callbacks = useRef({ onRegionChangeComplete, onUserRegionChangeComplete });
   callbacks.current = { onRegionChangeComplete, onUserRegionChangeComplete };
+  const cameraPadding = useRef(mapPadding);
+  cameraPadding.current = mapPadding;
 
   useImperativeHandle(ref, () => ({
-    animateToRegion: (next) => { map.current?.setCenter(point(next)); map.current?.setZoom(zoomForRegion(next)); },
+    animateToRegion: (next) => {
+      if (!map.current) return;
+      map.current.setCenter(point(next));
+      map.current.setZoom(zoomForRegion(next));
+      if (!callbacks.current.onRegionChangeComplete) {
+        const padding = cameraPadding.current;
+        map.current.panBy((padding.right - padding.left) / 2, (padding.bottom - padding.top) / 2);
+      }
+    },
     fitToCoordinates: (coordinates) => {
       if (!map.current || !google.current || !coordinates.length) return;
       const bounds = new google.current.LatLngBounds();
@@ -123,14 +134,20 @@ export const AppMap = forwardRef<AppMapHandle, AppMapProps>(function AppMap({
   useEffect(() => {
     if (!ready || !map.current) return;
     if (fitRouteOnChange && (polyline.length > 1 || secondaryPolyline.length > 1)) return;
+    if (!onRegionChangeComplete) {
+      // Match native mapPadding: follow the driver in the visible area above overlays.
+      map.current.setCenter(point(region));
+      map.current.setZoom(zoomForRegion(region));
+      map.current.panBy((mapPadding.right - mapPadding.left) / 2, (mapPadding.bottom - mapPadding.top) / 2);
+      return;
+    }
+    // Interactive maps report their own viewport bounds. Deriving zoom back from those
+    // bounds changes it by a step on narrow screens and creates an idle/update loop.
     const center = map.current.getCenter();
     if (!center || Math.abs(center.lat() - region.latitude) > 0.000001 || Math.abs(center.lng() - region.longitude) > 0.000001) {
       map.current.setCenter(point(region));
     }
-    // Interactive maps report their own viewport bounds. Deriving zoom back from those
-    // bounds changes it by a step on narrow screens and creates an idle/update loop.
-    if (!onRegionChangeComplete && map.current.getZoom() !== zoomForRegion(region)) map.current.setZoom(zoomForRegion(region));
-  }, [ready, region, onRegionChangeComplete, fitRouteOnChange, polyline, secondaryPolyline]);
+  }, [ready, region, onRegionChangeComplete, fitRouteOnChange, polyline, secondaryPolyline, mapPadding.top, mapPadding.right, mapPadding.bottom, mapPadding.left]);
   useEffect(() => {
     if (!ready || !map.current || !google.current) return;
     const maps = google.current;

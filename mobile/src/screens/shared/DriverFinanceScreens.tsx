@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -46,7 +47,7 @@ function ActivityPages({ page }: { page: ActivityPage }) {
   };
   return <View style={styles.smallStack}>
     {!entries.length ? <Text variant="caption" color="textMuted">No transactions yet.</Text> : entries.slice(0, count).map(entry => <DriverActivityRow key={entry.id} entry={entry} />)}
-    {error ? <Text variant="caption" color="danger" accessibilityRole="alert">{error}</Text> : null}
+    {error ? <AppMessage message={error} /> : null}
     {count < entries.length || cursor ? <Button label={error ? 'Retry loading' : 'View more'} accessibilityLabel="View more earnings activity" size="sm" variant="outline" fullWidth loading={loading} rightIcon={<RideIcon name="down" size={16} color="primary" />} onPress={() => void expand()} /> : null}
   </View>;
 }

@@ -7,6 +7,7 @@ import { observeWorker, queueHealth } from '../../shared/utils/queueHealth';
 import {notificationCategoryEnabled,type DeliveryPreferences} from './notificationPolicy';
 export {notificationCategoryEnabled,type DeliveryPreferences} from './notificationPolicy';
 import {processBrowserNotification} from './webPush.service';
+import {chatPushEligible} from '../communication/communication.policy';
 
 let connection:IORedis|null=null;
 let queue:Queue|null=null;
@@ -48,6 +49,9 @@ async function processNotification(id:string){
     COALESCE((SELECT sound_enabled FROM notification_preferences WHERE user_id=n.user_id),true) sound_enabled,
     COALESCE((SELECT vibration_enabled FROM notification_preferences WHERE user_id=n.user_id),true) vibration_enabled`,[id]);
   const row=locked.rows[0];if(!row)return;
+  if(row.type==='trip_message'&&!await chatPushEligible(db,row.user_id,row.data)){
+    await db.query("UPDATE notifications SET delivery_status='skipped',last_delivery_error='chat_already_received_or_closed',updated_at=now() WHERE id=$1",[id]);return;
+  }
   if(row.type==='ride_offer'){
     const current=typeof row.data.tripId==='string'&&/^[0-9a-f-]{36}$/i.test(row.data.tripId)&&await isServiceOfferCurrent(row.user_id,row.data.tripId);
     if(!current){await db.query("UPDATE notifications SET delivery_status='skipped',last_delivery_error='offer_no_longer_eligible',updated_at=now() WHERE id=$1",[id]);return;}
@@ -55,7 +59,7 @@ async function processNotification(id:string){
   if((row.expires_at&&row.expires_at.getTime()<=Date.now())||!notificationCategoryEnabled(row)){
     await db.query("UPDATE notifications SET delivery_status='skipped',last_delivery_error=$2,updated_at=now() WHERE id=$1",[id,row.expires_at&&row.expires_at.getTime()<=Date.now()?'notification_expired':'disabled_by_preferences']);return;
   }
-  const devices=await db.query<{expo_push_token:string}>(`SELECT d.expo_push_token FROM push_devices d JOIN notifications n ON n.user_id=d.user_id WHERE n.id=$1 AND d.enabled=true AND d.revoked_at IS NULL`,[id]);
+  const devices=await db.query<{expo_push_token:string}>(`SELECT d.expo_push_token FROM push_devices d JOIN notifications n ON n.user_id=d.user_id WHERE n.id=$1 AND d.enabled=true AND d.revoked_at IS NULL AND d.expo_push_token IS NOT NULL`,[id]);
   if(!devices.rowCount){await db.query("UPDATE notifications SET delivery_status='skipped',last_delivery_error='no_registered_devices',updated_at=now() WHERE id=$1",[id]);return;}
   const ttl=row.expires_at?Math.max(0,Math.floor((row.expires_at.getTime()-Date.now())/1000)):undefined;
   const messages=devices.rows.map(device=>buildExpoPushMessage(row,device.expo_push_token,id,ttl));

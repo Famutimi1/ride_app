@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -69,7 +70,7 @@ function ServiceSummary(props: DriverServicesViewProps) {
         </View>;
       })}
     </View>
-    {notice && !props.expanded ? <Text variant="caption" color="success" accessibilityLiveRegion="polite" style={styles.gap}>{notice}</Text> : null}
+    {notice && !props.expanded ? <AppMessage tone="success" message={notice} style={styles.gap} /> : null}
     {error && !props.expanded ? <ErrorStatus {...props} /> : null}
   </>;
 }
@@ -85,7 +86,7 @@ function ManagementContent(props: DriverServicesViewProps & { registerWithdrawRe
     <Text variant="caption" color="textMuted" style={styles.subtitle}>Choose which new requests you receive.</Text>
     {settings ? <View style={styles.cards}><DriverVehicleSummary settings={settings} />{driverVehicleServices(settings.vehicleCategory).map(service => <ManagementCard key={service} service={service} {...props} />)}</View> : <LoadStatus {...props} />}
     <View style={styles.info}><RideIcon name="safety" size={16} color="textMuted" /><Text variant="caption" color="textMuted" style={styles.copy}>Changes affect new requests. Complete accepted jobs.</Text></View>
-    {saving ? <View accessibilityLiveRegion="polite" style={styles.info}><ActivityIndicator size="small" color={colors.primary} /><Text variant="caption" color="textMuted">Saving changes…</Text></View> : notice ? <Text variant="caption" color="success" accessibilityLiveRegion="polite" style={styles.gap}>{notice}</Text> : !error && settings ? <Text variant="caption" color="textMuted" style={styles.gap}>Request preferences save automatically.</Text> : null}
+    {saving ? <View accessibilityLiveRegion="polite" style={styles.info}><ActivityIndicator size="small" color={colors.primary} /><Text variant="caption" color="textMuted">Saving changes…</Text></View> : notice ? <AppMessage tone="success" message={notice} style={styles.gap} /> : !error && settings ? <Text variant="caption" color="textMuted" style={styles.gap}>Request preferences save automatically.</Text> : null}
     {error && settings ? <ErrorStatus {...props} /> : null}
     <Button label={applicationLabel} size="sm" fullWidth className="mt-lg" disabled={busy || !settings} leftIcon={<RideIcon name={canApplyCourier ? 'package' : 'receipt'} size={16} color="textInverse" />} onPress={() => onApplications(canApplyCourier ? 'courier' : undefined)} />
     <Button label="Refresh status" accessibilityLabel="Refresh service status" size="sm" variant="outline" fullWidth className="mt-sm" loading={refreshing} disabled={saving} leftIcon={<RideIcon name="refresh" size={16} color="primary" />} onPress={props.onReload} />
@@ -117,7 +118,7 @@ function ConsentConfirmation({ service, busy, error, onKeep, onConfirm }: { serv
       <Text variant="bodyMedium" accessibilityRole="header" style={styles.center}>Withdraw {service === 'ride' ? 'passenger' : 'courier'} consent?</Text>
       <Text variant="caption" color="textMuted" style={[styles.center, styles.gap]}>{service === 'ride' ? 'Passenger' : 'Courier'} requests will stop. To return, select this service and accept consent in Applications.</Text>
       <View style={styles.info}><RideIcon name="safety" size={16} color="textMuted" /><Text variant="caption" color="textMuted" style={styles.copy}>Accepted jobs must still be completed.</Text></View>
-      {error ? <Text variant="caption" color="danger" accessibilityRole="alert" style={styles.gap}>{error}</Text> : null}
+      {error ? <AppMessage message={error} style={styles.gap} /> : null}
       <Pressable ref={keepRef} accessibilityRole="button" accessibilityLabel="Keep consent" disabled={busy} accessibilityState={{ disabled: busy }} onPress={onKeep} style={[styles.confirmButton, { backgroundColor: colors.primary, opacity: busy ? 0.5 : 1 }]}><Text variant="button" color="textInverse">Keep consent</Text></Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel="Withdraw consent" disabled={busy} accessibilityState={{ disabled: busy, busy }} onPress={onConfirm} style={[styles.withdrawButton, { borderColor: colors.danger, opacity: busy ? 0.5 : 1 }]}>{busy ? <ActivityIndicator color={colors.danger} size="small" /> : null}<Text variant="button" color="danger">{busy ? 'Withdrawing…' : 'Withdraw consent'}</Text></Pressable>
     </ScrollView>
@@ -129,7 +130,7 @@ function LoadStatus(props: DriverServicesViewProps) {
   return props.error ? <ErrorStatus {...props} /> : <View style={styles.info}><ActivityIndicator size="small" color={colors.primary} /><Text variant="caption" color="textMuted">Loading services…</Text></View>;
 }
 function ErrorStatus({ error, saving, refreshing, onReload }: DriverServicesViewProps) {
-  return <View style={styles.gap}><Text variant="caption" color="danger" accessibilityRole="alert">{error}</Text><Button label="Reload services" variant="ghost" size="sm" disabled={saving || refreshing} onPress={onReload} /></View>;
+  return <View style={styles.gap}><AppMessage message={error} /><Button label="Reload services" variant="ghost" size="sm" disabled={saving || refreshing} onPress={onReload} /></View>;
 }
 function ServiceIcon({ service, available }: { service: DriverService; available: boolean }) {
   const { colors } = useTheme();

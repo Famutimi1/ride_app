@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import * as DocumentPicker from 'expo-document-picker';
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
@@ -148,7 +149,7 @@ export function DriverApplicationView({
           </ScrollView>
 
           <View style={[styles.footer, { backgroundColor: colors.background }]}>
-            {error ? <Text variant="caption" color="danger" accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
+            {error ? <AppMessage message={error} style={styles.error} /> : null}
             <Button label={step === 4 ? 'Submit application' : 'Continue'} fullWidth size="lg" className="!rounded-full" loading={loading} disabled={continueDisabled} rightIcon={<Text variant="button" color="textInverse">→</Text>} onPress={onContinue} />
           </View>
         </View>

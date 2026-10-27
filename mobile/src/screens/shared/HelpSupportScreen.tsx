@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useCallback, useEffect, useRef, useState, type ComponentProps } from 'react';
 import { ActivityIndicator, AppState, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -129,10 +130,10 @@ export function HelpSupportView({ content: suppliedContent, safety = false, onNa
           {phone ? <Text selectable variant="caption">{phone}</Text> : null}
           {email ? <Text selectable variant="caption">{email}</Text> : null}
         </View> : loading ? <View style={styles.loading}><ActivityIndicator color={colors.primary} size="small" /><Text variant="caption" color="textMuted">Loading contact details…</Text></View> : <Text variant="caption" color="textMuted" style={styles.contactCopy}>Contact details unavailable.</Text>}
-        {error ? <Text variant="caption" color="danger" accessibilityRole="alert" style={styles.smallGap}>{error}</Text> : null}
+        {error ? <AppMessage message={error} style={styles.smallGap} /> : null}
         {phone ? <Button label="Call support" size="sm" fullWidth className="mt-md" disabled={loading || opening !== null} loading={opening === 'phone'} leftIcon={<RideIcon name="phone" size={16} color="textInverse" />} onPress={() => onContact('phone')} /> : null}
         {email ? <Button label="Email support" size="sm" variant="outline" fullWidth className="mt-sm" disabled={loading || opening !== null} loading={opening === 'email'} leftIcon={<RideIcon name="mail" size={16} color="primary" />} onPress={() => onContact('email')} /> : null}
-        {openError ? <Text variant="caption" color="danger" accessibilityRole="alert" style={styles.smallGap}>{openError}</Text> : null}
+        {openError ? <AppMessage message={openError} style={styles.smallGap} /> : null}
         <Button label={error ? 'Retry contact details' : 'Refresh contact details'} size="sm" variant="outline" fullWidth className="mt-md" loading={loading} disabled={opening !== null} leftIcon={<RideIcon name="refresh" size={16} color="primary" />} onPress={onRefresh} />
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel="Need urgent help? Open Safety Center" onPress={onSafety} style={[styles.urgent, { borderColor: colors.danger, backgroundColor: colors.dangerSoft }]}><View style={[styles.icon, { backgroundColor: colors.surface }]}><RideIcon name="safety" size={18} color="danger" /></View><View style={styles.copy}><Text variant="button">Need urgent help?</Text><Text variant="caption" color="textMuted" style={styles.smallGap}>Open Safety Center</Text></View><RideIcon name="chevron" size={16} color="danger" /></Pressable>

@@ -38,16 +38,17 @@ export async function serverReady() {
   const { tripWorkersReady,tripQueuesAccepting } = await import('../trips/tripQueue.js');
   const { paymentWorkersReady,paymentQueueAccepting } = await import('../payments/paymentQueue.js');
   const { notificationWorkersReady,notificationQueueAccepting } = await import('../notifications/notificationQueue.js');
+  const { communicationWorkersReady,communicationQueueAccepting } = await import('../communication/communicationQueue.js');
   const { ensureRedis } = await import('../../shared/config/redis.js');
-  if (!tripWorkersReady() || !paymentWorkersReady() || !notificationWorkersReady()) return false;
+  if (!tripWorkersReady() || !paymentWorkersReady() || !notificationWorkersReady() || !communicationWorkersReady()) return false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const databaseProbe = { text: 'SELECT 1', query_timeout: 2000 };
   try {
     const checks=await Promise.race([
-      Promise.all([db.query(databaseProbe), ensureRedis().then(client => client.ping()),tripQueuesAccepting(),paymentQueueAccepting(),notificationQueueAccepting()]),
+      Promise.all([db.query(databaseProbe), ensureRedis().then(client => client.ping()),tripQueuesAccepting(),paymentQueueAccepting(),notificationQueueAccepting(),communicationQueueAccepting()]),
       new Promise<never>((_done, reject) => { timer = setTimeout(() => reject(new Error('readiness_timeout')), 2500); }),
     ]);
-    return acceptingTraffic && tripWorkersReady() && paymentWorkersReady() && notificationWorkersReady() && checks[2] && checks[3] && checks[4];
+    return acceptingTraffic && tripWorkersReady() && paymentWorkersReady() && notificationWorkersReady() && communicationWorkersReady() && checks[2] && checks[3] && checks[4] && checks[5];
   } catch { return false; }
   finally { if (timer) clearTimeout(timer); }
 }
@@ -248,16 +249,24 @@ export async function getAdminHealth() {
   const {getPaymentQueueHealth}=await import('../payments/paymentQueue.js');
   const {getNotificationQueueHealth,getNotificationDeliveryHealth}=await import('../notifications/notificationQueue.js');
   const {emailQueueHealth}=await import('../notifications/emailQueue.js');
+  const {getCommunicationQueueHealth}=await import('../communication/communicationQueue.js');
   const queues = await Promise.all([getTripQueueHealth(),getPaymentQueueHealth(),getNotificationQueueHealth()]);
   const notificationDelivery=await getNotificationDeliveryHealth();
   const emailDelivery=await emailQueueHealth();
+  const communicationQueue=await getCommunicationQueueHealth();
+  let communicationDelivery={name:'Trip communication outbox',state:'unknown',observedAt:new Date().toISOString(),latencyMs:null,details:'Outbox observation unavailable'};
+  try {
+    const {communicationDeliveryHealth}=await import('../communication/communication.outbox.js');
+    const delivery=await communicationDeliveryHealth();
+    communicationDelivery={...communicationDelivery,state:delivery.oldestSeconds>30?'degraded':'reachable',details:`${delivery.pending} due events · oldest ${Math.round(delivery.oldestSeconds)} seconds`};
+  } catch { /* Preserve the rest of the dashboard when delivery storage is unavailable. */ }
   let provider: {name:string;state:string;latencyMs:null;observedAt:string|null;details:string} = {name:'Paystack',state:'unknown',latencyMs:null,observedAt:null,details:'No recent provider request observed'};
   try {
     const redis = await ensureRedis();
     const value = await redis.get('rakky:health:paystack');
     if(value) {const observation=JSON.parse(value) as {state:string;observedAt:string};provider={...provider,...observation,details:'Last actual provider request; observation retained for 24 hours'};}
   } catch { /* Redis dependency check reports the failure. */ }
-  return {checks:[...checks,...queues[0],queues[1],...queues[2],notificationDelivery,emailDelivery,provider],asOf:new Date().toISOString(),coverage:'Live dependency checks, worker heartbeats, and 24-hour notification delivery observations. Queue counts include retained historical failures; successful/failed job observations expire after 24 hours. A heartbeat does not guarantee every job succeeded. Paystack reflects the last actual provider request.'};
+  return {checks:[...checks,...queues[0],queues[1],...queues[2],notificationDelivery,emailDelivery,communicationQueue,communicationDelivery,provider],asOf:new Date().toISOString(),coverage:'Live dependency checks, worker heartbeats, and 24-hour notification delivery observations. Queue counts include retained historical failures; successful/failed job observations expire after 24 hours. A heartbeat does not guarantee every job succeeded. Paystack reflects the last actual provider request.'};
 }
 
 export async function getAdminTeam(query: AdminQuery) {

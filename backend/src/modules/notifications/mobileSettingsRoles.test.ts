@@ -1,3 +1,4 @@
+import { mobileFeedbackDependency } from '../../shared/testing/mobileFeedback';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -34,7 +35,7 @@ function load<T>(path: string, overrides: Record<string, unknown> = {}): T {
   const exports: Record<string, unknown> = {};
   const code = compiler.transpileModule(readFileSync(resolve('../mobile/src', path), 'utf8'), { compilerOptions: { module: compiler.ModuleKind.CommonJS, target: compiler.ScriptTarget.ES2022, jsx: compiler.JsxEmit.ReactJSX } }).outputText;
   const mocks = { ...modules, ...overrides };
-  runInNewContext(code, { exports, require: (name: string) => { if (name in mocks) return mocks[name]; throw new Error(`Unexpected import ${name}`); } });
+  runInNewContext(code, { exports, require: (name: string) => { const feedbackModule = mobileFeedbackDependency(name); if (feedbackModule) return feedbackModule; if (name in mocks) return mocks[name]; throw new Error(`Unexpected import ${name}`); } });
   return exports as T;
 }
 interface Content { title: string; entries: { destination: string; label: string }[] }
@@ -61,7 +62,7 @@ modules['react-native-safe-area-context'] = { SafeAreaView: 'SafeAreaView' };
 modules['@/components/common'] = { Text: 'Text', Button: 'Button' }; modules['@/components/common/RideIcon'] = { RideIcon: 'Icon' };
 modules['@/components/common/ThemePreferencePicker'] = { ThemePreferencePicker: 'Appearance' }; modules['@/components/map/AddressIcon'] = { AddressIcon: 'Icon' };
 modules['@/components/common/DriverServiceSettings'] = { DriverServicePreferences: 'DriverServicePreferences' };
-modules['@/constants/theme'] = { spacing: {}, radius: {}, useTheme: () => ({ colors: new Proxy({}, { get: (_target, key) => key }) }) };
+modules['@/constants/theme'] = { spacing: {}, radius: {}, borderWidths: { divider: 1 }, useTheme: () => ({ colors: new Proxy({}, { get: (_target, key) => key }) }) };
 modules['@/store/authStore'] = { useAuthStore: authHook };
 modules['@/store/notificationStore'] = { useNotificationStore: (selector: (state: typeof notification) => unknown) => selector(notification) };
 modules['@/services/notificationService'] = {
@@ -134,6 +135,7 @@ test('logout submits once and leaves the signed-in area after local cleanup even
   session(); const wait = deferred<void>(); logoutJob = () => wait.promise;
   const c = controller(screens.SettingsScreen), props = c.render().props;
   invoke(props, 'onLogout'); invoke(props, 'onLogout'); invoke(props, 'onNavigate', 'history');
+  await flush(); // The explicit confirmation resolves before revocation starts.
   assert.equal(calls.filter(call => call[0] === 'logout').length, 1); assert.equal(calls.filter(call => call[0] === 'push').length, 0);
   auth.session = null; wait.reject(new Error('revocation offline')); await flush();
   assert.ok(calls.some(call => call[0] === 'replace' && call[1] === '/welcome')); c.owner.destroy();

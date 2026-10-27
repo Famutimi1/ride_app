@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View, type ListRenderItem } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -101,7 +102,7 @@ export function RiderPaymentView({ balanceKobo, balanceLoading, balanceError, en
             {balanceLoading ? <View style={styles.inline}><ActivityIndicator color={colors.primary} size="small" /><Text variant="caption" color="textMuted">Loading balance…</Text></View>
               : balanceError ? <Text variant="bodyMedium">Balance unavailable</Text> : <Text variant="h3" selectable>{formatNaira(balanceKobo)}</Text>}
           </View>
-          {!balanceLoading && balanceError ? <View style={styles.balanceError}><Text variant="caption" color="danger" accessibilityRole="alert">Could not load your wallet balance.</Text><Button label="Retry balance" variant="outline" size="sm" onPress={onBalanceRetry} /></View> : null}
+          {!balanceLoading && balanceError ? <View style={styles.balanceError}><AppMessage message="Could not load your wallet balance." actionLabel="Retry balance" onAction={onBalanceRetry} /></View> : null}
           <Button label="Top up" size="sm" fullWidth leftIcon={<RideIcon name="plus" size={18} color="textInverse" />} onPress={onTopUp} />
         </View>
         <View style={styles.paystack}><RideIcon name="external" size={16} color="icon" /><Text variant="caption" color="textMuted">Top up with Paystack</Text></View>
@@ -109,11 +110,11 @@ export function RiderPaymentView({ balanceKobo, balanceLoading, balanceError, en
       </>}
       ListEmptyComponent={<View style={[styles.empty, { backgroundColor: error ? colors.dangerSoft : colors.surfaceMuted }]}>
         {loading ? <><ActivityIndicator color={colors.primary} /><Text variant="caption" color="textMuted">Loading activity…</Text></>
-          : error ? <><Text variant="caption" color="danger" accessibilityRole="alert">Could not load your wallet activity.</Text><Button label="Retry activity" size="sm" onPress={onRetry} /></>
+          : error ? <><AppMessage message="Could not load your wallet activity." actionLabel="Retry activity" onAction={onRetry} /></>
             : <><RideIcon name="wallet" size={20} color="icon" /><Text variant="bodyMedium">No transactions yet</Text><Text variant="caption" color="textMuted" style={styles.centered}>Your wallet activity will appear here.</Text></>}
       </View>}
       ListFooterComponent={<View style={styles.footer}>
-        {!loading && !error && (hiddenEntries || hasMore) ? <View style={styles.more}>{moreError ? <Text variant="caption" color="danger" accessibilityRole="alert">Could not load older activity. Please try again.</Text> : null}<Button label={moreError ? 'Retry loading' : 'View more'} accessibilityHint="Show more wallet transactions" size="sm" variant="outline" fullWidth loading={loadingMore} rightIcon={<RideIcon name="down" size={16} color="primary" />} onPress={expandActivity} /></View> : null}
+        {!loading && !error && (hiddenEntries || hasMore) ? <View style={styles.more}>{moreError ? <AppMessage message="Could not load older activity. Please try again." /> : null}<Button label={moreError ? 'Retry loading' : 'View more'} accessibilityHint="Show more wallet transactions" size="sm" variant="outline" fullWidth loading={loadingMore} rightIcon={<RideIcon name="down" size={16} color="primary" />} onPress={expandActivity} /></View> : null}
         <Pressable accessibilityRole="button" accessibilityLabel="Payment help" onPress={onHelp} style={[styles.help, { borderTopColor: colors.border }]}><View style={[styles.activityIcon, { backgroundColor: colors.surfaceMuted }]}><RideIcon name="support" size={18} /></View><Text variant="button" style={styles.helpCopy}>Payment help</Text><RideIcon name="chevron" size={16} color="icon" /></Pressable>
       </View>}
     />

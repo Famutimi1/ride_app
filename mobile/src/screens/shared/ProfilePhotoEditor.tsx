@@ -1,3 +1,6 @@
+import { feedback } from '@/store/feedbackStore';
+import { userErrorMessage } from '@/utils/userMessage';
+import { AppMessage } from '@/components/common/AppMessage';
 import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
@@ -43,9 +46,10 @@ export function ProfilePhotoEditor({ locked }: {
         try {
             await useAuthStore.getState().updateAvatar(selected);
             setSelected(null);
+            feedback.success('Your profile photo has been updated.');
         }
         catch (reason) {
-            setError(reason instanceof Error ? reason.message : 'Could not update your photo.');
+            setError(userErrorMessage(reason, 'Could not update your photo.'));
         }
         finally {
             inFlight.current = false;
@@ -67,7 +71,7 @@ export function ProfilePhotoEditor({ locked }: {
     {selected ? <View style={styles.actions}>
       <Button label="Save photo" size="sm" loading={busy} onPress={() => void save()}/><Pressable accessibilityRole="button" disabled={busy} onPress={() => setSelected(null)} style={styles.link}><Text variant="caption" color="textMuted">Cancel</Text></Pressable>
     </View> : null}
-    {error ? <Text variant="caption" color="danger" accessibilityRole="alert">{error}</Text> : null}
+    {error ? <AppMessage message={error} /> : null}
     </>}
   </View>;
 }

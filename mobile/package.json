@@ -32,12 +32,15 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
+    "react-native-callkeep": "4.6.1",
     "react-native-gesture-handler": "~2.32.0",
+    "react-native-incall-manager": "4.3.0",
     "react-native-maps": "^1.27.2",
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-web": "~0.21.0",
+    "react-native-webrtc": "155.0.1",
     "react-native-worklets": "0.10.1",
     "socket.io-client": "^4.8.3",
     "zustand": "^5.0.15"
@@ -57,7 +60,18 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:feedback": "node --experimental-strip-types --test scripts/test-feedback.ts",
+    "test:native-calls-ui": "node --experimental-strip-types scripts/test-native-call-ui.ts"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "autolinking": {
+      "android": {
+        "buildFromSource": [
+          "expo-notifications"
+        ]
+      }
+    }
+  }
 }

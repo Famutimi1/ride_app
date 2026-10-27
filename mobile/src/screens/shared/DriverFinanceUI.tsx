@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useState, type ComponentProps, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -32,7 +33,7 @@ export function FinanceCard({ children, mint = false }: { children: ReactNode; m
 export function FinanceFeedback({ loading, error, onRetry, label }: { loading?: boolean; error?: string | null; onRetry?: () => void; label: string }) {
   const { colors } = useTheme();
   if (loading) return <View style={financeStyles.feedback}><ActivityIndicator color={colors.primary} size="small" /><Text variant="caption" color="textMuted">Loading {label}…</Text></View>;
-  if (error) return <View style={financeStyles.feedback}><Text variant="caption" color="danger" accessibilityRole="alert" style={financeStyles.copy}>{error}</Text>{onRetry ? <FinanceButton label={`Retry ${label}`} size="sm" variant="outline" onPress={onRetry} /> : null}</View>;
+  if (error) return <AppMessage message={error} actionLabel={`Retry ${label}`} onAction={onRetry} />;
   return null;
 }
 export function MoneySummary({ label, amount, loading, error, onRetry, children, detail, icon = 'wallet', horizontal = false }: { label: string; amount: number; loading: boolean; error: string | null; onRetry: () => void; children?: ReactNode; detail?: string; icon?: Icon; horizontal?: boolean }) {

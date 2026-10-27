@@ -1,3 +1,4 @@
+import { mobileFeedbackDependency } from '../../shared/testing/mobileFeedback';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -13,7 +14,7 @@ const jsx = (type: Element['type'], props: Props): Element => ({ type, props });
 function load<T>(path: string, mocks: Props = {}): T {
   const exports: Props = {};
   const code = ts.transpileModule(readFileSync(resolve('../mobile/src', path), 'utf8'), { fileName: path, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  runInNewContext(code, { exports, require: (name: string) => {
+  runInNewContext(code, { exports, require: (name: string) => { const feedbackModule = mobileFeedbackDependency(name); if (feedbackModule) return feedbackModule;
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx };
     if (name in mocks) return mocks[name];
     throw new Error(`Unexpected dependency ${name}`);

@@ -1,5 +1,6 @@
 import axios, { AxiosError, create, isAxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from '@/services/api';
+import { userErrorMessage } from '@/utils/userMessage';
 import { tokenStore } from './secureTokenStore';
 
 export const apiClient = create({
@@ -21,7 +22,7 @@ let refreshPromise: Promise<void> | null = null;
 const expiredListeners = new Set<() => void>();
 
 export class SessionExpiredError extends Error {
-  constructor() { super('Your session has expired. Please sign in again.'); }
+  constructor() { super('Your session has expired. Please sign in again.'); this.name = 'SessionExpiredError'; }
 }
 
 export function isSessionRejected(error: unknown) {
@@ -86,17 +87,10 @@ apiClient.interceptors.response.use(
       }
     }
 
+    error.message = userErrorMessage(error);
     throw error;
   },
 );
 
-export function apiErrorMessage(error: unknown) {
-  if (isAxiosError(error)) {
-    const data = error.response?.data as { error?: string; retryAfterSeconds?: number } | undefined;
-    if (data?.error === 'otp_cooldown') {
-      return `Please wait ${data.retryAfterSeconds ?? 60} seconds before requesting another code.`;
-    }
-    return data?.error?.replaceAll('_', ' ') ?? 'The service is unavailable. Please retry.';
-  }
-  return error instanceof Error ? error.message : 'Something went wrong.';
-}
+/** Stable public messages; Axios response codes stay intact for recovery/state logic. */
+export { userErrorMessage as apiErrorMessage } from '@/utils/userMessage';

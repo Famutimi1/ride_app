@@ -1,3 +1,5 @@
+import { AppMessage } from '@/components/common/AppMessage';
+import { userErrorMessage } from '@/utils/userMessage';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { useAuthStore } from '@/store/authStore';
@@ -98,7 +100,7 @@ function DriverOnlineController({ driverId, render }: DriverOnlineControlProps) 
       stopForeground.current?.();
       stopForeground.current = null;
       await stopDriverBackgroundUpdates().catch(() => undefined);
-      const rawReason = error instanceof Error ? error.message : 'Location sharing could not start.';
+      const rawReason = userErrorMessage(error, 'Location sharing could not start. Please try again.');
       const reason = rawReason === 'driver_not_approved'
         ? 'Your driver application must be approved before you can go online.'
         : rawReason === 'cash_debt_limit_reached'
@@ -180,7 +182,7 @@ function DriverOnlineController({ driverId, render }: DriverOnlineControlProps) 
       }
       await beginGoingOnline();
     } catch (error) {
-      const reason = error instanceof Error ? error.message : 'Please try again.';
+      const reason = userErrorMessage(error, 'Please try again.');
       setMessage(`Could not update driver mode. ${reason}`);
     } finally {
       toggling.current = false;
@@ -202,7 +204,7 @@ export function DriverOnlineControlView({ online, available, busy, message, onTo
       <View style={styles.copy}><View style={styles.status}><View style={[styles.dot, { backgroundColor: online ? colors.success : colors.textMuted }]} /><Text variant="button" style={styles.title}>{title}</Text></View><Text variant="caption" color="textMuted" style={styles.detail}>{detail}</Text></View>
       <Button label={online ? 'Go offline' : 'Go online'} accessibilityLabel={online ? 'Go offline' : 'Go online'} variant={online ? 'destructive' : 'primary'} size="sm" loading={busy} onPress={onToggle} />
     </View>
-    {message ? <Text variant="caption" color="textMuted" accessibilityLiveRegion="polite" style={styles.message}>{message}</Text> : null}
+    {message ? <AppMessage tone="warning" message={message} style={styles.message} /> : null}
   </View>;
 }
 

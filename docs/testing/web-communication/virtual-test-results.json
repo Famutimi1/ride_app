@@ -1,0 +1,104 @@
+{
+  "kind": "Actual Expo UI, synthetic microphones, real WebRTC peers, isolated PostgreSQL and Redis",
+  "browser": "Chromium, separate rider and driver sessions",
+  "checks": [
+    {
+      "name": "both assigned participants load the real chat UI",
+      "status": "passed",
+      "durationMs": 37
+    },
+    {
+      "name": "rider sends and driver receives one persisted message",
+      "status": "passed",
+      "durationMs": 117
+    },
+    {
+      "name": "driver replies and rider receives it",
+      "status": "passed",
+      "durationMs": 110
+    },
+    {
+      "name": "read receipts appear in both sessions",
+      "status": "passed",
+      "durationMs": 806
+    },
+    {
+      "name": "reload retains persisted conversation history",
+      "status": "passed",
+      "durationMs": 643
+    },
+    {
+      "name": "offline send stays pending then reconnects without duplicates",
+      "status": "passed",
+      "durationMs": 5436
+    },
+    {
+      "name": "sent history and unsent draft survive leaving the interface",
+      "status": "passed",
+      "durationMs": 138
+    },
+    {
+      "name": "offline conversation reload restores both history and unsent draft",
+      "status": "passed",
+      "durationMs": 696
+    },
+    {
+      "name": "sending clears the draft across a fresh page load",
+      "status": "passed",
+      "durationMs": 722
+    },
+    {
+      "name": "browser microphone denial never rings the peer or creates a call",
+      "status": "passed",
+      "durationMs": 127
+    },
+    {
+      "name": "browser caller rings the recipient and both exchange real encrypted WebRTC audio packets",
+      "status": "passed",
+      "durationMs": 1929
+    },
+    {
+      "name": "browser mute and in-app navigation preserve the same active call",
+      "status": "passed",
+      "durationMs": 5000
+    },
+    {
+      "name": "hanging up closes browser peers, releases microphone tracks, and ends the server call",
+      "status": "passed",
+      "durationMs": 990
+    },
+    {
+      "name": "read-only history is enforced after trip completion",
+      "status": "passed",
+      "durationMs": 2332
+    },
+    {
+      "name": "unassigned account cannot read chat history",
+      "status": "passed",
+      "durationMs": 17
+    }
+  ],
+  "riderAudio": {
+    "connected": "connected",
+    "dtls": [
+      "connected"
+    ],
+    "localType": "host",
+    "remoteType": "host",
+    "audioPlaying": true
+  },
+  "driverAudio": {
+    "connected": "connected",
+    "dtls": [
+      "connected"
+    ],
+    "localType": "host",
+    "remoteType": "host",
+    "audioPlaying": true
+  },
+  "status": "passed",
+  "messageCount": 4,
+  "pageErrors": [],
+  "apiErrors": [],
+  "dataIsolation": "Disposable database and Redis; external browser requests blocked; no real users, SMS or push delivery."
+}

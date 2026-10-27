@@ -1,3 +1,4 @@
+import { mobileFeedbackDependency } from '../../shared/testing/mobileFeedback';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -35,7 +36,7 @@ function load<T>(path: string, overrides: Record<string, unknown> = {}): T {
   const exports: Record<string, unknown> = {};
   const code = compiler.transpileModule(readFileSync(resolve('../mobile/src', path), 'utf8'), { compilerOptions: { module: compiler.ModuleKind.CommonJS, target: compiler.ScriptTarget.ES2022, jsx: compiler.JsxEmit.ReactJSX } }).outputText;
   const sources = { ...modules, ...overrides };
-  runInNewContext(code, { exports, require: (name: string) => { if (name in sources) return sources[name]; throw new Error(`Unexpected import ${name}`); }, setInterval: () => 0, clearInterval: () => undefined });
+  runInNewContext(code, { exports, require: (name: string) => { const feedbackModule = mobileFeedbackDependency(name); if (feedbackModule) return feedbackModule; if (name in sources) return sources[name]; throw new Error(`Unexpected import ${name}`); }, setInterval: () => 0, clearInterval: () => undefined });
   return exports as T;
 }
 const safety = load<{ safetyTripShareMessage: (trip: SampleTrip | null, role?: string) => string | null }>('utils/safetyCenter.ts');
@@ -143,7 +144,7 @@ modules['react-native'] = { View: 'View', Pressable: 'Pressable', ScrollView: 'S
 modules['expo-router'] = { useRouter: () => ({ push: (value: unknown) => calls.push(['push', value]), replace: (value: unknown) => calls.push(['replace', value]), canGoBack: () => false }), useLocalSearchParams: () => ({ topic: 'safety' }) };
 modules['react-native-safe-area-context'] = { SafeAreaView: 'SafeAreaView' };
 modules['@/components/common'] = { Button: 'Button', Text: 'Text' }; modules['@/components/common/RideIcon'] = { RideIcon: 'Icon' }; modules['@/components/map/AddressIcon'] = { AddressIcon: 'Icon' };
-modules['@/constants/theme'] = { spacing: {}, radius: {}, useTheme: () => ({ colors: new Proxy({}, { get: (_target, key) => key }) }) };
+modules['@/constants/theme'] = { spacing: {}, radius: {}, borderWidths: { divider: 1 }, useTheme: () => ({ colors: new Proxy({}, { get: (_target, key) => key }) }) };
 modules['@/store/authStore'] = { useAuthStore: authHook }; modules['@/store/tripStore'] = { useTripStore: tripHook };
 modules['@/services/careService'] = { getSupportSettings: async () => ({ phone: '01234', email: 'support@example.invalid', availabilityMessage: 'Sample availability', staffedHours: '' }) };
 const safetyScreen = load<{ SafetyCenterScreen: () => Element; SafetyCenterView: (props: Props) => Element }>('screens/shared/SafetyCenterScreen.tsx');
@@ -204,6 +205,13 @@ test('driver active-trip safety is reachable without changing trip status', () =
   calls.length = 0;
   const map = { cameraRegion: null, currentLocation: null };
   const { DriverTripScreen } = load<{ DriverTripScreen: () => Element }>('screens/driver/DriverTripScreen.tsx', {
+    '@/components/trip/DriverTripConfirmation': { DriverTripConfirmation: 'Confirmation' },
+    '@/services/paymentService': { formatNaira: (value: number) => `₦${value / 100}` },
+    '@/components/communication/TripCallOptions': { TripCallOptions: 'TripCallOptions' },
+    'react-native': { ...(modules['react-native'] as Record<string, unknown>), useWindowDimensions: () => ({ width: 390, height: 844 }) },
+    'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView', useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) },
+    '@/lib/apiClient': { apiErrorMessage: () => 'Please try again.' },
+    '@/utils/tripCamera': { activeTripRegion: () => null },
     '@/components/map': { AppMap: 'Map' }, '@/hooks/useTripMapRoute': { useTripMapRoute: () => ({ primary: [], secondary: [] }) },
     '@/store/mapStore': { useMapStore: (selector: (state: typeof map) => unknown) => selector(map) },
   });

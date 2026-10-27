@@ -1,0 +1,50 @@
+{
+  "directAudioRoutingUpdate": {
+    "focusedTestsPassed": 65,
+    "focusedTestsFailed": 0,
+    "backendTypecheck": true,
+    "mobileTypecheck": true,
+    "mobileLint": true,
+    "iceTransportPolicy": "all",
+    "stunDiscoveryConfigurable": true,
+    "authenticatedTurnFallbackRetained": true,
+    "legacyRelayResponseSupported": true,
+    "physicalDirectRouteVerified": false,
+    "physicalTurnFallbackVerified": false
+  },
+  "focusedApplicationTests": {
+    "passed": 129,
+    "failed": 0
+  },
+  "androidDebugBuild": {
+    "passed": true,
+    "architecture": "arm64-v8a",
+    "nativeCallingBuildFlag": true
+  },
+  "nativeAndroidEmulatorChecks": {
+    "passed": 7,
+    "failed": 0,
+    "usesSyntheticProviderFixture": true
+  },
+  "androidReleaseManifest": {
+    "debugReceiverExcluded": true,
+    "singleAppFcmHandler": true,
+    "unnecessaryPhonePermissionsExcluded": true
+  },
+  "mobileTypecheck": true,
+  "mobileLint": true,
+  "expoWebExport": true,
+  "backendScriptTypecheck": true,
+  "turnConfigurationGenerator": {
+    "permissions0600": true,
+    "refusesOverwrite": true,
+    "secretNotPrinted": true
+  },
+  "turnComposeConfigurationValidated": true,
+  "swiftSyntaxParsed": true,
+  "iosBinaryCompiled": false,
+  "realProviderDeliveryVerified": false,
+  "publicTurnDeployed": false,
+  "physicalTwoPhoneAudioVerified": false,
+  "operationalMigrationsApplied": false
+}

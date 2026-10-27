@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Redirect, useFocusEffect, useRouter } from 'expo-router';
@@ -115,12 +116,12 @@ export function DriverDashboardView({ title, locationAvailable, map, onlineContr
             <RideIcon name="chevron" size={13} color="textMuted" />
           </Pressable>
         </View>
-        {earningsError ? <View style={styles.error}><Text variant="caption" color="danger" accessibilityRole="alert">{earningsError}{earnings ? ' Showing last loaded earnings.' : ''}</Text><Button label="Retry earnings" accessibilityLabel="Retry earnings" size="sm" variant="ghost" loading={earningsLoading} onPress={onRetry} /></View> : null}
+        {earningsError ? <View style={styles.error}><AppMessage message={earningsError + (earnings ? ' Showing last loaded earnings.' : '')} /><Button label="Retry earnings" accessibilityLabel="Retry earnings" size="sm" variant="ghost" loading={earningsLoading} onPress={onRetry} /></View> : null}
         {debtBlocked ? <Pressable accessibilityRole="button" accessibilityLabel="Review commission limit in driver wallet" onPress={onWallet} style={[styles.debt, { backgroundColor: colors.dangerSoft }]}><RideIcon name="info" size={18} color="danger" /><View style={styles.copy}><Text variant="button" color="danger">Review wallet to go online</Text><Text variant="caption" color="textMuted">{formatNaira(owedKobo)} commission outstanding</Text></View><RideIcon name="chevron" size={16} color="danger" /></Pressable> : null}
-        {walletError ? <View style={styles.error}><Text variant="caption" color="danger" accessibilityRole="alert">Could not refresh wallet status. Any balance shown is the last loaded value.</Text><Button label="Retry wallet status" accessibilityLabel="Retry wallet status" variant="ghost" size="sm" loading={walletLoading} onPress={onRetry} /></View> : null}
+        {walletError ? <View style={styles.error}><AppMessage message="Could not refresh wallet status. Any balance shown is the last loaded value." /><Button label="Retry wallet status" accessibilityLabel="Retry wallet status" variant="ghost" size="sm" loading={walletLoading} onPress={onRetry} /></View> : null}
         {services}
       </ScrollView>
-      <SafeAreaView edges={['bottom']} style={[styles.footer, { borderTopColor: colors.border }]}><Button label="Switch to rider mode" accessibilityLabel="Switch to rider mode" variant="ghost" size="sm" fullWidth loading={switching} leftIcon={<RideIcon name="swap" size={16} color="primary" />} onPress={onSwitch} />{switchError ? <Text variant="caption" color="danger" accessibilityRole="alert" style={styles.smallGap}>{switchError}</Text> : null}</SafeAreaView>
+      <SafeAreaView edges={['bottom']} style={[styles.footer, { borderTopColor: colors.border }]}><Button label="Switch to rider mode" accessibilityLabel="Switch to rider mode" variant="ghost" size="sm" fullWidth loading={switching} leftIcon={<RideIcon name="swap" size={16} color="primary" />} onPress={onSwitch} />{switchError ? <AppMessage message={switchError} style={styles.smallGap} /> : null}</SafeAreaView>
     </View>
   </View>;
 }

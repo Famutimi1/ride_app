@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -55,7 +56,7 @@ export function TripCancellationModal({ courier = false, busy = false, onKeep, o
               </Pressable>;
             })}
           </View>
-          {error ? <Text variant="caption" color="danger" accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+          {error ? <AppMessage message={error} style={styles.error} /> : null}
           <View style={styles.actions}>
             <Button label={keepLabel} size="sm" fullWidth disabled={isBusy} onPress={keep} />
             <Pressable accessibilityRole="button" accessibilityLabel={cancelLabel} accessibilityState={{ disabled: isBusy, busy: isBusy }} disabled={isBusy} onPress={() => void confirm()} style={[styles.cancel, { backgroundColor: colors.dangerSoft, opacity: isBusy ? 0.6 : 1 }]}>

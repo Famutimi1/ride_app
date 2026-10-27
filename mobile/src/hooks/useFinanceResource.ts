@@ -58,6 +58,7 @@ export function useFinanceAction() {
   const ownerId = useAuthStore(state => state.session?.user.id);
   const ownerRole = useAuthStore(state => state.session?.user.role);
   const [busy, setBusy] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inFlight = useRef(false);
   const mounted = useRef(true);
@@ -69,7 +70,7 @@ export function useFinanceAction() {
       const current = useAuthStore.getState().session?.user;
       return mounted.current && current?.id === user.id && (switchesMode || current.role === ownerRole);
     };
-    inFlight.current = true; setBusy(kind); setError(null);
+    inFlight.current = true; setBusy(kind); setError(null); setErrorKind(kind);
     try {
       const value = await job();
       if (isCurrent()) success(value);
@@ -77,5 +78,5 @@ export function useFinanceAction() {
       if (isCurrent()) setError(apiErrorMessage(reason));
     } finally { inFlight.current = false; if (mounted.current) setBusy(null); }
   };
-  return { busy, error, setError, run, inFlight };
+  return { busy, error, errorKind, setError, run, inFlight };
 }

@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -68,7 +69,7 @@ export function DriverTripConfirmation({ trip, action, busy, onClose, onConfirm 
               <View style={styles.flex}><Text variant="caption" color="textMuted">{trip.payment_method === 'cash' ? 'Cash to collect' : 'Fare settled on completion'}</Text><Text variant="bodyMedium">{formatNaira(trip.fare_kobo)}</Text></View>
             </View> : null}
             {needsCode ? <Input label={returning ? 'Sender handoff code' : 'Recipient delivery code'} placeholder="Six-digit code" value={code} keyboardType="number-pad" maxLength={6} editable={!locked} onChangeText={value => { setCode(value.replace(/\D/g, '')); setError(null); }} /> : null}
-            {error ? <Text variant="caption" color="danger" accessibilityRole="alert">{error}</Text> : null}
+            {error ? <AppMessage message={error} /> : null}
             <Button label={label} variant={cancelling ? 'destructive' : 'primary'} fullWidth loading={locked} onPress={() => void confirm()} />
             <Button label={cancelling ? 'Keep trip' : 'Not yet'} variant="ghost" fullWidth disabled={locked} onPress={close} />
           </ScrollView>

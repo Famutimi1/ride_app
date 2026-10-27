@@ -1,3 +1,4 @@
+import { mobileFeedbackDependency } from '../../shared/testing/mobileFeedback';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -31,7 +32,7 @@ const jsx = (type: string, props: Props, key?: string): Element => ({ type, prop
 function load<T>(path: string, mocks: Record<string, unknown> = {}): T {
   const exports: Record<string, unknown> = {};
   const code = compiler.transpileModule(readFileSync(resolve('../mobile/src', path), 'utf8'), { fileName: path, compilerOptions: { module: compiler.ModuleKind.CommonJS, target: compiler.ScriptTarget.ES2022, jsx: compiler.JsxEmit.ReactJSX } }).outputText;
-  runInNewContext(code, { exports, require: (name: string) => {
+  runInNewContext(code, { exports, require: (name: string) => { const feedbackModule = mobileFeedbackDependency(name); if (feedbackModule) return feedbackModule;
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx };
     if (name in mocks) return mocks[name];
     throw new Error(`Unexpected mobile dependency ${name}`);
@@ -180,7 +181,7 @@ const react = {
   useCallback(fn: unknown, deps: unknown[]) { const owner = scope, i = owner.index++; if (!same(owner.slots[i]?.deps, deps)) owner.slots[i] = { value: fn, deps }; return owner.slots[i].value; },
   useEffect(fn: () => (() => void) | void, deps: unknown[]) { const owner = scope, i = owner.index++; if (!same(owner.slots[i]?.deps, deps)) { owner.slots[i]?.cleanup?.(); const slot: Slot = { deps }; owner.slots[i] = slot; owner.pending.push(() => { slot.cleanup = fn() ?? undefined; }); } },
 };
-const theme = { radius: {}, spacing: {}, useTheme: () => ({ colors: {} }) };
+const theme = { radius: {}, spacing: {}, borderWidths: { divider: 1 }, useTheme: () => ({ colors: {} }) };
 const native = { StyleSheet: { create: (styles: unknown) => styles }, AppState: { addEventListener: () => ({ remove() {} }) } };
 const flush = () => new Promise<void>(done => setImmediate(done));
 
@@ -202,22 +203,34 @@ test('shared receipts never render another mode’s trip or retain a result acro
   assert.equal((view.props.trip as Trip).id, 'trip'); assert.equal(view.props.driver, true); owner.destroy();
 });
 
-test('shared call/chat pages reject unrelated and opposite-mode trips before mounting their content', () => {
-  const auth = { session: { user: { id: 'driver', role: 'rider' } } };
+test('call and chat links defer trip authorization to the server across display modes', () => {
+  const auth:{session:{user:{id:string;role:string}}|null} = { session: { user: { id: 'driver', role: 'rider' } } };
   let requestedId = 'trip';
   const mocks = {
     react, 'react-native': native, 'expo-router': { Redirect: 'Redirect', useRouter: () => ({}), useLocalSearchParams: () => ({ tripId: requestedId }) },
     'react-native-safe-area-context': {}, '@/components/common': {}, '@/constants/theme': theme,
     '@/services/socket': {}, '@/store/authStore': { useAuthStore: (select: (state: typeof auth) => unknown) => select(auth) },
-    '@/store/tripStore': { useTripStore: (select: (state: { trip: Trip }) => unknown) => select({ trip: fixture() }) }, '@/utils/roleAccess': policy,
+    '@/store/tripStore': { useTripStore: (select: (state: { trip: Trip|null }) => unknown) => select({ trip: null }) }, '@/utils/roleAccess': policy,
+    '@/hooks/useTripChat': {}, '@/store/chatStore': {}, '@/utils/chatMessages': {},
+    '@/components/communication/CallVideo':{},'@/components/communication/TripCallOptions':{},'@/store/callStore':{},'@/services/communicationService':{},'@/services/calling/audioMedia':{},
   };
   const chat = load<{ TripChatScreen: () => Element }>('screens/shared/TripChatScreen.tsx', mocks);
   const call = load<{ TripCallScreen: () => Element }>('screens/shared/TripCallScreen.tsx', mocks);
-  for (const render of [chat.TripChatScreen, call.TripCallScreen]) {
-    auth.session.user.role = 'rider'; assert.equal(render().type, 'Redirect');
-    auth.session.user.role = 'driver'; requestedId = 'other'; assert.equal(render().type, 'Redirect');
-    requestedId = 'trip'; assert.notEqual(render().type, 'Redirect');
+  assert.equal(call.TripCallScreen().type,'Redirect','malformed trip IDs do not mount calls');
+  assert.equal(chat.TripChatScreen().type,'Redirect','malformed trip IDs do not mount chat');
+  requestedId='11111111-1111-4111-8111-111111111111';
+  // The wrapper renders no trip data. The child obtains participant-authorized
+  // metadata/history from the server, even without an active trip in memory.
+  for(const role of ['rider','driver']){
+    auth.session!.user.role=role;
+    const view=chat.TripChatScreen();assert.notEqual(view.type,'Redirect');
+    assert.equal(view.props.tripId,requestedId);assert.equal(view.props.userId,'driver');
+    assert.equal(view.props.messages,undefined);
+    const callView=call.TripCallScreen();assert.notEqual(callView.type,'Redirect');
+    assert.equal(callView.props.tripId,requestedId);assert.equal(callView.props.participant,undefined);
   }
+  auth.session=null;
+  assert.equal(chat.TripChatScreen().type,'Redirect');assert.equal(call.TripCallScreen().type,'Redirect');
 });
 
 test('finance read results and action callbacks cannot cross modes on the same account', async () => {

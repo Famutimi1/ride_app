@@ -12,6 +12,7 @@ import { startEmailWorkers, stopEmailWorkers } from './modules/notifications/ema
 import { setServerReadiness } from './modules/auth/admin.service';
 import { db } from './shared/config/db';
 import { redis } from './shared/config/redis';
+import { startCommunicationWorkers, stopCommunicationWorkers } from './modules/communication/communicationQueue';
 
 const server = createServer(createApp());
 let io: SocketServer | undefined;
@@ -27,7 +28,7 @@ async function shutdown(exitCode: number) {
     await startupWork.catch(()=>undefined);
     const closed = new Promise<void>(done => { if (!server.listening) done(); else server.close(() => done()); });
     if (io) await new Promise<void>(done => io!.close(() => done()));
-    await Promise.all([closed, stopTripWorkers(), stopPaymentWorkers(), stopNotificationWorkers(), stopEmailWorkers(),stopMediaWorkers()]);
+    await Promise.all([closed, stopTripWorkers(), stopPaymentWorkers(), stopNotificationWorkers(), stopEmailWorkers(),stopMediaWorkers(),stopCommunicationWorkers()]);
     await db.end();
     if (redis?.status !== 'end') await redis?.quit();
     clearTimeout(deadline);
@@ -42,7 +43,7 @@ async function start() {
   io = await attachWebsocket(server);
   if(stopping)return;
   registerTripSocketServer(io);
-  const workers=await Promise.allSettled([startTripWorkers(), startPaymentWorkers(), startNotificationWorkers(), startEmailWorkers(),startMediaWorkers()]);
+  const workers=await Promise.allSettled([startTripWorkers(), startPaymentWorkers(), startNotificationWorkers(), startEmailWorkers(),startMediaWorkers(),startCommunicationWorkers()]);
   if(workers.some(result=>result.status==='rejected'))throw new Error('required_worker_initialization_failed');
   if (stopping) return;
   await new Promise<void>((done, reject) => {

@@ -28,3 +28,6 @@ export type { SkeletonProps } from './Skeleton';
 export type { StatusPillProps } from './StatusPill';
 export type { TextProps } from './Text';
 export type { ToggleProps } from './Toggle';
+
+export { AppMessage } from './AppMessage';
+export type { AppMessageProps, MessageTone } from './AppMessage';

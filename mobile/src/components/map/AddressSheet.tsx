@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -185,7 +186,7 @@ export function AddressSheet({ onFindRide, onPickupChosen, onActiveFieldChange, 
           </Pressable>
         ))}
         {searching ? <Text accessibilityLiveRegion="polite" variant="caption" color="textMuted" style={styles.status}>Searching addresses…</Text> : null}
-        {error ? <Text accessibilityRole="alert" variant="caption" color="textMuted" style={styles.status}>{error}</Text> : null}
+        {error ? <AppMessage message={error} tone="warning" style={styles.status} /> : null}
         {error && pickup && dropoff ? <Pressable accessibilityRole="button" onPress={() => void selectLocation('dropoff', dropoff)} style={styles.retry}><Text variant="caption" color="primary">Retry route</Text></Pressable> : null}
       </ScrollView>
       <View style={[styles.footer, { borderTopColor: colors.border, paddingBottom: Math.max(16, insets.bottom) }]}>

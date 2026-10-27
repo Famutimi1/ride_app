@@ -1,5 +1,6 @@
+import { UserFacingError } from '@/utils/userMessage';
+import { feedback } from '@/store/feedbackStore';
 import { create } from 'zustand';
-import { Alert } from 'react-native';
 import { apiErrorMessage, isSessionRejected } from '@/lib/apiClient';
 import { tokenStore } from '@/lib/secureTokenStore';
 import { getMe, saveAvatar, type PickedAvatar, googleAuth, logoutSession, requestLogin, requestRegistration, resendOtp, saveProfile, confirmPhoneChange, switchActiveRole, verifyLogin, verifyRegistration, type AuthUser, type UserRole } from '@/services/authService';
@@ -13,6 +14,7 @@ import { useCourierDraftStore } from '@/store/courierDraftStore';
 import { stopAllDriverLocationUpdates } from '@/services/locationService';
 import { currentDeviceRegistrationId, revokeCurrentDevice } from '@/services/notificationService';
 import { useNotificationStore } from '@/store/notificationStore';
+import { useChatStore } from '@/store/chatStore';
 
 interface Session { user: AuthUser }
 export type AuthIntent='register'|'login';
@@ -57,10 +59,10 @@ export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,ses
       }
     }
   },
-  requestOtp:async(phone,options)=>{try{const previous=get().pending;if(!options&&previous){await resendOtp(phone,previous.intent==='register'?'registration':'login');return;}const intent=options?.intent??'login',accountType=options?.accountType??'rider';if(intent==='register')await requestRegistration({fullName:options?.name??'',phone,accountType});else await requestLogin(phone);set({pending:{phone,name:options?.name,email:options?.email??previous?.email,intent,accountType,phoneVerificationToken:previous?.phoneVerificationToken}});}catch(error){throw new Error(apiErrorMessage(error));}},
-  verifyOtp:async(code)=>{const pending=get().pending;if(!pending)throw new Error('No phone number to verify. Start again.');try{const data=pending.intent==='register'?await verifyRegistration({fullName:pending.name??'',phone:pending.phone,code,email:pending.email,accountType:pending.accountType,phoneVerificationToken:pending.phoneVerificationToken}):await verifyLogin(pending.phone,code);sessionGeneration += 1;await tokenStore.setTokens(data.tokens);const user={...data.user,role:data.activeRole} as AuthUser;const application=applicationFromStatus(data.driverStatus,user);set({session:{user},driverServices:null,pending:null,driverApplication:application,_sessionError:null});const destination:AuthDestination=data.accountType==='driver'&&data.driverStatus==='none'?'driver-onboarding':data.activeRole==='driver'&&data.driverStatus==='approved'?'driver-dashboard':data.driverStatus==='pending'||data.driverStatus==='rejected'?'driver-status':'home';return{destination};}catch(error){throw new Error(apiErrorMessage(error));}},
+  requestOtp:async(phone,options)=>{try{const previous=get().pending;if(!options&&previous){await resendOtp(phone,previous.intent==='register'?'registration':'login');return;}const intent=options?.intent??'login',accountType=options?.accountType??'rider';if(intent==='register')await requestRegistration({fullName:options?.name??'',phone,accountType});else await requestLogin(phone);set({pending:{phone,name:options?.name,email:options?.email??previous?.email,intent,accountType,phoneVerificationToken:previous?.phoneVerificationToken}});}catch(error){throw new UserFacingError(apiErrorMessage(error));}},
+  verifyOtp:async(code)=>{const pending=get().pending;if(!pending)throw new UserFacingError('No phone number to verify. Start again.');try{const data=pending.intent==='register'?await verifyRegistration({fullName:pending.name??'',phone:pending.phone,code,email:pending.email,accountType:pending.accountType,phoneVerificationToken:pending.phoneVerificationToken}):await verifyLogin(pending.phone,code);sessionGeneration += 1;await tokenStore.setTokens(data.tokens);const user={...data.user,role:data.activeRole} as AuthUser;const application=applicationFromStatus(data.driverStatus,user);set({session:{user},driverServices:null,pending:null,driverApplication:application,_sessionError:null});const destination:AuthDestination=data.accountType==='driver'&&data.driverStatus==='none'?'driver-onboarding':data.activeRole==='driver'&&data.driverStatus==='approved'?'driver-dashboard':data.driverStatus==='pending'||data.driverStatus==='rejected'?'driver-status':'home';return{destination};}catch(error){throw new UserFacingError(apiErrorMessage(error));}},
   signInWithGoogle:async()=>get().signInWithGoogleIdToken(await getGoogleIdToken()),
-  signInWithGoogleIdToken:async(idToken)=>{try{const result=await googleAuth(idToken);if('needsPhoneVerification' in result){set({pending:{phone:'',name:result.user.name,email:result.user.email??undefined,intent:'register',accountType:'rider',phoneVerificationToken:result.phoneVerificationToken}});return'phone';}sessionGeneration += 1;await tokenStore.setTokens(result.tokens);const user={...result.user,role:result.activeRole} as AuthUser;set({session:{user},driverServices:null,driverApplication:applicationFromStatus(result.driverStatus,user),_sessionError:null});return result.activeRole==='driver'&&result.driverStatus==='approved'?'driver-dashboard':result.driverStatus==='pending'||result.driverStatus==='rejected'?'driver-status':'home';}catch(error){throw new Error(apiErrorMessage(error));}},
+  signInWithGoogleIdToken:async(idToken)=>{try{const result=await googleAuth(idToken);if('needsPhoneVerification' in result){set({pending:{phone:'',name:result.user.name,email:result.user.email??undefined,intent:'register',accountType:'rider',phoneVerificationToken:result.phoneVerificationToken}});return'phone';}sessionGeneration += 1;await tokenStore.setTokens(result.tokens);const user={...result.user,role:result.activeRole} as AuthUser;set({session:{user},driverServices:null,driverApplication:applicationFromStatus(result.driverStatus,user),_sessionError:null});return result.activeRole==='driver'&&result.driverStatus==='approved'?'driver-dashboard':result.driverStatus==='pending'||result.driverStatus==='rejected'?'driver-status':'home';}catch(error){throw new UserFacingError(apiErrorMessage(error));}},
   completeProfile:async({name,email})=>get().updateProfile({name,...(email === undefined ? {} : {email})}),
   setRole: async (role) => {
     if (!get().session || roleSwitchInFlight) return false;
@@ -78,11 +80,11 @@ export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,ses
       set({ session: { user: { ...get().session!.user, role: data.activeRole } } });
       return true;
     } catch (error) {
-      Alert.alert('Could not switch mode', apiErrorMessage(error));
+      feedback.error(apiErrorMessage(error));
       return false;
     } finally { roleSwitchInFlight = false; }
   },
-  submitDriverApplication:async(application)=>{try{const {data}=await apiSubmitDriverApplication();set({driverApplication:{...application,status:'pending',submittedAt:new Date(data.submittedAt??Date.now()).getTime()}});}catch(error){throw new Error(apiErrorMessage(error));}},
+  submitDriverApplication:async(application)=>{try{const {data}=await apiSubmitDriverApplication();set({driverApplication:{...application,status:'pending',submittedAt:new Date(data.submittedAt??Date.now()).getTime()}});}catch(error){throw new UserFacingError(apiErrorMessage(error));}},
   refreshDriverServices:async()=>{
     const generation=sessionGeneration,userId=get().session?.user.id;if(!userId)return;
     const data=await getDriverServiceSettings();
@@ -91,7 +93,7 @@ export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,ses
   },
   saveDriverServicePreferences:async(ride,courier)=>{
     const generation=sessionGeneration,userId=get().session?.user.id,current=get().driverServices;
-    if(!userId||!current)throw new Error('Load service settings before saving.');
+    if(!userId||!current)throw new UserFacingError('Load service settings before saving.');
     try{
       const data=await updateDriverServicePreferences({acceptsRide:ride,acceptsCourier:courier,expectedVersion:current.version});
       if(generation!==sessionGeneration||get().session?.user.id!==userId)return;
@@ -100,7 +102,7 @@ export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,ses
   },
   withdrawDriverServiceConsent:async(service)=>{
     const generation=sessionGeneration,userId=get().session?.user.id,current=get().driverServices;
-    if(!userId||!current)throw new Error('Load service settings before withdrawing consent.');
+    if(!userId||!current)throw new UserFacingError('Load service settings before withdrawing consent.');
     try {
       const data=await apiWithdrawDriverServiceConsent(service,current.version);
       if(generation!==sessionGeneration||get().session?.user.id!==userId)return;
@@ -119,35 +121,35 @@ export const useAuthStore=create<AuthState>((set,get)=>({driverServices:null,ses
   restartDriverApplication:()=>set({driverApplication:blankApplication(get().session?.user)}),
   updateAvatar: async (file) => {
     const generation=sessionGeneration,user=get().session?.user;
-    if(!user)throw new Error('Sign in to change your photo.');
+    if(!user)throw new UserFacingError('Sign in to change your photo.');
     try {
       const data=await saveAvatar(file,user.avatarVersion??0);
       const current=get().session?.user;
-      if(generation!==sessionGeneration||current?.id!==user.id)throw new Error('Your session changed. Sign in and check your photo.');
+      if(generation!==sessionGeneration||current?.id!==user.id)throw new UserFacingError('Your session changed. Sign in and check your photo.');
       if((data.user.avatarVersion??0)>=(current.avatarVersion??0))set({session:{user:{...current,avatarUrl:data.user.avatarUrl,avatarVersion:data.user.avatarVersion}}});
-    }catch(error){throw new Error(apiErrorMessage(error));}
+    }catch(error){throw new UserFacingError(apiErrorMessage(error));}
   },
   updateProfile: async (input) => {
     const generation = sessionGeneration;
     const userId = get().session?.user.id;
-    if (!userId) throw new Error('Sign in to update your profile.');
+    if (!userId) throw new UserFacingError('Sign in to update your profile.');
     try {
       const data = await saveProfile(input);
-      if (generation !== sessionGeneration || get().session?.user.id !== userId) throw new Error('Your session changed. Sign in and check your profile.');
+      if (generation !== sessionGeneration || get().session?.user.id !== userId) throw new UserFacingError('Your session changed. Sign in and check your profile.');
       const user = preserveNewerAvatar(data.user, get().session?.user);
       set({ session: { user: { ...user, role: get().session?.user.role??data.activeRole } } });
-    } catch (error) { throw new Error(apiErrorMessage(error)); }
+    } catch (error) { throw new UserFacingError(apiErrorMessage(error)); }
   },
   changePhone: async (challenge, code) => {
     const generation = sessionGeneration;
     const userId = get().session?.user.id;
-    if (!userId) throw new Error('Sign in to change your phone number.');
+    if (!userId) throw new UserFacingError('Sign in to change your phone number.');
     try {
       const data = await confirmPhoneChange(challenge, code);
-      if (generation !== sessionGeneration || get().session?.user.id !== userId) throw new Error('Your session changed. Sign in and check your phone number.');
+      if (generation !== sessionGeneration || get().session?.user.id !== userId) throw new UserFacingError('Your session changed. Sign in and check your phone number.');
       const user = preserveNewerAvatar(data.user, get().session?.user);
       set({ session: { user: { ...user, role: data.activeRole } } });
-    } catch (error) { throw new Error(apiErrorMessage(error)); }
+    } catch (error) { throw new UserFacingError(apiErrorMessage(error)); }
   },
   logout: async () => {
     sessionGeneration += 1;
@@ -178,5 +180,6 @@ useAuthStore.subscribe((state, previous) => {
     useWalletStore.getState().reset();
   }
   useNotificationStore.getState().setContext(user?.id ?? null, user?.role ?? 'rider');
+  useChatStore.getState().setContext(user?.id ?? null);
 });
 export const useIsSignedIn=()=>useAuthStore(s=>s.session!==null);

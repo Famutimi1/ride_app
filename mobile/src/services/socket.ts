@@ -3,6 +3,8 @@ import { API_BASE_URL } from './api';
 import type { DriverMapLocation } from '@/store/mapStore';
 import { tokenStore } from '@/lib/secureTokenStore';
 import { isSessionRejected, refreshAccessToken } from '@/lib/apiClient';
+import type { ChatReceipts, TripMessage } from './communicationService';
+export type { TripMessage } from './communicationService';
 
 export const SOCKET_EVENTS = {
   JOIN_TRIP: 'trip:join',
@@ -13,21 +15,15 @@ export const SOCKET_EVENTS = {
   TRIP_MESSAGE_SEND: 'trip:message:send',
   TRIP_MESSAGE: 'trip:message',
   TRIP_MESSAGE_ERROR: 'trip:message:error',
+  CHAT_RECEIPT: 'chat:receipt',
+  CALL_STATE: 'call:state',
+  CALL_SIGNAL: 'call:signal',
   TRIP_OFFER: 'trip:offer',
   TRIP_OFFER_CANCELLED: 'trip:offer_cancelled',
   TRIP_STATUS: 'trip:status',
   WALLET_UPDATED: 'wallet:updated',
   NOTIFICATION: 'notification:new',
 } as const;
-
-export interface TripMessage {
-  id: string;
-  tripId: string;
-  senderId: string;
-  senderRole: 'rider' | 'driver';
-  text: string;
-  sentAt: number;
-}
 
 let socket: Socket | null = null;
 let recoveryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -98,20 +94,32 @@ export function subscribeToTripLifecycle(handlers:{onOffer:(offer:import('./trip
 
 export function subscribeToNotifications(onNotification:(notification:import('./notificationService').AppNotification)=>void){const activeSocket=getSocket();activeSocket.on(SOCKET_EVENTS.NOTIFICATION,onNotification);return()=>activeSocket.off(SOCKET_EVENTS.NOTIFICATION,onNotification);}
 
-export function sendTripMessage(message: TripMessage) {
+export function subscribeToTripMessages(tripId: string, onMessage: (message: TripMessage) => void, onReconnect?: () => void) {
   const activeSocket = getSocket();
-  activeSocket.emit(SOCKET_EVENTS.JOIN_TRIP, message.tripId);
-  activeSocket.emit(SOCKET_EVENTS.TRIP_MESSAGE_SEND, message);
-}
-
-export function subscribeToTripMessages(tripId: string, onMessage: (message: TripMessage) => void) {
-  const activeSocket = getSocket();
-  const join = () => activeSocket.emit(SOCKET_EVENTS.JOIN_TRIP, tripId);
-  join();
+  const join = () => { activeSocket.emit(SOCKET_EVENTS.JOIN_TRIP, tripId); onReconnect?.(); };
   activeSocket.on('connect', join);
   activeSocket.on(SOCKET_EVENTS.TRIP_MESSAGE, onMessage);
+  join();
   return () => {
     activeSocket.off(SOCKET_EVENTS.TRIP_MESSAGE, onMessage);
     activeSocket.off('connect', join);
+  };
+}
+
+export function subscribeToChatReceipts(onReceipt: (receipt: ChatReceipts) => void) {
+  const activeSocket=getSocket();
+  activeSocket.on(SOCKET_EVENTS.CHAT_RECEIPT,onReceipt);
+  return ()=>activeSocket.off(SOCKET_EVENTS.CHAT_RECEIPT,onReceipt);
+}
+
+export function subscribeToChatEvents(handlers:{onMessage:(message:TripMessage)=>void;onReceipt:(receipt:ChatReceipts)=>void;onReconnect:()=>void}) {
+  const activeSocket=getSocket();
+  activeSocket.on(SOCKET_EVENTS.TRIP_MESSAGE,handlers.onMessage);
+  activeSocket.on(SOCKET_EVENTS.CHAT_RECEIPT,handlers.onReceipt);
+  activeSocket.on('connect',handlers.onReconnect);
+  return ()=>{
+    activeSocket.off(SOCKET_EVENTS.TRIP_MESSAGE,handlers.onMessage);
+    activeSocket.off(SOCKET_EVENTS.CHAT_RECEIPT,handlers.onReceipt);
+    activeSocket.off('connect',handlers.onReconnect);
   };
 }

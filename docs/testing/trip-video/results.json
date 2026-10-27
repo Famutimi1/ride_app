@@ -1,0 +1,88 @@
+{
+  "kind": "Actual Expo UI, synthetic microphones/cameras, real WebRTC audio/video, isolated PostgreSQL and Redis",
+  "browser": "Chromium, separate rider and driver sessions",
+  "checks": [
+    {
+      "name": "Call icon opens audio/video chooser and selects video explicitly",
+      "status": "passed",
+      "durationMs": 422
+    },
+    {
+      "name": "camera denial creates no call and offers audio fallback",
+      "status": "passed",
+      "durationMs": 56
+    },
+    {
+      "name": "both participants consent and exchange encrypted audio and video frames",
+      "status": "passed",
+      "durationMs": 3878
+    },
+    {
+      "name": "camera-off stops both cameras and reconnects audio in the same call",
+      "status": "passed",
+      "durationMs": 122
+    },
+    {
+      "name": "audio-to-video request requires peer consent and rejection preserves audio",
+      "status": "passed",
+      "durationMs": 7001
+    },
+    {
+      "name": "accepted audio-to-video upgrade reuses the call and microphone, and camera-off returns to audio",
+      "status": "passed",
+      "durationMs": 2596
+    },
+    {
+      "name": "motion policy disables video on both peers while preserving audio",
+      "status": "passed",
+      "durationMs": 3034
+    },
+    {
+      "name": "recipient can answer a video invitation with audio without opening a camera",
+      "status": "passed",
+      "durationMs": 2936
+    },
+    {
+      "name": "backgrounding a browser tab stops video capture and continues with audio",
+      "status": "passed",
+      "durationMs": 3050
+    },
+    {
+      "name": "stale location disables video in the chooser while audio remains available",
+      "status": "passed",
+      "durationMs": 189
+    }
+  ],
+  "riderVideo": {
+    "dtls": [
+      "connected"
+    ],
+    "inboundVideo": [
+      {
+        "packets": 11,
+        "frames": 2
+      }
+    ],
+    "candidateTypes": [
+      "host"
+    ]
+  },
+  "driverVideo": {
+    "dtls": [
+      "connected"
+    ],
+    "inboundVideo": [
+      {
+        "packets": 54,
+        "frames": 19
+      }
+    ],
+    "candidateTypes": [
+      "host"
+    ]
+  },
+  "status": "passed",
+  "pageErrors": [],
+  "apiErrors": [],
+  "dataIsolation": "Disposable database and Redis, fictional participants, fake camera/microphone devices, synthetic motion evidence in existing driver-location cache. Real browser peers and media transport; no recording or production users."
+}

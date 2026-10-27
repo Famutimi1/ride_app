@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Button, Input, Text } from '@/components/common';
@@ -64,7 +65,7 @@ export function PhoneChangeSection({ onClose }: { onClose?: () => void }) {
       if (inFlight.current) return;
       setChallenge(null); setPhone(''); setCode(''); setError(null); setNotice(null); onClose?.();
     }} />
-    {error ? <Text variant="caption" color="danger" accessibilityRole="alert">{error}</Text> : null}
-    {notice ? <Text variant="caption" color="success" accessibilityRole="alert">{notice}</Text> : null}
+    {error ? <AppMessage message={error} /> : null}
+    {notice ? <AppMessage tone="success" message={notice} /> : null}
   </View>;
 }

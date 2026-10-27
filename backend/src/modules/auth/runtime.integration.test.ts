@@ -24,6 +24,7 @@ test('compiled migrations serialize, required workers gate readiness, and SIGTER
   let server:ChildProcess|undefined;
   let redis:Redis|undefined;
   let queue:Queue|undefined;
+  let communicationQueue:Queue|undefined;
   try {
     const migrations=[run('dist/shared/config/migrate.js'),run('dist/shared/config/migrate.js')];
     assert.deepEqual(await Promise.all(migrations.map(item=>item.exit)),[0,0],migrations.map(item=>item.output()).join('\n'));
@@ -48,6 +49,11 @@ test('compiled migrations serialize, required workers gate readiness, and SIGTER
     assert.equal((await fetch(base+'/api/health/live')).status,200,'provider/worker readiness is separate from liveness');
     await queue.resume();
     assert.equal((await fetch(base+'/api/health/ready')).status,200);
+    communicationQueue=new Queue('communication',{connection:redis,prefix});
+    await communicationQueue.pause();
+    assert.equal((await fetch(base+'/api/health/ready')).status,503,'paused communication delivery is unready');
+    await communicationQueue.resume();
+    assert.equal((await fetch(base+'/api/health/ready')).status,200);
     server.kill('SIGTERM');
     assert.equal(await started.exit,0,started.output());
     server=undefined;
@@ -57,7 +63,7 @@ test('compiled migrations serialize, required workers gate readiness, and SIGTER
     server=undefined;
   } finally {
     if(server?.exitCode===null)server.kill('SIGKILL');
-    await queue?.close();await redis?.quit();
+    await queue?.close();await communicationQueue?.close();await redis?.quit();
     await owner.query(`DROP SCHEMA ${schema} CASCADE`);await owner.end();
   }
 });

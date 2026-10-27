@@ -1,6 +1,6 @@
 # Rakky Ride messaging and calling implementation plan
 
-Prepared 24 October 2026. Status: proposed architecture and delivery plan; no application changes or dependencies installed.
+Prepared 24 October 2026; updated 27 October 2026. Messaging, audio foundations, and the first foreground video increment are implemented. Video adds the audio/video chooser, capture/rendering, camera controls, stationary-driver policy and audio fallback on the existing call lifecycle. Consented audio-to-video switching is implemented and exercised on Android emulator and browser peers; physical-device/native-provider and production release gates remain pending. See [implementation status](trip-communication.md) and [video setup and limits](../deployment/trip-video-calls.md).
 
 ## Recommendation
 
@@ -40,7 +40,7 @@ Relevant source files are listed at the end. The working tree contains unrelated
 5. Use existing Redis driver-location data for motion eligibility. If speed must be derived, compute it transiently from authenticated samples in that same location system; add no second live-location store. Stationary thresholds and freshness are safety-review decisions, not GPS guarantees.
 6. If the driver starts moving or trip eligibility changes, downgrade video to audio. Keep audio available where policy permits. Driver call controls should be minimal and work with native headset/Bluetooth controls.
 7. No PSTN calling, private phone-number exchange, recording, attachments, group calls, transcription, or support-agent joining. Remove `tel:` and phone route parameters from the new calling flow.
-8. The first launch is the native Android/iOS app. Existing browser chat remains compatible; browser calling needs its own scoped work and testing.
+8. Native Android/iOS and browser clients share call authorization/signaling. Browser audio was implemented and separately tested after the native increments; closed-tab/OS-level browser wakeup is not included. See [web implementation and limits](../deployment/web-audio-and-chat-persistence.md).
 
 These are proposed implementation defaults. Retention, video eligibility, post-trip access, and media routing must be settled before their release gates.
 
@@ -77,7 +77,7 @@ Propose backend `modules/communication/` for policy, chat, call state machine, s
 
 Keep existing `/api/trips/:id/messages` routes as compatibility adapters. Keep event constants in `backend/src/websocket/events.ts` and the mobile event contract. Retain `shared/config/db.ts`, `shared/config/redis.ts`, and the existing `backend/src/config/env.ts`; do not create parallel infrastructure configuration because the PRD suggests different paths.
 
-This new module is a proposed addition. Interpret AGENTS.md's “matching module folder” rule as the corresponding domain folder, consistent with its examples and separation-of-concerns requirements. Confirm that interpretation before implementation if it is intended literally to require placing all new backend logic under driver matching.
+The implementation uses a communication domain module. The user withdrew the previously supplied AGENTS.md instructions and subsequently authorized implementation of this plan.
 
 On mobile, retain the repository layout: shared communication screens, `components/communication/`, `services/communicationService.ts`, a non-visual `services/callController.ts`, `store/chatStore.ts`, `store/callStore.ts`, and focused hooks. Reuse the existing socket singleton and notification registration lifecycle. No state-manager or ORM substitution is needed.
 
@@ -157,7 +157,7 @@ Propose `react-native-webrtc` and its compatible Expo config plugin for capture,
 - Use secure WebRTC defaults and DTLS-SRTP. Store session metadata, not raw SDP, ICE candidates, IP addresses, or audio/video. Avoid promising independently audited end-to-end encryption or identity verification.
 - Issue short-lived TURN credentials only to eligible participants/devices. Renew ahead of ICE restart or allocation renewal during longer calls. Expose no TURN shared secret to the app. Block private/internal relay destinations and enforce relay quotas to reduce abuse.
 - Configure UDP relay plus TCP/TLS 443 fallback on actual reachable relay addresses and certificates. An HTTP reverse proxy is not a substitute for TURN transport and relay-port configuration.
-- Recommendation for privacy: launch with relay-only media to avoid revealing peer IP addresses. This routes every call through TURN and increases cost; direct-first is an explicit alternative if that privacy trade-off is approved.
+- Chosen media policy: prefer direct connections using standard ICE selection, with STUN discovery and authenticated TURN fallback. The user selected this policy during implementation. Direct candidates expose network addresses to the authorized peer. TURN remains configured for networks that prevent direct connectivity; candidates are gathered/checked together rather than delaying all relay work until a separate call attempt fails.
 - Separate **signaling reconnected** from **media connected**. On network change, perform an authorized generation change/ICE restart. Show reconnecting, bound retries, and terminate with a useful reason if recovery fails.
 - Start duration when two-way media connectivity is reported, corroborating both clients' reports for quality metrics. Release tracks, audio session, peer connection, wake locks, subscriptions, and native UI on terminal state.
 
@@ -181,7 +181,7 @@ Build video on the proven audio transport and state machine. Add remote renderin
 
 Recheck server video eligibility on initiate, accept, upgrade, and while video is active. Use a lightweight server policy check against Redis motion freshness and the trip state; native clients also stop video immediately when their safety signal becomes unsafe. Re-enable only after a fresh safe policy result and renewed consent.
 
-Audio-to-video upgrades are P1: persist a bounded request ID/version, require recipient acceptance and camera permission, then negotiate via the caller-owned offer path. Rejection, timeout, camera denial, or policy denial keeps audio connected. Camera-off stops video capture; video-to-audio removes the video track. Camera-on after a safety downgrade requires a new eligible consent flow.
+Audio-to-video upgrades now persist a bounded request owner/expiry and call version, require recipient acceptance and camera permission, then negotiate via the caller-owned offer path. Rejection, timeout, camera denial, or policy denial keeps audio connected. Camera-off stops video capture; video-to-audio removes the video track. Camera-on after a safety downgrade requires a new eligible consent flow.
 
 Start with conservative, adaptive video constraints and prioritize audio under poor connectivity. Choose final bitrate/resolution targets from physical-device carrier tests, not a desktop demonstration. OS backgrounding stops camera capture; preserve authorized audio where supported.
 
@@ -208,7 +208,7 @@ Keep the current `/api` prefix rather than introducing a second `/v1` namespace 
 - `GET /api/calls/active`: authenticated device/account recovery, safe across a route change or app restart.
 - `GET /api/calls/:id` and `POST /api/calls/:id/accept|decline|cancel|end`: authorized state-machine operations with expected versions and retry keys where applicable.
 - `POST /api/calls/:id/turn-credentials` and `POST /api/calls/:id/lease`: short-lived media authorization for bound devices.
-- P1 `POST /api/calls/:id/media-request` and acceptance/rejection action: consented video change.
+- `POST /api/calls/:id/request-video`, `/accept-video`, `/reject-video`: consented video change with protocol 2 and existing call-version protection.
 - Extend notification-device registration for provider/capabilities; revoke all relevant registrations on logout/account disable.
 
 Preserve existing `trip:message:send` and `trip:message` constants as compatibility wrappers. Add `communication:available`, `chat:receipt`, `chat:typing`, `call:incoming`, `call:state`, `call:media-request`, and `webrtc:offer|answer|ice` through constants. Every durable event includes its ID and aggregate version/sequence; consumers ignore stale versions and resynchronize on gaps. Buffer and negotiate ICE by generation rather than ordering it as durable chat.
@@ -265,6 +265,9 @@ Planning estimate: **10–14 elapsed weeks** for one backend engineer, one React
 
 ### Phase 2 Production audio about 3–4 weeks
 
+Implementation update: the first foreground native audio increment is implemented behind a default-off flag. See [deployment/status](../deployment/trip-audio-calls.md). Durable lifecycle, session arbitration, signaling, relay credentials, and native media controls are present. The second native background/incoming-call increment is also implemented behind separate flags; see [phase-two status](../deployment/trip-audio-phase-two.md). Real provider delivery, physical-device validation, and iOS compilation remain required before this phase exits.
+
+
 - Build durable call lifecycle/reservations, REST actions, signaling, TURN authorization, global controller, mute/speaker/Bluetooth routing, native push, and native UI.
 - Add device arbitration, expired invite handling, deadlines/reconciliation, network-change recovery, trip closure, and call leases.
 - **Exit:** exactly one call wins simultaneous invites/answers; no lingering device ring after terminal sync; background and locked-screen acceptance passes the supported matrix; pilot meets agreed audio targets.
@@ -273,9 +276,9 @@ Planning estimate: **10–14 elapsed weeks** for one backend engineer, one React
 ### Phase 3 Video and consent about 1–2 weeks
 
 - Add local/remote video, camera permissions/flip/toggle, fallback, and server/client safety checks.
-- Implement mutual upgrade consent as P1 only after direct video and policy checks pass.
+- Implemented mutual upgrade consent after direct video and policy checks passed; browser and Android emulator upgrades preserve the call ID and microphone.
 - **Exit:** permission denial preserves a useful audio path; moving/stale-location/in-progress conditions disable video on both sides; downgrade and camera-off actually stop capture; no silent upgrade.
-- **PRD coverage:** video portions of CALL-01/03; CALL-07 is separately tracked P1.
+- **PRD coverage:** video portions of CALL-01/03 and consented upgrade flow CALL-07; physical-device release gates remain pending.
 
 ### Phase 4 Field validation and controlled release about 2–3 weeks
 

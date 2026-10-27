@@ -63,7 +63,7 @@ async function main() {
     const build=spawn(process.execPath,[resolve('node_modules/typescript/lib/tsc.js')],{stdio:'inherit'});
     if(await new Promise<number>((done,reject)=>{build.once('error',reject);build.once('exit',code=>done(code??1));})!==0)throw new Error('The compiled backend build failed before tests.');
     const requested = process.argv.slice(2);
-    const files = requested.length ? requested : (await Promise.all(['trips', 'payments', 'auth', 'notifications'].map(async module =>
+    const files = requested.length ? requested : (await Promise.all(['trips', 'payments', 'auth', 'notifications', 'communication'].map(async module =>
       (await readdir(resolve('src/modules', module))).filter(file => file.endsWith('.test.ts')).map(file => `src/modules/${module}/${file}`)
     ))).flat();
     console.info('[tests] Using a disposable PostgreSQL database and a separate temporary Redis process.');
@@ -71,6 +71,8 @@ async function main() {
       stdio: 'inherit',
       env: { ...process.env, NODE_ENV: 'test', DATABASE_URL: testUrl.toString(), REDIS_URL: `redis://127.0.0.1:${port}`,
         JWT_ACCESS_SECRET: randomBytes(32).toString('hex'), PAYSTACK_SECRET_KEY: 'sk_test_isolated_fixture',
+        COMMUNICATION_AUDIO_ENABLED:'false',COMMUNICATION_VIDEO_ENABLED:'false',COMMUNICATION_AUDIO_ALLOW_DIRECT_ONLY:'false',STUN_URLS:'',TURN_URLS:'',TURN_SHARED_SECRET:'',
+        COMMUNICATION_NATIVE_CALLS_ENABLED:'false',CALL_PUSH_TOKEN_KEY:'',CALL_FCM_CREDENTIALS_FILE:'',CALL_FCM_PROJECT_ID:'',GOOGLE_APPLICATION_CREDENTIALS:'',CALL_APNS_KEY_FILE:'',CALL_APNS_KEY_ID:'',CALL_APNS_TEAM_ID:'',
         PAYSTACK_BASE_URL: 'http://127.0.0.1:9', TERMII_API_KEY: '', TEST_OTP_ENABLED: 'false', TEST_OTP_CODE: '', ALERT_WEBHOOK_URL: '', RAKKY_TEST_ISOLATED: 'true',
         CLOUDINARY_ENABLED:'false',CLOUDINARY_CLOUD_NAME:'',CLOUDINARY_API_KEY:'',CLOUDINARY_API_SECRET:'',EMAIL_ENABLED:'false',RESEND_API_KEY:'',RESEND_WEBHOOK_SECRET:'',EMAIL_ADMIN_RECIPIENTS:'' },
     });

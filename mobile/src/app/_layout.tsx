@@ -7,11 +7,11 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
-import { Stack } from 'expo-router';
+import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { cssInterop } from 'nativewind';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AppState, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -27,6 +27,10 @@ import { WalletBootstrap } from '@/components/common/WalletBootstrap';
 import { NotificationBootstrap, NotificationHost } from '@/components/notifications';
 import { Button, Text } from '@/components/common';
 import { subscribeSessionExpired } from '@/lib/apiClient';
+import { ChatBootstrap } from '@/components/communication/ChatBootstrap';
+import { FeedbackHost } from '@/components/common/FeedbackHost';
+import { clearFeedback } from '@/store/feedbackStore';
+import { CallBootstrap } from '@/components/communication/CallBootstrap';
 
 const StyledGestureHandlerRootView = cssInterop(GestureHandlerRootView, {
   className: 'style',
@@ -59,6 +63,7 @@ export default function RootLayout() {
   const isSignedIn = useIsSignedIn();
   const sessionContext = useAuthStore(state => `${state.session?.user.id}:${state.session?.user.role}`);
   const theme = useTheme();
+  useEffect(() => { clearFeedback(); return clearFeedback; }, [sessionContext]);
 
   const ready = (fontsLoaded || fontError) && authHasHydrated && uiHasHydrated;
 
@@ -104,6 +109,7 @@ export default function RootLayout() {
           {isSignedIn ? <WalletBootstrap key={`wallet:${sessionContext}`} /> : null}
           {isSignedIn ? <DriverServiceSettingsBootstrap /> : null}
           {isSignedIn ? <NotificationBootstrap /> : null}
+          {isSignedIn ? <ChatBootstrap /> : null}
           {/* Match the status-bar text to the active theme: light glyphs on the dark
               background, dark glyphs on the light one. Driven by our theme (not "auto")
               so it tracks the in-app toggle, not just the OS setting. */}
@@ -121,8 +127,27 @@ export default function RootLayout() {
             </Stack.Protected>
           </Stack>
           {isSignedIn ? <NotificationHost /> : null}
+          {isSignedIn ? <CallBootstrap /> : null}
+          <FeedbackHost />
         </SafeAreaProvider>
       </View>
     </StyledGestureHandlerRootView>
   );
+}
+
+/** Recover rendering failures without displaying source paths or exception text. */
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  const theme = useTheme();
+  const [retrying, setRetrying] = useState(false);
+  return <View style={[{ flex: 1, justifyContent: 'center', padding: 24 }, nativeWindTheme[theme.scheme], { backgroundColor: theme.colors.background }]}>
+    <View style={{ width: '100%', maxWidth: 420, alignSelf: 'center', gap: 12 }}>
+      <Text variant="h3">Let’s try that again</Text>
+      <Text color="textMuted">We couldn’t open this screen. Please try again in a moment.</Text>
+      <Button label="Try again" fullWidth loading={retrying} onPress={() => {
+        if (retrying) return;
+        setRetrying(true);
+        void retry().catch(() => undefined).finally(() => setRetrying(false));
+      }} />
+    </View>
+  </View>;
 }

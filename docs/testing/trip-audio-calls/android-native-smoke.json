@@ -1,0 +1,14 @@
+{
+  "results": {
+    "debug_apk_installed": true,
+    "camera_permission_declared": true,
+    "microphone_permission_declared": true,
+    "native_status_validated_before_ringing": true,
+    "telecom_received_call": true,
+    "phone_call_foreground_service_active": true,
+    "native_call_notification": true,
+    "incoming_ui_visible": true,
+    "decline_reached_scoped_native_endpoint": true
+  },
+  "scope": "Synthetic native handler/UI test on Android emulator; provider wakeup, real backend authentication, TURN media and physical devices are separate checks."
+}

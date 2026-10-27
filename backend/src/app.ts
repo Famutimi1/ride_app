@@ -21,6 +21,8 @@ import { walletRouter, paymentsRouter, payoutAccountsRouter, withdrawalsRouter, 
 import { receivePaystackWebhook } from './modules/payments/webhook.service';
 import { paymentAdminRouter } from './modules/payments/admin.routes';
 import { notificationsRouter } from './modules/notifications/notifications.routes';
+import { communicationRouter } from './modules/communication/communication.routes';
+import { callsRouter,tripCallsRouter } from './modules/communication/call.routes';
 import { receiveEmailWebhook } from './modules/notifications/emailWebhook';
 import { emailAdminRouter } from './modules/notifications/email.routes';
 
@@ -49,6 +51,9 @@ export function createApp(): Express {
   });
   app.use('/api/health', healthRouter);
   app.use('/api', mapsRouter);
+  app.use('/api/trips', communicationRouter);
+  app.use('/api/trips', tripCallsRouter);
+  app.use('/api/calls', callsRouter);
   app.use('/api/trips', tripsRouter);
   app.use('/api/location', locationRouter);
   app.use('/api/auth', authRouter);

@@ -1,3 +1,5 @@
+import { AppMessage } from '@/components/common/AppMessage';
+import { userErrorMessage } from '@/utils/userMessage';
 import { svgDataUri } from '@/utils/svgDataUri';
 /** Phone-based sign-in for returning Rakky Ride users (route: "/login"). */
 import { Image } from 'expo-image';
@@ -43,7 +45,7 @@ export function LoginScreen() {
       await requestOtp(`+234${localNumber}`, { intent: 'login' });
       router.push('/otp');
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not send the code. Try again.');
+      setError(userErrorMessage(reason, 'Could not send the code. Try again.'));
     } finally {
       setPhoneLoading(false);
     }
@@ -60,7 +62,7 @@ export function LoginScreen() {
         : destination === 'driver-dashboard' ? '/driver-dashboard'
           : destination === 'driver-status' ? '/driver-status' : '/home');
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Google sign-in failed.');
+      setError(userErrorMessage(reason, 'Google sign-in failed.'));
     } finally {
       setGoogleLoading(false);
     }
@@ -108,7 +110,6 @@ export function LoginScreen() {
                 onSubmitEditing={() => void onLogin()}
                 editable={!phoneLoading && !googleLoading}
                 maxLength={10}
-                error={error}
                 containerClassName="!min-h-[56px] !rounded-2xl"
                 leftIcon={(
                   <View style={[styles.countryCode, { borderRightColor: colors.border }]}>
@@ -119,6 +120,8 @@ export function LoginScreen() {
               />
               <Text variant="caption" color="textMuted">We’ll text you a login code.</Text>
             </View>
+
+            {error ? <AppMessage message={error} /> : null}
 
             <View style={styles.actions}>
               <Button
@@ -144,7 +147,7 @@ export function LoginScreen() {
                 disabled={phoneLoading}
                 onPress={() => void onGoogle()}
                 onCredential={(token) => void onGoogle(token)}
-                onError={(reason) => setError(reason.message)}
+                onError={(reason) => setError(userErrorMessage(reason, 'Google sign-in is unavailable. Try again or use your phone number.'))}
               />
             </View>
 

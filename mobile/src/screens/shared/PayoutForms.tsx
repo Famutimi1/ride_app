@@ -1,3 +1,5 @@
+import { feedback } from '@/store/feedbackStore';
+import { AppMessage } from '@/components/common/AppMessage';
 import { useRef, useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -40,16 +42,18 @@ export function AddBankScreen() {
   const save = () => {
     if (!verified || !bank || !sent || !/^\d{6}$/.test(code) || banks.loading || banks.error) return;
     void action.run('save', () => addPayoutAccount({ accountNumber: number, bankCode, otpCode: code }), () => {
+      feedback.success('Your bank account has been added.');
       router.replace({ pathname: '/account/[section]', params: { section: 'payouts' } });
     });
   };
-  return <AddBankView banks={banks} bankName={bank?.name ?? ''} number={number} code={code} verifiedName={verified} sent={sent} busy={action.busy} error={action.error}
+  return <AddBankView banks={banks} bankName={bank?.name ?? ''} number={number} code={code} verifiedName={verified} sent={sent} busy={action.busy} error={action.error} errorKind={action.errorKind}
     picker={picker} onPicker={() => { if (!action.inFlight.current) setPicker(true); }} onPickerClose={() => setPicker(false)}
     onBank={value => { if (action.inFlight.current) return; setBankCode(value); clearVerification(); setPicker(false); }}
     onNumber={value => { if (action.inFlight.current) return; setNumber(value.replace(/\D/g, '').slice(0, 10)); clearVerification(); }}
     onCode={value => { if (!action.inFlight.current) setCode(value.replace(/\D/g, '').slice(0, 6)); }} onVerify={verify} onSend={send} onSave={save} />;
 }
 interface AddBankViewProps {
+  errorKind?: string | null;
   banks: FinanceResource<Banks>; bankName: string; number: string; code: string; verifiedName: string | null; sent: boolean; busy: string | null; error: string | null;
   picker: boolean; onPicker: () => void; onPickerClose: () => void; onBank: (value: string) => void; onNumber: (value: string) => void; onCode: (value: string) => void; onVerify: () => void; onSend: () => void; onSave: () => void;
 }
@@ -65,6 +69,7 @@ export function AddBankView(props: AddBankViewProps) {
       <View style={styles.smallStack}><Text variant="caption" color="textMuted">Bank</Text><Pressable ref={bankButton} accessibilityRole="button" accessibilityLabel="Choose bank" accessibilityState={{ expanded: props.picker, disabled: busy || props.banks.loading || !props.banks.data?.length }} disabled={busy || props.banks.loading || !props.banks.data?.length} onPress={props.onPicker} style={[styles.bank, { minHeight: 48, borderColor: colors.border, backgroundColor: colors.surface }]}><RideIcon name="bank" size={18} /><Text variant="body" style={styles.copy}>{props.bankName || 'Choose your bank'}</Text><RideIcon name="down" size={16} /></Pressable></View>
       <View style={styles.smallStack}><Input label="Account number" accessibilityLabel="Ten digit account number" value={props.number} onChangeText={props.onNumber} keyboardType="number-pad" maxLength={10} editable={!busy} autoComplete="off" placeholder="10-digit account number" /><Text variant="caption" color="textMuted">10-digit Nigerian account number</Text></View>
       <Button label="Verify account name" accessibilityLabel="Verify account name" size="sm" fullWidth variant="outline" loading={props.busy === 'verify'} disabled={busy || props.banks.loading || Boolean(props.banks.error) || !props.bankName || !/^\d{10}$/.test(props.number)} onPress={props.onVerify} />
+      {props.error && props.errorKind === 'verify' ? <AppMessage message={props.error} /> : null}
       {props.verifiedName ? <FinanceCard mint><View style={styles.inline}><View style={[styles.icon, { backgroundColor: colors.success }]}><RideIcon name="check" size={18} color="textInverse" /></View><View style={styles.copy}><Text variant="caption" color="textMuted">Account name confirmed</Text><Text variant="button" selectable>{props.verifiedName}</Text></View></View></FinanceCard> : null}
     </View>
     <View style={[styles.sectionDivider, { borderTopColor: colors.border }]}>
@@ -73,7 +78,7 @@ export function AddBankView(props: AddBankViewProps) {
       <Input label="Verification code" value={props.code} onChangeText={props.onCode} keyboardType="number-pad" maxLength={6} autoComplete="sms-otp" placeholder="Enter 6-digit code" editable={props.sent && !busy} />
       <Button label="Save bank account" accessibilityLabel="Save bank account" size="sm" fullWidth loading={props.busy === 'save'} disabled={busy || !props.verifiedName || !props.sent || !/^\d{6}$/.test(props.code) || props.banks.loading || Boolean(props.banks.error)} onPress={props.onSave} />
     </View>
-    {props.error ? <Text variant="caption" color="danger" accessibilityRole="alert">{props.error}</Text> : null}
+    {props.error && props.errorKind !== 'verify' ? <AppMessage message={props.error} /> : null}
     <View style={styles.inline}><RideIcon name="lock" size={16} color="textMuted" /><Text variant="caption" color="textMuted" style={styles.copy}>Your code is required to save this account.</Text></View>
     <BankPicker visible={props.picker} banks={props.banks.data ?? []} onSelect={props.onBank} onClose={props.onPickerClose} onDismiss={() => { if (Platform.OS === 'web') bankButton.current?.focus(); }} />
   </FinancePage>;
@@ -143,14 +148,14 @@ export function WithdrawView(props: WithdrawViewProps) {
         <Button label="Add bank account" size="sm" variant="ghost" disabled={busy} onPress={props.onAdd} />
       </View>
       <Input label="Amount (₦)" accessibilityLabel="Withdrawal amount in naira" value={props.amount} onChangeText={props.onAmount} placeholder="Amount in naira" keyboardType="decimal-pad" editable={!busy} />
-      {props.amount && kobo === null ? <Text variant="caption" color="danger">Enter a positive amount with no more than two decimal places.</Text> : null}
-      {kobo !== null && kobo > props.wallet.withdrawableKobo && !props.wallet.loading && !props.wallet.error ? <Text variant="caption" color="danger">Amount exceeds your available balance.</Text> : null}
+      {props.amount && kobo === null ? <AppMessage compact message="Enter a positive amount with no more than two decimal places." /> : null}
+      {kobo !== null && kobo > props.wallet.withdrawableKobo && !props.wallet.loading && !props.wallet.error ? <AppMessage compact message="Amount exceeds your available balance." /> : null}
       <Text variant="button" accessibilityRole="header">Verify withdrawal</Text><Text variant="caption" color="textMuted">{props.sent ? 'Code sent to your registered phone.' : 'Send a code to your registered phone.'}</Text>
       <Button label={props.sent ? 'Resend verification code' : 'Send verification code'} leftIcon={<RideIcon name="device" size={18} color="primary" />} accessibilityLabel="Send withdrawal verification code" size="sm" variant="outline" disabled={busy || !props.valid} loading={props.busy === 'send'} onPress={props.onSend} />
       <Input label="Verification code" value={props.code} onChangeText={props.onCode} placeholder="Enter 6-digit code" keyboardType="number-pad" autoComplete="sms-otp" maxLength={6} editable={props.sent && !busy} />
       <View style={[styles.summaryStrip, { backgroundColor: colors.surfaceMuted }]}><View style={styles.inline}><Text variant="caption" color="textMuted" style={styles.copy}>Withdrawal amount</Text><Text variant="button">{kobo !== null ? formatNaira(kobo) : '—'}</Text></View></View>
+      {props.error ? <><AppMessage message={props.error} /><Text variant="caption" color="textMuted">If a request could not be confirmed, check Payouts before trying again.</Text></> : null}
       <Button label="Request withdrawal" accessibilityLabel="Request withdrawal" fullWidth size="sm" loading={props.busy === 'submit'} disabled={busy || !props.valid || !props.sent || !/^\d{6}$/.test(props.code)} onPress={props.onSubmit} />
-      {props.error ? <><Text variant="caption" color="danger" accessibilityRole="alert">{props.error}</Text><Text variant="caption" color="textMuted">If a request could not be confirmed, check Payouts before trying again.</Text></> : null}
       <FinanceLink icon="safety" subtle label="Track requests in Payouts" onPress={props.onPayouts} />
     </>}
   </FinancePage>;

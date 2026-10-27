@@ -1,3 +1,4 @@
+import { mobileFeedbackDependency } from '../../shared/testing/mobileFeedback';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -35,7 +36,7 @@ function harness(options: { phone?: string | null; intent?: string; verify?: (co
   const exports: Props = {};
   const source = readFileSync(resolve('../mobile/src/screens/auth/OtpScreen.tsx'), 'utf8');
   const code = compiler.transpileModule(source, { compilerOptions: { module: compiler.ModuleKind.CommonJS, target: compiler.ScriptTarget.ES2022, jsx: compiler.JsxEmit.ReactJSX } }).outputText;
-  runInNewContext(code, { exports, Error, require: (name: string) => { if (name in modules) return modules[name]; throw new Error(`Unexpected OTP dependency ${name}`); }, setTimeout: (fn: () => void) => { timers.push(fn); return timers.length; }, clearTimeout: () => undefined, requestAnimationFrame: (fn: () => void) => fn() });
+  runInNewContext(code, { exports, Error, require: (name: string) => { const feedbackModule = mobileFeedbackDependency(name); if (feedbackModule) return feedbackModule; if (name in modules) return modules[name]; throw new Error(`Unexpected OTP dependency ${name}`); }, setTimeout: (fn: () => void) => { timers.push(fn); return timers.length; }, clearTimeout: () => undefined, requestAnimationFrame: (fn: () => void) => fn() });
   const render = () => { cursor = 0; timers = []; return (exports.OtpScreen as () => Element)(); };
   const advance = (seconds: number) => { for (let i = 0; i < seconds; i++) { render(); timers[0]?.(); } };
   return { render, advance, routes, verifies, resends };
@@ -61,7 +62,7 @@ test('OTP rejection clears the code and displays a recoverable error', async () 
   change(h.render(), '123'); action(h.render(), 'onVerify'); assert.equal(h.verifies.length, 0);
   change(h.render(), '123456'); await flush();
   const error = h.render();
-  assert.equal(error.props.code, ''); assert.equal(error.props.loading, false); assert.equal(error.props.error, 'Code expired');
+  assert.equal(error.props.code, ''); assert.equal(error.props.loading, false); assert.equal(error.props.error, 'Verification failed. Try again.');
   change(error, '4'); assert.equal(h.render().props.error, undefined);
 });
 
@@ -71,7 +72,7 @@ test('resend honors cooldown, displays failures and restarts the countdown only 
   action(h.render(), 'onResend'); assert.equal(h.resends.length, 0);
   h.advance(60); assert.equal(h.render().props.seconds, 0);
   action(h.render(), 'onResend'); await flush();
-  assert.equal(h.render().props.error, 'SMS unavailable'); assert.equal(h.render().props.resending, false); assert.equal(h.render().props.seconds, 0);
+  assert.equal(h.render().props.error, 'Could not resend your code. Try again.'); assert.equal(h.render().props.resending, false); assert.equal(h.render().props.seconds, 0);
   fail = false; action(h.render(), 'onResend'); action(h.render(), 'onResend'); await flush();
   assert.deepEqual(h.resends, ['+2348000006789', '+2348000006789']);
   assert.equal(h.render().props.seconds, 60); assert.equal(h.render().props.error, undefined);

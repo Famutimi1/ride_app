@@ -1,0 +1,157 @@
+{
+  "kind": "Actual Expo UI and real Google Maps, isolated PostgreSQL and Redis",
+  "browser": "Chromium, separate rider and driver sessions",
+  "checks": [
+    {
+      "name": "driver font styles and panel sizing match the rider progress screen",
+      "status": "passed",
+      "durationMs": 12958
+    },
+    {
+      "name": "pickup layout has the real map and visible navigation, messaging, call and arrival controls",
+      "status": "passed",
+      "durationMs": 1280
+    },
+    {
+      "name": "arrival and start still use real backend transitions",
+      "status": "passed",
+      "durationMs": 1470
+    },
+    {
+      "name": "completion confirmation is dismissible and does not settle the trip",
+      "status": "passed",
+      "durationMs": 83
+    },
+    {
+      "name": "compact phone keeps the primary action and communication controls accessible",
+      "status": "passed",
+      "durationMs": 3052
+    },
+    {
+      "name": "message and call actions open the current trip conversation",
+      "status": "passed",
+      "durationMs": 1712
+    },
+    {
+      "name": "dark theme and desktop retain the same driver controls",
+      "status": "passed",
+      "durationMs": 4593
+    },
+    {
+      "name": "courier delivery and return retain handoff confirmation and sender details",
+      "status": "passed",
+      "durationMs": 7014
+    }
+  ],
+  "typography": {
+    "rider": {
+      "fontFamily": "Inter_600SemiBold",
+      "fontSize": "14px",
+      "fontWeight": "600",
+      "lineHeight": "normal",
+      "letterSpacing": "-0.5px"
+    },
+    "driver": {
+      "fontFamily": "Inter_600SemiBold",
+      "fontSize": "14px",
+      "fontWeight": "600",
+      "lineHeight": "normal",
+      "letterSpacing": "-0.5px"
+    }
+  },
+  "status": "passed",
+  "pageErrors": [],
+  "apiErrors": [
+    {
+      "session": "driver",
+      "path": "/api/geocode/reverse",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/trips/route",
+      "status": 500
+    },
+    {
+      "session": "rider",
+      "path": "/api/geocode/reverse",
+      "status": 500
+    },
+    {
+      "session": "rider",
+      "path": "/api/trips/route",
+      "status": 500
+    },
+    {
+      "session": "rider",
+      "path": "/api/trips/route",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/trips/route",
+      "status": 500
+    },
+    {
+      "session": "rider",
+      "path": "/api/trips/route",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/trips/route",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/geocode/reverse",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/trips/route",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/geocode/reverse",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/trips/route",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/geocode/reverse",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/trips/route",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/geocode/reverse",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/trips/route",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/geocode/reverse",
+      "status": 500
+    },
+    {
+      "session": "driver",
+      "path": "/api/trips/route",
+      "status": 500
+    }
+  ],
+  "dataIsolation": "Disposable database and Redis; fictional participants; real Google Maps rendering."
+}

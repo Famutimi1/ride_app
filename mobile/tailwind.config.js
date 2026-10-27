@@ -1,5 +1,8 @@
-const { platformSelect } = require('nativewind/theme');
-const androidSize = (android, other) => platformSelect({ android: `${android}px`, default: `${other}px` });
+// Metro sets NATIVEWIND_OS for each platform's stylesheet. Resolve sizes here:
+// NativeWind 4's platformSelect emits a native function even for "web", which
+// browsers discard instead of applying the font size and line height.
+const androidSize = (android, other) =>
+  `${process.env.NATIVEWIND_OS === 'android' ? android : other}px`;
 
 const semanticColorTokens = [
   'primary',

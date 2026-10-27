@@ -1,0 +1,19 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+group = 'com.rackyride.calls'
+version = '1.0.0'
+android {
+  namespace 'expo.modules.rakkycalls'
+  defaultConfig { versionCode 1; versionName '1.0.0' }
+}
+dependencies {
+  implementation 'com.facebook.react:react-android'
+  implementation project(':react-native-callkeep')
+  implementation project(':expo-notifications')
+  implementation project(':react-native-webrtc')
+  implementation 'com.google.firebase:firebase-messaging:25.0.1'
+  implementation 'androidx.core:core:1.17.0'
+  implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
+}

@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -93,7 +94,7 @@ export function SafetyCenterView({ role = 'rider', content: suppliedContent, onT
         <Button label="Call 112" accessibilityLabel="Call emergency services on 112" accessibilityHint="Opens your phone dialer" variant="destructive" size="sm" fullWidth className="mt-md" loading={calling === '112'} disabled={calling !== null} leftIcon={<RideIcon name="phone" size={18} color="textInverse" />} onPress={() => onCall('112')} />
         <Pressable accessibilityRole="button" accessibilityLabel="Call Lagos emergency line on 767" accessibilityHint="Lagos emergency number. Opens your phone dialer" accessibilityState={{ disabled: calling !== null, busy: calling === '767' }} disabled={calling !== null} onPress={() => onCall('767')} style={styles.lagosCall}>{calling === '767' ? <ActivityIndicator color={colors.danger} size="small" /> : <Text variant="caption" color="danger" style={styles.centered}>Lagos emergency line: 767</Text>}</Pressable>
         <Text variant="caption" color="textMuted" selectable style={styles.centered}>{browser ? 'If your browser cannot open a dialer, call 112 or 767 (Lagos) from your phone.' : 'Opens your phone dialer.'}</Text>
-        {callError ? <Text variant="caption" color="danger" accessibilityRole="alert" style={styles.smallGap}>{callError}</Text> : null}
+        {callError ? <AppMessage message={callError} style={styles.smallGap} /> : null}
       </View>
 
       <View style={styles.sectionHeading}><Text variant="button" accessibilityRole="header" style={styles.sectionTitle}>Your safety tools</Text><View style={[styles.tripBadge, { backgroundColor: activeTrip ? colors.primarySoft : colors.surfaceMuted }]}><Text variant="caption" color={activeTrip ? 'primary' : 'textMuted'}>{activeTrip ? 'Active trip' : 'No active trip'}</Text></View></View>
@@ -103,7 +104,7 @@ export function SafetyCenterView({ role = 'rider', content: suppliedContent, onT
         {role === 'rider' ? <SafetyTool icon="trusted" title="Trusted contacts" detail="Coming soon" disabled locked /> : null}
         <SafetyTool icon="support" title={content.safetyContactTitle} detail="Open non-emergency contact options." onPress={onSupport} last />
       </View>
-      {shareError ? <Text variant="caption" color="danger" accessibilityRole="alert" style={styles.smallGap}>{shareError}</Text> : null}
+      {shareError ? <AppMessage message={shareError} style={styles.smallGap} /> : null}
 
       <Text variant="button" accessibilityRole="header" style={styles.guidanceHeading}>{content.safetyHeading}</Text>
       <View style={[styles.tools, { backgroundColor: colors.surface, borderColor: colors.border }]}>

@@ -1,177 +1,126 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { userErrorMessage } from '@/utils/userMessage';
+import { AppMessage } from '@/components/common/AppMessage';
+import { useEffect, useRef, useState } from 'react';
+import { AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 import { Text } from '@/components/common';
 import { useTheme } from '@/constants/theme';
-import {
-  sendTripMessage,
-  subscribeToTripMessages,
-  type TripMessage,
-} from '@/services/socket';
+import { useTripChat } from '@/hooks/useTripChat';
 import { useAuthStore } from '@/store/authStore';
+import { useChatStore } from '@/store/chatStore';
 import { useTripStore } from '@/store/tripStore';
-import type { AuthUser } from '@/services/authService';
-import type { Trip } from '@/services/tripService';
-import { canContactTrip, roleHome } from '@/utils/roleAccess';
+import { messageKey, outgoingMessageStatus } from '@/utils/chatMessages';
+import { TripCallOptions } from '@/components/communication/TripCallOptions';
+import { roleHome } from '@/utils/roleAccess';
 
-const QUICK_REPLIES = ['I’m at the pickup point', 'I’ll be there shortly', 'Please call me'];
-
-function firstParam(value: string | string[] | undefined, fallback: string): string {
-  return Array.isArray(value) ? (value[0] ?? fallback) : (value ?? fallback);
-}
-
-function currentTime() {
-  return Date.now();
-}
+const QUICK_REPLIES=['I’m at the pickup point','I’ll be there shortly','Please message me'];
 
 export function TripChatScreen() {
-  const user = useAuthStore(state => state.session?.user);
-  const trip = useTripStore(state => state.trip);
-  const params = useLocalSearchParams<{ tripId?: string | string[] }>();
-  const requestedId = firstParam(params.tripId, '');
-  if (!user) return <Redirect href="/welcome" />;
-  if (!trip || !canContactTrip(trip, user.id, user.role, requestedId)) return <Redirect href={roleHome(user.role)} />;
-  return <TripChatContent key={`${user.id}:${user.role}:${trip.id}`} trip={trip} user={user} />;
+  const user=useAuthStore(state=>state.session?.user);
+  const activeTripId=useTripStore(state=>state.trip?.id);
+  const params=useLocalSearchParams<{tripId?:string|string[]}>();
+  const requested=Array.isArray(params.tripId)?params.tripId[0]:params.tripId;
+  const tripId=requested||activeTripId;
+  if(!user)return <Redirect href="/welcome" />;
+  if(!tripId||!/^[0-9a-f-]{36}$/i.test(tripId))return <Redirect href={roleHome(user.role)} />;
+  // History/push links are authorized by the server, independently of the
+  // in-memory active trip and current rider/driver display mode.
+  return <TripChatContent key={`${user.id}:${tripId}`} tripId={tripId} userId={user.id} />;
 }
 
-function TripChatContent({ trip, user }: { trip: Trip; user: AuthUser }) {
-  const router = useRouter();
-  const theme = useTheme();
-  const scrollRef = useRef<ScrollView>(null);
-  const tripId = trip.id;
-  const participantName = user.role === 'driver' ? trip.rider_name || 'Rider' : trip.driver_name || 'Driver';
-  const senderRole = user.role;
-  const [draft, setDraft] = useState('');
-  const [messages, setMessages] = useState<TripMessage[]>([]);
+function TripChatContent({tripId,userId}:{tripId:string;userId:string}) {
+  const router=useRouter();
+  const theme=useTheme();
+  const conversation=useTripChat(tripId,userId);
+  const scroll=useRef<ScrollView>(null);
+  const atBottom=useRef(true);
+  const draft=conversation?.draft??'';
+  const [callOpen,setCallOpen]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [sendError,setSendError]=useState<string|null>(null);
+  const [foreground,setForeground]=useState(AppState.currentState!=='background'&&AppState.currentState!=='inactive');
+  const details=conversation?.details;
+  const messages=conversation?.messages??[];
+  const participantName=details?.participant?.name||(details?.participantRole==='driver'?'Rider':'Driver');
+  const canMessage=details?.canMessage===true;
+  const maxLength=details?.maxMessageLength??2000;
 
-  useEffect(() => subscribeToTripMessages(tripId, (message) => {
-    if (message.tripId !== tripId) return;
-    setMessages((current) => current.some((item) => item.id === message.id)
-      ? current
-      : [...current, message]);
-  }), [tripId]);
+  useEffect(()=>{
+    const listener=AppState.addEventListener('change',state=>setForeground(state==='active'));
+    return ()=>listener.remove();
+  },[]);
+  useEffect(()=>{
+    if(foreground&&atBottom.current)void useChatStore.getState().markRead(tripId);
+  },[tripId,foreground,conversation?.synchronizedSequence,conversation?.receipts?.version]);
 
-  useEffect(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
-
-  const initials = useMemo(() => participantName.trim().slice(0, 1).toUpperCase() || 'R', [participantName]);
-  const returnToTrip = () => router.canGoBack() ? router.back() : router.replace(senderRole === 'driver' ? '/driver-trip' : '/ongoing-trip');
-  const send = (text = draft) => {
-    const current = useAuthStore.getState().session?.user;
-    if (current?.id !== user.id || current.role !== senderRole || !canContactTrip(useTripStore.getState().trip, user.id, senderRole, tripId)) return;
-    const value = text.trim();
-    if (!value || !user) return;
-    const message: TripMessage = {
-      id: `${user.id}-${currentTime()}`,
-      tripId,
-      senderId: user.id,
-      senderRole,
-      text: value,
-      sentAt: currentTime(),
-    };
-    setMessages((current) => [...current, message]);
-    setDraft('');
-    sendTripMessage(message);
+  const back=()=>router.canGoBack()?router.back():router.replace(details?.participantRole==='driver'?'/driver-dashboard':'/home');
+  const send=async(text=draft)=>{
+    if(saving||!canMessage||!text.trim())return;
+    setSaving(true);setSendError(null);
+    try{
+      await useChatStore.getState().enqueue(tripId,text);
+      await useChatStore.getState().setDraft(tripId,'').catch(()=>setSendError('Your message was saved, but the old draft could not be cleared from this device.'));atBottom.current=true;
+    }catch(error){setSendError(userErrorMessage(error, 'Could not save your message.'));}
+    finally{setSaving(false);}
   };
-
-  return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-background"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <SafeAreaView edges={['top']} className="border-b border-border bg-surface">
-        <View className="h-16 flex-row items-center px-lg">
-          <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={returnToTrip} className="h-11 w-11 items-center justify-center rounded-full bg-surfaceMuted active:opacity-70">
-            <Text variant="h3">←</Text>
-          </Pressable>
-          <View className="ml-md h-11 w-11 items-center justify-center rounded-full bg-successSoft">
-            <Text variant="bodyMedium" color="success">{initials}</Text>
-          </View>
-          <View className="ml-sm flex-1">
-            <Text variant="bodyMedium">{participantName}</Text>
-            <View className="flex-row items-center gap-xs">
-              <View className="h-2 w-2 rounded-full bg-success" />
-              <Text variant="caption" color="textMuted">Active trip · live messages</Text>
-            </View>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Call ${participantName}`}
-            onPress={() => router.push({ pathname: '/trip-call', params: { tripId, participantName, type: 'audio' } })}
-            className="h-11 w-11 items-center justify-center rounded-full bg-primarySoft active:opacity-70"
-          >
-            <Text color="primary">☎</Text>
-          </Pressable>
+  const retry=async(id:string)=>{
+    try{await useChatStore.getState().retry(tripId,id);}
+    catch{setSendError('Could not save the retry. Check your device storage and try again.');}
+  };
+  const error=sendError||conversation?.error;
+  return <KeyboardAvoidingView className="flex-1 bg-background" behavior={Platform.OS==='ios'?'padding':undefined}>
+    <SafeAreaView edges={['top']} className="border-b border-border bg-surface">
+      <View className="h-16 flex-row items-center px-lg">
+        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={back} className="h-11 w-11 items-center justify-center rounded-full bg-surfaceMuted active:opacity-70"><Text variant="h3">←</Text></Pressable>
+        <View className="ml-md h-11 w-11 items-center justify-center rounded-full bg-successSoft"><Text variant="bodyMedium" color="success">{participantName.trim().slice(0,1).toUpperCase()}</Text></View>
+        <View className="ml-sm flex-1">
+          <Text variant="bodyMedium">{participantName}</Text>
+          <Text variant="caption" color="textMuted">{!details?(conversation?.error?'Saved conversation':'Loading conversation…'):canMessage?'Trip messages':details.status==='closed'?'Trip ended · read-only history':'Messaging unavailable'}</Text>
         </View>
-      </SafeAreaView>
-
-      <View className="border-b border-border bg-primarySoft px-xl py-sm">
-        <Text variant="caption" color="primary" className="text-center">
-          Keep pickup updates here while your trip is active.
-        </Text>
+        {details?.canAudioCall?<Pressable accessibilityRole="button" accessibilityLabel={`Call ${participantName}`} onPress={()=>setCallOpen(true)} className="h-11 w-11 items-center justify-center rounded-full bg-primarySoft"><Text color="primary">☎</Text></Pressable>:null}
       </View>
-
-      <ScrollView
-        ref={scrollRef}
-        className="flex-1"
-        contentContainerClassName="px-lg py-xl"
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View className="mb-xl items-center">
-          <Text variant="caption" color="textMuted">Today</Text>
-        </View>
-        {messages.map((message) => {
-          const mine = message.senderId === user.id;
-          return (
-            <View key={message.id} className={`mb-sm ${mine ? 'items-end' : 'items-start'}`}>
-              <View className={`max-w-[82%] rounded-2xl px-lg py-md ${mine ? 'rounded-br-sm bg-primary' : 'rounded-bl-sm bg-surfaceMuted'}`}>
-                <Text color={mine ? 'textInverse' : 'text'}>{message.text}</Text>
-              </View>
-              <Text variant="caption" color="textMuted" className="mt-xs px-xs">
-                {new Date(message.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}{mine ? ' · Sent' : ''}
-              </Text>
-            </View>
-          );
-        })}
-      </ScrollView>
-
-      <View className="border-t border-border bg-surface px-lg pt-sm">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-sm pb-sm">
-          {QUICK_REPLIES.map((reply) => (
-            <Pressable key={reply} onPress={() => send(reply)} className="rounded-full border border-borderStrong px-md py-sm active:opacity-70">
-              <Text variant="caption">{reply}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+    </SafeAreaView>
+    <View className="border-b border-border bg-primarySoft px-xl py-sm"><Text variant="caption" color="primary" className="text-center">{!details&&messages.length?'Saved on this device. Reconnect for the latest updates.':canMessage?'Keep pickup updates here while your trip is active.':'Saved messages remain available after your trip.'}</Text></View>
+    {error?<View accessibilityRole="alert" className="border-b border-border bg-surface px-lg py-md">
+      <AppMessage message={error} />
+      <Pressable accessibilityRole="button" accessibilityLabel="Reconnect conversation" onPress={()=>{setSendError(null);void useChatStore.getState().synchronize(tripId);}} className="mt-sm py-sm"><Text variant="bodyMedium" color="primary">Retry connection</Text></Pressable>
+    </View>:null}
+    <ScrollView ref={scroll} className="flex-1" contentContainerClassName="px-lg py-xl" keyboardShouldPersistTaps="handled" scrollEventThrottle={100}
+      onScroll={event=>{
+        const {layoutMeasurement,contentOffset,contentSize}=event.nativeEvent;
+        atBottom.current=layoutMeasurement.height+contentOffset.y>=contentSize.height-40;
+        if(atBottom.current&&foreground)void useChatStore.getState().markRead(tripId);
+      }}
+      onContentSizeChange={()=>{if(atBottom.current)scroll.current?.scrollToEnd({animated:true});}}>
+      {conversation?.loading&&!messages.length?<Text variant="caption" color="textMuted" className="text-center">Loading saved messages…</Text>:null}
+      {conversation?.hasOlder?<Pressable accessibilityRole="button" disabled={conversation.loadingOlder} onPress={()=>{atBottom.current=false;void useChatStore.getState().loadOlder(tripId);}} className="mb-lg py-sm"><Text color="primary" className="text-center">{conversation.loadingOlder?'Loading…':'Load earlier messages'}</Text></Pressable>:null}
+      {details&&!messages.length&&!conversation?.loading?<Text variant="caption" color="textMuted" className="text-center">No messages yet.</Text>:null}
+      {messages.map(message=>{
+        const mine=message.senderId===userId;
+        const status=outgoingMessageStatus(message,conversation?.receipts??null,details?.participantRole??'rider');
+        const failed=mine&&message.localStatus==='failed'&&!message.recordId;
+        return <View key={messageKey(message)} className={`mb-md ${mine?'items-end':'items-start'}`}>
+          <View className={`max-w-[82%] rounded-2xl px-lg py-md ${mine?'rounded-br-sm bg-primary':'rounded-bl-sm bg-surfaceMuted'}`}><Text color={mine?'textInverse':'text'}>{message.text}</Text></View>
+          <Pressable accessibilityRole={failed?'button':undefined} accessibilityLabel={failed?'Retry failed message':undefined} disabled={!failed} onPress={()=>{void retry(message.id);}} className="mt-xs px-xs py-xs">
+            <Text variant="caption" color={failed?'danger':'textMuted'}>{new Date(message.sentAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}{mine?` · ${status}`:''}</Text>
+          </Pressable>
+          {failed?<Pressable accessibilityRole="button" accessibilityLabel="Discard failed message" className="px-xs py-sm" onPress={()=>{void useChatStore.getState().discard(tripId,message.id).catch(()=>setSendError('Could not discard this message. Check device storage and retry.'));}}><Text variant="caption" color="textMuted">Discard</Text></Pressable>:null}
+        </View>;
+      })}
+    </ScrollView>
+    <View className="border-t border-border bg-surface px-lg pt-sm">
+      {canMessage||(!details&&draft.length>0)?<>
+        {canMessage?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-sm pb-sm">{QUICK_REPLIES.map(reply=><Pressable key={reply} disabled={saving} onPress={()=>{void send(reply);}} className="rounded-full border border-borderStrong px-md py-sm active:opacity-70"><Text variant="caption">{reply}</Text></Pressable>)}</ScrollView>:null}
         <View className="flex-row items-end gap-sm pb-sm">
-          <View className="min-h-[48px] flex-1 justify-center rounded-[24px] bg-surfaceMuted px-lg py-sm">
-            <TextInput
-              accessibilityLabel="Message"
-              className="max-h-24 border-0 p-0 font-inter-regular text-body text-text outline-none"
-              multiline
-              onChangeText={setDraft}
-              placeholder="Message"
-              placeholderTextColor={theme.colors.textMuted}
-              selectionColor={theme.colors.primary}
-              value={draft}
-            />
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Send message"
-            disabled={!draft.trim()}
-            onPress={() => send()}
-            className={`h-12 w-12 items-center justify-center rounded-full bg-primary ${draft.trim() ? 'active:opacity-80' : 'opacity-40'}`}
-          >
-            <Text variant="h3" color="textInverse">↑</Text>
-          </Pressable>
+          <View className="min-h-[48px] flex-1 justify-center rounded-[24px] bg-surfaceMuted px-lg py-sm"><TextInput accessibilityLabel="Message" className="max-h-24 border-0 p-0 font-inter-regular text-body text-text outline-none" multiline editable={!saving} maxLength={maxLength} onChangeText={value=>{void useChatStore.getState().setDraft(tripId,value).catch(()=>setSendError('Your draft is kept on this screen, but could not be saved on this device.'));}} placeholder="Message" placeholderTextColor={theme.colors.textMuted} selectionColor={theme.colors.primary} value={draft}/></View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Send message" disabled={saving||!canMessage||!draft.trim()} onPress={()=>{void send();}} className={`h-12 w-12 items-center justify-center rounded-full bg-primary ${saving||!canMessage||!draft.trim()?'opacity-40':'active:opacity-80'}`}><Text variant="h3" color="textInverse">↑</Text></Pressable>
         </View>
-        <SafeAreaView edges={['bottom']} />
-      </View>
-    </KeyboardAvoidingView>
-  );
+        <Text variant="caption" color="textMuted" className="pb-sm">{canMessage?'Pending messages retry when you reconnect. Sent means saved by Rakky Ride.':'Reconnect to send your saved draft.'}</Text>
+      </>:<><Text variant="caption" color="textMuted" className="py-md text-center">{details?'This conversation is read-only.':'Connect to load this trip conversation.'}</Text>
+        {draft?<Text selectable variant="caption" color="textMuted" className="pb-md">Unsent draft: {draft}</Text>:null}</>}
+      <SafeAreaView edges={['bottom']}/>
+    </View>
+    {callOpen?<TripCallOptions tripId={tripId} participantName={participantName} onClose={()=>setCallOpen(false)}/>:null}
+  </KeyboardAvoidingView>;
 }

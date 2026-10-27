@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-27",
+  "kind": "Manual Android emulator UI exercise with a real Chromium WebRTC peer",
+  "android": {
+    "serial": "emulator-5554",
+    "apiLevel": 37,
+    "package": "com.rackyride.app",
+    "build": "Custom native development build; Expo Go is unsupported"
+  },
+  "isolation": "Disposable PostgreSQL and Redis; fictional rider/driver; synthetic stationary location and camera sources. Original emulator encrypted login/preferences/database restored afterward.",
+  "checks": [
+    {
+      "name": "Connected native/browser audio with bidirectional RTP and connected DTLS",
+      "evidence": "audio-state.json"
+    },
+    {
+      "name": "Switch to video visible on connected Android audio call",
+      "evidence": "audio-with-video-button.png"
+    },
+    {
+      "name": "Native requests upgrade, browser explicitly accepts, same call ID carries audio/video in both directions",
+      "evidence": "video-upgrade-state.json"
+    },
+    {
+      "name": "Native remote video renders and local preview displays",
+      "evidence": "video-upgrade-connected.png"
+    },
+    {
+      "name": "Native camera flip retains connected media and decoded frames",
+      "evidence": "video-flipped-state.json"
+    },
+    {
+      "name": "Camera off returns shared call to audio",
+      "evidence": "camera-off-state.json"
+    },
+    {
+      "name": "Incoming/sent messages and unsent draft retained after leaving/reopening chat",
+      "evidence": "chat-persistence-return.png"
+    },
+    {
+      "name": "End closes browser peer and server call",
+      "evidence": "ended-state.json"
+    }
+  ],
+  "automated": {
+    "focused": {
+      "passed": 172,
+      "failed": 0,
+      "skipped": 0
+    },
+    "videoBrowserScenarios": {
+      "passed": 10,
+      "failed": 0
+    },
+    "fullSuite": {
+      "passed": 401,
+      "failed": 3,
+      "skipped": 0,
+      "total": 404,
+      "baselineFailures": [
+        "email canonical palette/generated tokens mismatch",
+        "mobileCareRoles mock missing borderWidths.divider",
+        "mobileSettingsRoles mock missing borderWidths.divider"
+      ]
+    }
+  },
+  "manualFixtureNote": "The live fixture was kept open across the interactive session and exceeded its 20-minute node:test timeout. It is not counted as a passing automated test. Media/UI observations and snapshots are separate manual evidence. End/stop endpoints were called, disposable resources closed, and the original emulator login restored.",
+  "remaining": [
+    "Physical Android/iPhone microphone and speaker quality, Bluetooth and background/lock behavior",
+    "Production TURN and cellular/Wi-Fi handover",
+    "FCM/APNs provider delivery",
+    "iOS compilation, Safari and Firefox",
+    "First-grant permission dialog flow on physical devices"
+  ]
+}

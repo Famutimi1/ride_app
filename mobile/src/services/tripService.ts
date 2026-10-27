@@ -26,7 +26,7 @@ export interface TripOffer{tripId:string;serviceType?:'ride'|'courier';packageDe
 export interface TripEstimate{vehicleType:string;distanceM:number;durationS:number;encodedPolyline:string;fareKobo:number;distanceKm:number;durationMin:number;estimatedFare:number;currency:'NGN';quoteId:string;quoteExpiresAt:string}
 
 export class TripQuoteError extends Error {
-  constructor() { super('Your fare quote is no longer valid. Review the refreshed price and confirm again.'); }
+  constructor() { super('Your fare quote is no longer valid. Review the refreshed price and confirm again.'); this.name = 'TripQuoteError'; }
 }
 
 export interface TripRequest {

@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useEffect, useState, type ComponentProps } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -70,7 +71,7 @@ export function TripReceiptView({ driver = false, trip, loading, error, onRetry,
       <Text variant="bodyMedium" accessibilityRole="header" style={styles.title}>{summary?.title ?? 'Trip details'}</Text>
     </View>
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      {loading ? <View style={styles.feedback}><ActivityIndicator color={colors.primary} /><Text variant="caption" color="textMuted" accessibilityLiveRegion="polite">Loading trip details…</Text></View> : error || !trip || !summary ? <View style={[styles.feedback, { backgroundColor: colors.dangerSoft, borderRadius: 14 }]}><Text variant="caption" color="danger" accessibilityRole="alert">{error ?? 'Trip not found.'}</Text><Button label="Retry" size="sm" onPress={onRetry} /></View> : <>
+      {loading ? <View style={styles.feedback}><ActivityIndicator color={colors.primary} /><Text variant="caption" color="textMuted" accessibilityLiveRegion="polite">Loading trip details…</Text></View> : error || !trip || !summary ? <View style={[styles.feedback, { backgroundColor: colors.dangerSoft, borderRadius: 14 }]}><AppMessage message={error ?? 'Trip not found.'} /><Button label="Retry" size="sm" onPress={onRetry} /></View> : <>
         <Text variant="caption" color="textMuted">{dateLabel}</Text>
         <View style={[styles.summary, { backgroundColor: summary.fulfilled ? colors.primarySoft : colors.surfaceMuted, borderColor: colors.border }]}>
           <View style={[styles.summaryIcon, { borderRightColor: colors.border }]}><RideIcon name={courier ? 'package' : 'car'} size={courier ? 24 : 36} color="primary" /></View>

@@ -29,9 +29,10 @@ test(
     const fixtureQuery=async(query:unknown,values:unknown[]=[])=>{
       const text=typeof query==='string'?query:String((query as {text?:string})?.text??'');
       if(!active)return {rows:[],rowCount:0};
-      if(text.startsWith('SELECT rider_id,driver_id,status'))return {rows:[{rider_id:userId,driver_id:driverId,status:'driver_assigned'}],rowCount:1};
+      if(text.startsWith('SELECT rider_id,driver_id,status')||text.startsWith('SELECT id,rider_id,driver_id,status'))return {rows:[{id:tripId,rider_id:userId,driver_id:driverId,status:'driver_assigned'}],rowCount:1};
+      if(text.startsWith('SELECT * FROM trip_communications'))return {rows:[{trip_id:tripId,rider_id:userId,driver_id:driverId,status:'open',last_sequence:'0',rider_delivered_sequence:'0',rider_read_sequence:'0',driver_delivered_sequence:'0',driver_read_sequence:'0',receipt_version:'0'}],rowCount:1};
       if(text.startsWith('SELECT id::text,trip_id'))return {rows:[],rowCount:0};
-      if(text.startsWith('INSERT INTO trip_messages'))return {rows:[{id:'1',trip_id:tripId,sender_id:userId,sender_role:'rider',client_message_id:values[3],body:values[4],created_at:new Date()}],rowCount:1};
+      if(text.startsWith('INSERT INTO trip_messages'))return {rows:[{id:'1',sequence:'1',trip_id:tripId,sender_id:userId,sender_role:'rider',client_message_id:values[3],body:values[4],created_at:new Date()}],rowCount:1};
       return {rows:[{id:userId}],rowCount:1};
     };
     db.query=fixtureQuery as unknown as typeof db.query;

@@ -1,0 +1,51 @@
+{
+  "kind": "actual Expo UI with isolated PostgreSQL and Redis",
+  "browser": "Chromium, separate rider and driver sessions",
+  "checks": [
+    {
+      "name": "both assigned participants load the real chat UI",
+      "status": "passed",
+      "durationMs": 9
+    },
+    {
+      "name": "rider sends and driver receives one persisted message",
+      "status": "passed",
+      "durationMs": 112
+    },
+    {
+      "name": "driver replies and rider receives it",
+      "status": "passed",
+      "durationMs": 97
+    },
+    {
+      "name": "read receipts appear in both sessions",
+      "status": "passed",
+      "durationMs": 819
+    },
+    {
+      "name": "reload retains persisted conversation history",
+      "status": "passed",
+      "durationMs": 675
+    },
+    {
+      "name": "offline send stays pending then reconnects without duplicates",
+      "status": "passed",
+      "durationMs": 5400
+    },
+    {
+      "name": "read-only history is enforced after trip completion",
+      "status": "passed",
+      "durationMs": 4821
+    },
+    {
+      "name": "unassigned account cannot read chat history",
+      "status": "passed",
+      "durationMs": 18
+    }
+  ],
+  "status": "passed",
+  "messageCount": 3,
+  "pageErrors": [],
+  "apiErrors": [],
+  "dataIsolation": "Disposable database and Redis; external browser requests blocked; no real users, SMS or push delivery."
+}

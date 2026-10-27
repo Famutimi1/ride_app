@@ -8,6 +8,7 @@ import { SOCKET_EVENTS } from './events';
 import { db } from '../shared/config/db';
 import {sendTripMessage} from '../modules/trips/tripMessages.service';
 import { assertDriverCanGoOnline } from '../modules/payments/ledger.service';
+import { authorizeCallSignal,callSession } from '../modules/communication/call.service';
 
 interface TripMessage {
   id: string;
@@ -29,6 +30,13 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
   const userId = String(socket.data.userId);
   socket.join(`driver:${userId}`);
   socket.join(`user:${userId}`);
+  socket.on(SOCKET_EVENTS.CALL_SIGNAL,async(payload:unknown,acknowledge?:(result:{ok:boolean;error?:string})=>void)=>{
+    try{
+      const {targetSession,signal}=await authorizeCallSignal(userId,callSession(socket.data.sessionId),payload);
+      io.to(`session:${targetSession}`).emit(SOCKET_EVENTS.CALL_SIGNAL,signal);
+      if(typeof acknowledge==='function')acknowledge({ok:true});
+    }catch(error){if(typeof acknowledge==='function')acknowledge({ok:false,error:error instanceof Error?error.message:'call_signal_unavailable'});}
+  });
   socket.on(SOCKET_EVENTS.LEAVE_TRIP,(tripId:unknown)=>{if(typeof tripId==='string'&&/^[0-9a-f-]{36}$/i.test(tripId))void socket.leave(`trip:${tripId}`);});
 
   socket.on(SOCKET_EVENTS.JOIN_TRIP, async (tripId: string, acknowledge?: (result: { ok: boolean; error?: string }) => void) => {
@@ -52,7 +60,9 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
       const {rows}=await db.query("SELECT 1 FROM driver_profiles WHERE user_id=$1 AND status='approved'",[userId]);
       if(!rows[0]&&!active) { socket.emit(SOCKET_EVENTS.LOCATION_ERROR,'Driver is not approved'); return acknowledge?.({ ok:false,error:'driver_not_approved' }); }
       if(!active){await assertAnyServiceEnabled(userId);await assertDriverCanGoOnline(userId);}
-      const authenticatedPayload:DriverCoordinate={latitude:payload.latitude!,longitude:payload.longitude!,heading:payload.heading,driverId:userId,timestamp:payload.timestamp!};
+      const authenticatedPayload:DriverCoordinate={latitude:payload.latitude!,longitude:payload.longitude!,heading:payload.heading,driverId:userId,timestamp:payload.timestamp!,
+        sampleTimestamp:payload.sampleTimestamp??payload.timestamp,
+        accuracy:typeof payload.accuracy==='number'?payload.accuracy:null,speed:typeof payload.speed==='number'?payload.speed:null};
       await saveDriverLocation(authenticatedPayload);
       if(active){
         authenticatedPayload.tripId=active.id;

@@ -1,3 +1,5 @@
+import { AppMessage } from '@/components/common/AppMessage';
+import { feedback } from '@/store/feedbackStore';
 /**
  * ComponentGalleryScreen — a design-system reference (route: "/gallery").
  *
@@ -47,6 +49,16 @@ export function ComponentGalleryScreen() {
           <Button label="Dark" size="sm" variant="secondary" onPress={() => setThemePreference('dark')} />
           <Button label="System" size="sm" variant="secondary" onPress={() => setThemePreference('system')} />
         </View>
+
+        <Section title="Messages and confirmations">
+          <AppMessage message="We couldn’t connect. Check your internet connection and try again." actionLabel="Try again" onAction={() => feedback.success('Connection restored.')} />
+          <AppMessage tone="success" message="Your changes have been saved." />
+          <AppMessage tone="warning" message="The fare has changed. Review the new price before booking." />
+          <AppMessage tone="info" message="Your driver application is being reviewed." />
+          <Input label="Phone number" placeholder="Phone number" error="Enter a valid phone number." />
+          <Button label="Preview success toast" variant="outline" onPress={() => feedback.success('Your profile has been updated.')} />
+          <Button label="Preview confirmation" variant="outline" onPress={() => { void feedback.confirm({ title: 'Cancel this ride?', message: 'Your driver will be notified. You can book another ride when you’re ready.', confirmLabel: 'Cancel ride', cancelLabel: 'Keep ride', destructive: true }); }} />
+        </Section>
 
         <Section title="Brand and launch appearance">
           <View className="items-center justify-center rounded-xl border border-border bg-background py-3xl">

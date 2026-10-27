@@ -1,3 +1,4 @@
+import { UserFacingError } from '@/utils/userMessage';
 import { create } from 'zustand';
 import { apiErrorMessage } from '@/lib/apiClient';
 import * as api from '@/services/tripService';
@@ -33,7 +34,7 @@ const run = async <T>(set: (value: Partial<TripState>) => void, work: (update: (
     const message = apiErrorMessage(error);
     update({ error: message });
     if (error instanceof api.TripQuoteError) throw error;
-    throw new Error(message);
+    throw new UserFacingError(message);
   } finally { update({ loading: false }); }
 };
 

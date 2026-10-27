@@ -1,3 +1,4 @@
+import { UserFacingError } from '@/utils/userMessage';
 import { Redirect, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
@@ -9,7 +10,7 @@ import { DriverApplicationStatusView } from './DriverApplicationsView';
 // Reuse the store's authenticated read so metadata and cross-screen decisions agree.
 async function loadApplication() {
   const data = await useAuthStore.getState().refreshDriverApplication();
-  if (!data) throw new Error('Sign in again to load your application.');
+  if (!data) throw new UserFacingError('Sign in again to load your application.');
   return data;
 }
 

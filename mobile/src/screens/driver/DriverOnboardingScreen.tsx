@@ -1,3 +1,4 @@
+import { UserFacingError } from '@/utils/userMessage';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 
@@ -87,11 +88,11 @@ function DriverOnboardingForm() {
       if (step === 2) await saveVehicleInfo(form.vehicle);
       if (step === 3) {
         const { license, vehicleRegistration, insurance } = selectedDocuments;
-        if (!license || !vehicleRegistration || !insurance) throw new Error('Select all three documents again before continuing.');
+        if (!license || !vehicleRegistration || !insurance) throw new UserFacingError('Select all three documents again before continuing.');
         await uploadDriverDocuments({ license, vehicleRegistration, insurance });
       }
       if (step < 4) { setStep((current) => current + 1); return; }
-      if (!category || !serviceSettings) throw new Error('Choose your services first.');
+      if (!category || !serviceSettings) throw new UserFacingError('Choose your services first.');
       const saved = await applyForDriverServices({
         services, vehicleCategory: category, consentVersion: serviceSettings.consent.version,
         consentAccepted: true, expectedVersion: serviceSettings.version,

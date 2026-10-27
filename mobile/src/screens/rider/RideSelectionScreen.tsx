@@ -1,5 +1,7 @@
+import { AppMessage } from '@/components/common/AppMessage';
+import { feedback } from '@/store/feedbackStore';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Text } from '@/components/common';
@@ -59,6 +61,7 @@ export function RideSelectionScreen() {
   const walletKobo=useWalletStore(state=>state.walletKobo),refreshWallet=useWalletStore(state=>state.refresh);
   const walletLoading = useWalletStore(state => state.loading);
   const walletError = useWalletStore(state => state.error);
+  const [requestError, setRequestError] = useState<string | null>(null);
   const requestKey=useRef<string|null>(null);
 
   useEffect(() => {
@@ -78,10 +81,11 @@ export function RideSelectionScreen() {
     if (!pickup || !dropoff || !estimate || requesting || submissionInFlight.current) return;
     if (scheduledAt && (!scheduledTime || scheduledTime < Date.now() + SCHEDULE_MIN_LEAD_MS || scheduledTime > Date.now() + SCHEDULE_MAX_LEAD_MS)) {
       setConfirmationOpen(false);
-      Alert.alert('Choose a new pickup time', 'Scheduled pickup must be 30 minutes to 7 days from now.');
+      feedback.show('Choose a pickup time between 30 minutes and 7 days from now.', 'warning');
       router.replace('/schedule');
       return;
     }
+    setRequestError(null);
     submissionInFlight.current = true;
     setSubmitting(true);
     const approvedFareKobo = estimate.fareKobo;
@@ -107,7 +111,7 @@ export function RideSelectionScreen() {
       void refreshWallet();
       router.replace(trip.status === 'scheduled' ? '/schedule' : '/ongoing-trip');
     } catch (reason) {
-      Alert.alert(reason instanceof TripQuoteError ? 'Review the latest fare' : 'Could not request ride', apiErrorMessage(reason));
+      setRequestError(apiErrorMessage(reason));
     } finally {
       submissionInFlight.current = false;
       setSubmitting(false);
@@ -168,8 +172,8 @@ export function RideSelectionScreen() {
           <Text variant="caption" color="textMuted">{!pickup || !dropoff ? 'Choose pickup and destination to see your fare.' : scheduledTime ? `Pickup ${formatScheduledTime(scheduledTime, { dateStyle: 'medium', timeStyle: 'short' })} WAT` : 'Arrival time appears after a driver accepts'}</Text>
         </View>
         {routeFailed ? <Pressable accessibilityRole="button" onPress={() => setRouteAttempt(attempt => attempt + 1)} style={styles.retry}><Text variant="caption" color="primary">Map route unavailable. Retry route</Text></Pressable> : null}
-        {quoteError ? <Pressable accessibilityRole="button" onPress={retryQuote} style={styles.retry}><Text variant="caption" color="danger">{quoteError} · Retry fare</Text></Pressable> : null}
-        {fareChange ? <Text accessibilityRole="alert" variant="caption" color="danger" style={styles.fareNotice}>Fare changed from {formatNaira(fareChange.previousFareKobo)} to {formatNaira(fareChange.newFareKobo)}. Review the new price before booking.</Text> : null}
+        {quoteError ? <AppMessage message={quoteError} actionLabel="Retry fare" onAction={retryQuote} style={styles.retry} /> : null}
+        {fareChange ? <AppMessage tone="warning" style={styles.fareNotice} message={`Fare changed from ${formatNaira(fareChange.previousFareKobo)} to ${formatNaira(fareChange.newFareKobo)}. Review the new price before booking.`} /> : null}
 
         {RIDES.map(ride => {
           const active = ride.id === selectedRide;
@@ -196,6 +200,7 @@ export function RideSelectionScreen() {
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: Math.max(16, insets.bottom) }]}>
+        {requestError ? <AppMessage message={requestError} /> : null}
         <Pressable accessibilityRole="button" accessibilityLabel={`Choose payment method. Current method: ${selectedPayment.name}`} onPress={() => setPaymentOpen(true)} style={[styles.paymentRow, { borderColor: colors.border }]}>
           <RideIcon name={selectedPayment.icon} size={18} color="primary" />
           <View style={styles.paymentCopy}><Text variant="button">{selectedPayment.name}</Text><Text variant="caption" color="textMuted">{payment === 'wallet' ? walletBalanceLabel : selectedPayment.detail}</Text></View>

@@ -11,7 +11,7 @@
  *          keyboardType="phone-pad" />
  *   <Input label="Email" error="That email looks off" ... />
  */
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import {
   TextInput,
   type StyleProp,
@@ -20,6 +20,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { AppMessage } from './AppMessage';
 import { Text } from './Text';
 import { useTheme } from '@/constants/theme';
 
@@ -46,6 +47,7 @@ export function Input({
   className,
   ...rest
 }: InputProps) {
+  const errorId = useId();
   const [focused, setFocused] = useState(false);
   const { colors } = useTheme();
 
@@ -77,6 +79,8 @@ export function Input({
         {leftIcon}
         <TextInput
           accessibilityLabel={label ?? rest.placeholder}
+          aria-describedby={error ? errorId : undefined}
+          aria-invalid={Boolean(error)}
           placeholderTextColor={colors.textMuted}
           selectionColor={colors.primary}
           // Merge the body type style so the text matches the rest of the app,
@@ -101,11 +105,7 @@ export function Input({
         {rightIcon}
       </View>
 
-      {error && (
-        <Text variant="caption" color="danger" className="ml-[2px]">
-          {error}
-        </Text>
-      )}
+      {error ? <View nativeID={errorId}><AppMessage compact message={error} /></View> : null}
     </View>
   );
 }

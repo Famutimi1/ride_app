@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -73,6 +74,9 @@ export function ScheduleRideScreen() {
   const [upcoming, setUpcoming] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const cancelInFlight = useRef(false);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const [cancelId, setCancelId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const slots = scheduleSlots(day);
@@ -100,18 +104,20 @@ export function ScheduleRideScreen() {
 
   const continueBooking = () => {
     if (!selectedTime || selectedTime < Date.now() + SCHEDULE_MIN_LEAD_MS || selectedTime > Date.now() + SCHEDULE_MAX_LEAD_MS) {
-      setError('Choose a pickup time at least 30 minutes from now and within the next 7 days.');
+      setSelectionError('Choose a pickup time at least 30 minutes from now and within the next 7 days.');
       return;
     }
     router.push({ pathname: '/set-destination', params: { scheduledAt: new Date(selectedTime).toISOString() } });
   };
 
   const confirmCancel = async () => {
-    if (!cancelId) return;
+    if (!cancelId || cancelInFlight.current) return;
+    cancelInFlight.current = true;
+    setCancelError(null);
     setCancelling(true);
     try { await cancelTrip(cancelId, 'Cancelled scheduled ride'); setCancelId(null); await refresh(); }
-    catch (reason) { setError(apiErrorMessage(reason)); }
-    finally { setCancelling(false); }
+    catch (reason) { setCancelError(apiErrorMessage(reason)); }
+    finally { cancelInFlight.current = false; setCancelling(false); }
   };
 
   return <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
@@ -139,7 +145,7 @@ export function ScheduleRideScreen() {
           {days.map((value, index) => {
             const selected = day === value;
             const label = index === 0 ? 'Today' : index === 1 ? 'Tomorrow' : formatScheduledTime(value, { weekday: 'short' });
-            return <Pressable key={value} accessibilityRole="button" accessibilityLabel={`${label}, ${dateLabel(value)}`} accessibilityState={{ selected }} onPress={() => { if (value !== day) timeScroll.reset(); setDay(value); setSelectedTime(null); setError(null); }} style={[styles.day, { borderColor: selected ? colors.primary : colors.border, backgroundColor: selected ? colors.primary : colors.surface }]}>
+            return <Pressable key={value} accessibilityRole="button" accessibilityLabel={`${label}, ${dateLabel(value)}`} accessibilityState={{ selected }} onPress={() => { if (value !== day) timeScroll.reset(); setDay(value); setSelectedTime(null); setSelectionError(null); }} style={[styles.day, { borderColor: selected ? colors.primary : colors.border, backgroundColor: selected ? colors.primary : colors.surface }]}>
               <Text variant="button" color={selected ? 'textInverse' : 'text'}>{label}</Text>
               <View style={styles.dayDate}><Text variant="caption" color={selected ? 'textInverse' : 'textMuted'}>{formatScheduledTime(value, { day: 'numeric', month: 'short' })}</Text>{selected ? <RideIcon name="check" size={13} color="textInverse" /> : null}</View>
             </Pressable>;
@@ -156,7 +162,7 @@ export function ScheduleRideScreen() {
             onScroll={event => timeScroll.onScroll(event.nativeEvent.contentOffset.y)}>
             {slots.map((value) => {
               const selected = selectedTime === value;
-              return <Pressable key={value} accessibilityRole="button" accessibilityLabel={`Pickup at ${timeLabel(value)}`} accessibilityState={{ selected }} onPress={() => { setSelectedTime(value); setError(null); }} style={[styles.time, { borderColor: selected ? colors.primary : colors.border, backgroundColor: selected ? colors.primarySoft : colors.surface }]}>
+              return <Pressable key={value} accessibilityRole="button" accessibilityLabel={`Pickup at ${timeLabel(value)}`} accessibilityState={{ selected }} onPress={() => { setSelectedTime(value); setSelectionError(null); }} style={[styles.time, { borderColor: selected ? colors.primary : colors.border, backgroundColor: selected ? colors.primarySoft : colors.surface }]}>
                 <Text variant="caption" color={selected ? 'primary' : 'text'}>{timeLabel(value)}</Text>
                 {selected ? <RideIcon name="check" size={13} color="primary" /> : null}
               </Pressable>;
@@ -176,16 +182,17 @@ export function ScheduleRideScreen() {
 
       <View style={styles.section}>
         <View style={styles.sectionHeading}><Text variant="button" accessibilityRole="header">Upcoming rides</Text><Pressable accessibilityRole="button" accessibilityLabel="Refresh upcoming rides" disabled={loading} onPress={() => void refresh()} style={styles.refresh}><RideIcon name="refresh" size={15} color="primary" /><Text variant="caption" color="primary">{loading ? 'Loading…' : 'Refresh'}</Text></Pressable></View>
+        {error ? <AppMessage message={error} actionLabel="Reload upcoming rides" onAction={() => void refresh()} busy={loading} /> : null}
         {upcoming.length ? upcoming.map(trip => <ScheduledRideCard key={trip.id} trip={trip} confirmingCancel={cancelId === trip.id} cancelling={cancelling}
-          onCancel={() => setCancelId(trip.id)} onKeep={() => setCancelId(null)} onConfirmCancel={() => void confirmCancel()} onViewRide={() => router.push('/ongoing-trip')} />) : <View style={[styles.empty, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+          cancelError={cancelId === trip.id ? cancelError : null} onCancel={() => { setCancelError(null); setCancelId(trip.id); }} onKeep={() => { setCancelError(null); setCancelId(null); }} onConfirmCancel={() => void confirmCancel()} onViewRide={() => router.push('/ongoing-trip')} />) : <View style={[styles.empty, { borderColor: colors.border, backgroundColor: colors.surface }]}>
           <View style={[styles.emptyIcon, { backgroundColor: colors.surfaceMuted }]}><RideIcon name="calendar" size={19} color="textMuted" /></View>
           <View style={styles.copy}><Text variant="button">{loading ? 'Loading upcoming rides…' : 'No upcoming rides yet'}</Text><Text variant="caption" color="textMuted" style={styles.caption}>Your bookings will appear here.</Text></View>
         </View>}
       </View>
-      {error ? <Text accessibilityRole="alert" variant="caption" color="danger">{error}</Text> : null}
     </ScrollView>
     <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
       <View style={styles.inline}><RideIcon name="calendar" size={16} color={selectedTime ? 'text' : 'textMuted'} /><Text variant="caption" color={selectedTime ? 'text' : 'textMuted'} style={styles.copy} accessibilityLiveRegion="polite">{selectedTime ? `${dateLabel(selectedTime)} · ${timeLabel(selectedTime)}` : 'Choose a pickup day and time'}</Text></View>
+      {selectionError ? <AppMessage message={selectionError} /> : null}
       <Button label="Choose addresses" size="sm" className="min-h-12" fullWidth disabled={!selectedTime} onPress={continueBooking} rightIcon={<View style={styles.forward}><AddressIcon name="back" size={18} color="textInverse" /></View>} />
     </View>
   </SafeAreaView>;
@@ -197,11 +204,12 @@ interface ScheduledRideCardProps {
   cancelling: boolean;
   onCancel: () => void;
   onKeep: () => void;
+  cancelError: string | null;
   onConfirmCancel: () => void;
   onViewRide: () => void;
 }
 
-function ScheduledRideCard({ trip, confirmingCancel, cancelling, onCancel, onKeep, onConfirmCancel, onViewRide }: ScheduledRideCardProps) {
+function ScheduledRideCard({ cancelError, trip, confirmingCancel, cancelling, onCancel, onKeep, onConfirmCancel, onViewRide }: ScheduledRideCardProps) {
   const { colors } = useTheme();
   const [expanded, setExpanded] = useState(false);
   const failed = trip.status === 'cancelled' || trip.status === 'no_drivers_found';
@@ -233,6 +241,7 @@ function ScheduledRideCard({ trip, confirmingCancel, cancelling, onCancel, onKee
     </View>
     {trip.status === 'scheduled' && confirmingCancel ? <View style={[styles.cancel, { backgroundColor: colors.dangerSoft }]}>
       <Text variant="button">Cancel this scheduled ride?</Text>
+      {cancelError ? <AppMessage message={cancelError} /> : null}
       <View style={styles.cancelActions}><Button size="sm" variant="secondary" label="Keep ride" disabled={cancelling} onPress={onKeep} /><Button size="sm" variant="destructive" label="Yes, cancel" loading={cancelling} onPress={onConfirmCancel} /></View>
     </View> : null}
   </View>;

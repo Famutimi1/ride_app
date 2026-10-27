@@ -1,6 +1,8 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 import { resolve } from 'node:path';
 import { loadEnvFile } from 'node:process';
+import withAndroidNdkVersion from './plugins/withAndroidNdkVersion.ts';
+import withNativeCalls from './plugins/withNativeCalls.ts';
 import { nativeBrandColors } from './src/constants/colors.ts';
 
 /** Inject the .env Google Maps key into native map configuration at build time. */
@@ -66,11 +68,22 @@ export default ({ config, projectRoot }: ConfigContext): ExpoConfig => {
     return plugin as NonNullable<ExpoConfig['plugins']>[number];
   });
 
-  return {
+  // Calling is a normal app feature; retain the old opt-out for existing builds.
+  const nativeCallsSetting=process.env.RAKKY_NATIVE_CALLS_ENABLED??'true';
+  if(!['true','false'].includes(nativeCallsSetting))throw new Error('RAKKY_NATIVE_CALLS_ENABLED must be true or false.');
+  const nativeCallsEnabled=nativeCallsSetting==='true';
+  const apnsEnvironment=process.env.RAKKY_APNS_ENVIRONMENT??'development';
+  if(!['development','production'].includes(apnsEnvironment))throw new Error('RAKKY_APNS_ENVIRONMENT must be development or production.');
+  return withAndroidNdkVersion(withNativeCalls({
     ...config,
     primaryColor: nativeBrandColors.primary,
+    ios: {
+      ...config.ios,
+      infoPlist: {...config.ios?.infoPlist,NSMicrophoneUsageDescription:'Allow Rakky Ride to use your microphone for trip calls.',NSCameraUsageDescription:'Allow Rakky Ride to use your camera when you choose a trip video call.'},
+    },
     android: {
       ...config.android,
+      permissions: [...new Set([...(config.android?.permissions??[]),'android.permission.CAMERA','android.permission.RECORD_AUDIO','android.permission.MODIFY_AUDIO_SETTINGS','android.permission.ACCESS_NETWORK_STATE','android.permission.WAKE_LOCK'])],
       googleServicesFile,
       adaptiveIcon: {
         ...config.android?.adaptiveIcon,
@@ -78,5 +91,5 @@ export default ({ config, projectRoot }: ConfigContext): ExpoConfig => {
       },
     },
     plugins,
-  } as ExpoConfig;
+  } as ExpoConfig,{enabled:nativeCallsEnabled,apnsEnvironment:apnsEnvironment as 'development'|'production'}));
 };

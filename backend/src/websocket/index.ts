@@ -25,7 +25,7 @@ export async function attachWebsocket(server: HttpServer) {
   sub.on('error', () => console.error('[socket] Redis subscriber unavailable'));
   try { await Promise.all([pub.connect(), sub.connect()]); }
   catch (error) { pub.disconnect(); sub.disconnect(); throw error; }
-  const io = new Server(server, { cors: { origin: '*' } });
+  const io = new Server(server, { cors: { origin: '*' }, maxHttpBufferSize: 16*1024 });
   io.adapter(createAdapter(pub, sub, { key: 'rakky:socket.io', publishOnSpecificResponseChannel: true }));
   server.once('close', () => { pub.disconnect(); sub.disconnect(); });
   registerNotificationServer(io);

@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Linking, Platform, StyleSheet, View } from 'react-native';
 import { Button, Text } from '@/components/common';
@@ -62,7 +63,7 @@ export function LocationPermissionsView({ role, snapshot, loading, error, openin
       <PermissionStatus label="Location while using the app" value={permissionLabel(snapshot.foreground)} allowed={snapshot.foreground === 'granted'} />
       {role === 'driver' ? <PermissionStatus label="Background location" value={permissionLabel(snapshot.background)} allowed={snapshot.background === 'granted'} /> : null}
     </View> : null}
-    {error ? <Text variant="caption" color="danger" accessibilityRole="alert">{error}</Text> : null}
+    {error ? <AppMessage message={error} /> : null}
     {role === 'driver' ? <Text variant="caption" color="textMuted">Use Go online on Driver home to control your availability.</Text> : null}
     <Button label="Open device settings" size="sm" fullWidth loading={opening} onPress={onSettings} />
     <Button label="Refresh permissions" variant="outline" size="sm" fullWidth loading={loading} disabled={opening} onPress={onRefresh} />

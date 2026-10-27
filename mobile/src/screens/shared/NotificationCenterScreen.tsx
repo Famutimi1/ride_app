@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, RefreshControl, SectionList, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -128,15 +129,15 @@ export function NotificationCenterView({ role = 'rider', items, filter, onFilter
     <View accessibilityRole="tablist" accessibilityLabel="Notification filters" style={styles.filters}>{(['all', 'unread'] as const).map(value => <Pressable key={value} accessibilityRole="tab" accessibilityLabel={value === 'all' ? 'All' : 'Unread'} accessibilityState={{ selected: filter === value }} aria-selected={filter === value} onPress={() => onFilter(value)} style={[styles.filter, { backgroundColor: filter === value ? colors.primary : colors.surfaceMuted }]}><Text variant="button" color={filter === value ? 'textInverse' : 'text'}>{value === 'all' ? 'All' : 'Unread'}</Text></Pressable>)}</View>
     <SectionList<AppNotification> sections={sections} keyExtractor={item => item.id} extraData={actionsDisabled} stickySectionHeadersEnabled={false} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing && !initialLoading} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-      ListHeaderComponent={actionError || (error && !initialError) ? <View style={[styles.error, { backgroundColor: colors.dangerSoft }]}><Text variant="caption" color="danger" accessibilityRole="alert">{actionError ?? error}</Text>{error ? <Button label="Retry refresh" variant="outline" size="sm" disabled={actionsDisabled} onPress={onRefresh} /> : null}</View> : null}
+      ListHeaderComponent={actionError || (error && !initialError) ? <View style={[styles.error, { backgroundColor: colors.dangerSoft }]}><AppMessage message={actionError ?? error} />{error ? <Button label="Retry refresh" variant="outline" size="sm" disabled={actionsDisabled} onPress={onRefresh} /> : null}</View> : null}
       renderSectionHeader={({ section }) => <Text variant="caption" color="textMuted" accessibilityRole="header" style={styles.date}>{section.title}</Text>}
       renderItem={({ item }) => <NotificationRow item={item} disabled={actionsDisabled} onPress={() => onOpen(item)} />}
       ListEmptyComponent={<View style={[styles.empty, { backgroundColor: initialError ? colors.dangerSoft : colors.surfaceMuted }]}>
         {initialLoading ? <><ActivityIndicator color={colors.primary} /><Text variant="caption" color="textMuted">Loading notifications…</Text></>
-          : initialError ? <><Text variant="caption" color="danger" accessibilityRole="alert">{error}</Text><Button label="Retry" size="sm" loading={refreshing} onPress={onRefresh} /></>
+          : initialError ? <><AppMessage message={error} /><Button label="Retry" size="sm" loading={refreshing} onPress={onRefresh} /></>
             : <><RideIcon name="bell" size={22} color="icon" /><Text variant="bodyMedium" style={styles.centered}>{filter === 'unread' ? hasMore ? 'No unread updates loaded' : 'You’re all caught up' : 'No notifications yet'}</Text><Text variant="caption" color="textMuted" style={styles.centered}>{filter === 'unread' ? hasMore ? 'Load older notifications to keep looking.' : 'New notifications will appear here.' : role === 'driver' ? 'Ride offers, earnings and driver updates will appear here.' : 'Your rides, payments and account updates will appear here.'}</Text></>}
       </View>}
-      ListFooterComponent={!initialLoading && !initialError && hasMore ? <View style={styles.more}>{moreError ? <Text variant="caption" color="danger" accessibilityRole="alert">{moreError}</Text> : null}<Button label={moreError ? 'Retry loading' : 'Load more'} variant="outline" size="sm" fullWidth loading={loadingMore} disabled={actionsDisabled} rightIcon={<RideIcon name="down" size={16} color="primary" />} onPress={onMore} /></View> : null}
+      ListFooterComponent={!initialLoading && !initialError && hasMore ? <View style={styles.more}>{moreError ? <AppMessage message={moreError} /> : null}<Button label={moreError ? 'Retry loading' : 'Load more'} variant="outline" size="sm" fullWidth loading={loadingMore} disabled={actionsDisabled} rightIcon={<RideIcon name="down" size={16} color="primary" />} onPress={onMore} /></View> : null}
     />
   </SafeAreaView>;
 }

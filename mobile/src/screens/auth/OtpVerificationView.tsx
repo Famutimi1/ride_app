@@ -1,3 +1,4 @@
+import { AppMessage } from '@/components/common/AppMessage';
 import { useState, type RefObject } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -49,7 +50,7 @@ export function OtpVerificationView({ phone, code, inputRef, error, loading, res
             </View>
 
             <Pressable accessibilityRole="button" accessibilityLabel="Change phone number" accessibilityState={{ disabled: busy }} disabled={busy} onPress={onChangeNumber} style={styles.changeNumber}><Text variant="button" color="primary">Change number →</Text></Pressable>
-            {error ? <Text variant="caption" color="danger" accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
+            {error ? <AppMessage message={error} style={styles.error} /> : null}
           </View>
 
           <View style={styles.footer}>

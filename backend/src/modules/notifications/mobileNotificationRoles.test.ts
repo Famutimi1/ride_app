@@ -1,3 +1,4 @@
+import { mobileFeedbackDependency } from '../../shared/testing/mobileFeedback';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -12,7 +13,7 @@ const { createStore } = mobileRequire('zustand/vanilla') as { createStore: (init
 function load<T>(path: string, mocks: Record<string, unknown>): T {
   const code = compiler.transpileModule(readFileSync(resolve('../mobile/src', path), 'utf8'), { compilerOptions: { module: compiler.ModuleKind.CommonJS, target: compiler.ScriptTarget.ES2022 } }).outputText;
   const exports: Record<string, unknown> = {};
-  runInNewContext(code, { exports, require: (name: string) => { if (name in mocks) return mocks[name]; throw new Error(`Unexpected import ${name}`); } });
+  runInNewContext(code, { exports, require: (name: string) => { const feedbackModule = mobileFeedbackDependency(name); if (feedbackModule) return feedbackModule; if (name in mocks) return mocks[name]; throw new Error(`Unexpected import ${name}`); } });
   return exports as T;
 }
 const audience = load<{ notificationAudience: typeof notificationAudience; notificationBelongsToRole: (item: Notice, role: NotificationRole) => boolean }>('utils/notificationAudience.ts', {});
@@ -143,6 +144,7 @@ test('notification destinations use participant role and the original trip ident
   assert.deepEqual(plain(service.notificationDestination({ ...notice('earn', 'driver'), type: 'topup_succeeded', category: 'wallet_updates' })), { pathname: '/account/[section]', params: { section: 'driver-wallet' } });
   assert.deepEqual(plain(service.notificationDestination({ ...notice('pay'), type: 'ride_payment_settled', category: 'wallet_updates' })), { pathname: '/account/[section]', params: { section: 'payment' } });
   assert.equal(service.notificationDestination({ ...notice('app', 'driver'), category: 'support', type: 'driver_application_rejected' }), '/driver-status');
+  assert.deepEqual(plain(service.notificationDestination({...notice('chat','driver'),type:'trip_message'})),{pathname:'/trip-chat',params:{tripId:'trip-chat'}});
 });
 
 test('failed refresh keeps existing notifications and can retry', async () => {

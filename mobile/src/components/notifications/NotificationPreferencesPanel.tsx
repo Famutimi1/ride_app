@@ -1,3 +1,5 @@
+import { userErrorMessage } from '@/utils/userMessage';
+import { AppMessage } from '@/components/common/AppMessage';
 import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { ActivityIndicator, AppState, Linking, Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -66,7 +68,7 @@ function RoleNotificationPreferences({ userId, role }: { userId?: string; role: 
       if (key === 'vibrationEnabled') await configureNotificationChannels(value);
       await refresh();
     } catch (error) {
-      if (isCurrent()) setChangeError(error instanceof Error ? error.message : 'Could not update notification settings. Please try again.');
+      if (isCurrent()) setChangeError(userErrorMessage(error, 'Could not update notification settings. Please try again.'));
     } finally { inFlight.current = false; if (mounted.current) setSaving(null); }
   };
   const retry = () => {
@@ -100,7 +102,7 @@ export function NotificationPreferencesView({ driver, preferences, permission, s
   const disabled = saving !== null;
   const groupStyle = [styles.group, { backgroundColor: colors.surface, borderColor: colors.border }];
   return <View>
-    {loadError ? <View style={styles.error}><Text variant="caption" color="danger" accessibilityRole="alert">{loadError}</Text><Button label="Try again" size="sm" variant="outline" disabled={disabled} onPress={onRetry} /></View> : null}
+    {loadError ? <View style={styles.error}><AppMessage message={loadError} /><Button label="Try again" size="sm" variant="outline" disabled={disabled} onPress={onRetry} /></View> : null}
     <View style={[styles.push, { borderColor: colors.border, backgroundColor: colors.surfaceMuted }]}>
       <View style={styles.rowContent}>
         <View style={[styles.icon, { backgroundColor: colors.surface }]}><RideIcon name="bell" size={18} color="textMuted" /></View>
@@ -112,7 +114,7 @@ export function NotificationPreferencesView({ driver, preferences, permission, s
       {canRequest ? <Button label="Allow notifications" variant="ghost" size="sm" className="mt-xs self-start" disabled={disabled} onPress={() => onChange('pushEnabled', true)} /> : null}
       {needsSettings ? <Button label="Open device settings" variant="ghost" size="sm" className="mt-xs self-start" disabled={disabled} onPress={onDeviceSettings} /> : null}
     </View>
-    {changeError ? <Text variant="caption" color="danger" accessibilityRole="alert" style={styles.message}>{changeError}</Text> : null}
+    {changeError ? <AppMessage message={changeError} style={styles.message} /> : null}
     {saving ? <View accessibilityLiveRegion="polite" style={styles.saving}><ActivityIndicator size="small" color={colors.primary} /><Text variant="caption" color="textMuted">Saving preference…</Text></View> : null}
     <Text variant="caption" color="textMuted" accessibilityRole="header" style={styles.heading}>UPDATES</Text>
     <View style={groupStyle}>

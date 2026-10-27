@@ -1,7 +1,9 @@
 import dotenv from 'dotenv';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { homedir } from 'node:os';
 import {isIP} from 'node:net';
+import { communicationConfiguration } from '../modules/communication/communication.config';
 
 dotenv.config();
 
@@ -12,6 +14,22 @@ const legacyGoogleMapsKey = existsSync(legacyMobileEnvPath)
   ? dotenv.parse(readFileSync(legacyMobileEnvPath)).GOOGLE_MAPS_API_KEY
   : undefined;
 const nodeEnv = process.env.NODE_ENV ?? 'development';
+// Reuse the existing credential at its fixed private location. A container can
+// mount the same credential at /run/secrets/rakky-fcm.json without another env value.
+// Isolated tests must never discover the developer's real credential.
+const defaultCredentialFile = nodeEnv === 'test' || process.env.RAKKY_TEST_ISOLATED === 'true' ? ''
+  : [resolve(homedir(), '.config/rakkyride/credentials/expo-fcm-v1.json'), '/run/secrets/rakky-fcm.json'].find(path => existsSync(path)) ?? '';
+const communication = communicationConfiguration(process.env, undefined, defaultCredentialFile);
+const turnUrls=(process.env.TURN_URLS??'').split(',').map(value=>value.trim()).filter(Boolean);
+if(turnUrls.some(value=>!/^turns?:[a-zA-Z0-9.[\]:-]+(?:\?transport=(?:tcp|udp))?$/.test(value))) throw new Error('TURN_URLS must contain TURN URLs without embedded credentials.');
+const stunUrls=(process.env.STUN_URLS??'').split(',').map(value=>value.trim()).filter(Boolean);
+if(stunUrls.some(value=>!/^stuns?:[a-zA-Z0-9.[\]:-]+$/.test(value))) throw new Error('STUN_URLS must contain STUN URLs without embedded credentials or query parameters.');
+const turnSecret=process.env.TURN_SHARED_SECRET??'';
+const callPushTokenKey=process.env.CALL_PUSH_TOKEN_KEY??'';
+if(callPushTokenKey&&(!/^[A-Za-z0-9+/]{43}=$/.test(callPushTokenKey)||Buffer.from(callPushTokenKey,'base64').length!==32))throw new Error('CALL_PUSH_TOKEN_KEY must be a base64-encoded 32-byte key.');
+const callApnsSandbox=process.env.CALL_APNS_SANDBOX??'true';
+if(!['true','false'].includes(callApnsSandbox))throw new Error('CALL_APNS_SANDBOX must be true or false.');
+if(turnSecret && turnSecret.length<32) throw new Error('TURN_SHARED_SECRET must contain at least 32 characters.');
 const testOtpEnabled = process.env.TEST_OTP_ENABLED ?? 'false';
 if (!['true', 'false'].includes(testOtpEnabled)) throw new Error('TEST_OTP_ENABLED must be true or false.');
 const testOtpCode = process.env.TEST_OTP_CODE ?? '';
@@ -78,6 +96,16 @@ export const env = {
   CLOUDINARY_PRIVATE_DOWNLOAD_TTL_SECONDS: mediaInteger('CLOUDINARY_PRIVATE_DOWNLOAD_TTL_SECONDS', 60, 30, 300),
   PORT: Number(process.env.PORT) || 4000,
   NODE_ENV: nodeEnv,
+  ...communication,
+  TURN_URLS: turnUrls,
+  STUN_URLS: stunUrls,
+  TURN_SHARED_SECRET: turnSecret,
+  CALL_PUSH_TOKEN_KEY:callPushTokenKey,
+  CALL_APNS_KEY_FILE:process.env.CALL_APNS_KEY_FILE??'',
+  CALL_APNS_KEY_ID:process.env.CALL_APNS_KEY_ID??'',
+  CALL_APNS_TEAM_ID:process.env.CALL_APNS_TEAM_ID??'',
+  CALL_APNS_BUNDLE_ID:process.env.CALL_APNS_BUNDLE_ID??'com.rackyride.app',
+  CALL_APNS_SANDBOX:callApnsSandbox==='true',
   DATABASE_URL: process.env.DATABASE_URL ?? '',
   REDIS_URL: process.env.REDIS_URL ?? '',
   GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_SERVER_KEY ?? process.env.GOOGLE_MAPS_API_KEY ?? legacyGoogleMapsKey ?? '',

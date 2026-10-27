@@ -1,10 +1,11 @@
+import { feedback } from '@/store/feedbackStore';
+import { AppMessage } from '@/components/common/AppMessage';
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, Share, View } from 'react-native';
+import { Pressable, ScrollView, Share, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppMap, type AppMapMarker } from '@/components/map';
 import { Button, Text } from '@/components/common';
-import { nativeWindTheme, useTheme } from '@/constants/theme';
 import { useMapStore } from '@/store/mapStore';
 import { useTripStore } from '@/store/tripStore';
 import { useLiveDriverTracking } from '@/hooks/useLiveDriverTracking';
@@ -15,10 +16,11 @@ import { DriverSearchView } from './DriverSearchView';
 import { NoDriversFoundView } from './NoDriversFoundView';
 import { prepareTripRetry } from '@/utils/tripRetry';
 import { activeTripRegion } from '@/utils/tripCamera';
+import { TripCallOptions } from '@/components/communication/TripCallOptions';
 import { TripCancellationModal } from '@/components/trip/TripCancellationModal';
 
 export function OngoingTripScreen(){
-  const router=useRouter(),theme=useTheme();
+  const router=useRouter();
   const trip=useTripStore(s=>s.trip),driverLocation=useTripStore(s=>s.driverLocation),cancelTrip=useTripStore(s=>s.cancel),clearTrip=useTripStore(s=>s.clear),loading=useTripStore(s=>s.loading);
   useLiveDriverTracking(trip?.id);
   const region=useMapStore(s=>s.cameraRegion),clearTripMap=useMapStore(s=>s.clearTripMap);
@@ -55,12 +57,13 @@ export function OngoingTripScreen(){
   const courier=trip.service_type==='courier';
   const courierCopy={searching:['Finding a delivery driver','We are sending your package request to nearby drivers.'],driver_assigned:[`${driverName} is coming for your package`,'Meet the driver at pickup and hand over the sealed package.'],driver_arrived:[`${driverName} is at pickup`,'Hand the package directly to the driver.'],in_progress:['Package on its way','Your recipient must meet the driver and provide the delivery code.'],returning:['Package returning to you','The recipient could not receive it. Meet the driver at the pickup address and provide the code after the package is handed back.'],returned:['Package returned','The sender confirmed the return. The original delivery fare was charged.'],completed:['Package delivered','The recipient confirmed the handoff.'],cancelled:['Delivery cancelled','This delivery is no longer active.'],no_drivers_found:['No drivers found','Try again shortly.']}[trip.status];
   const cancel=async(reason:string)=>{await cancelTrip(reason);setCancelOpen(false);clearTripMap();router.replace('/home');};
-  const share=()=>Share.share({message:`Rakky Ride from ${trip.pickup_address} to ${trip.dropoff_address}${hasDriver?` with ${driverName} (${trip.plate_number??'vehicle details pending'})`:''}.`});
+  const shareText = (message: string) => Share.share({ message }).catch(() => { feedback.error('We couldn’t open sharing. Please try again.'); });
+  const share=()=>shareText(`Rakky Ride from ${trip.pickup_address} to ${trip.dropoff_address}${hasDriver?` with ${driverName} (${trip.plate_number??'vehicle details pending'})`:''}.`);
 
-  const courierDetails = courier&&trip.courier_details?<View className="mt-md rounded-xl bg-surfaceMuted p-md"><Text variant="bodyMedium">📦 {trip.courier_details.description}</Text><Text variant="caption" color="textMuted">Recipient: {trip.courier_details.recipientName} · {trip.courier_details.recipientPhone}</Text>{deliveryCode?<><Text variant="caption" color="primary" className="mt-sm">{trip.status==='returning'?'Sender handoff code':'Delivery code for recipient'}</Text><Text variant="h2">{deliveryCode}</Text><Text variant="caption" color="textMuted">{trip.status==='returning'?'Give the code to the driver only after your package is returned.':'Share this code with the recipient, not the driver.'}</Text>{trip.status!=='returning'?<Button label="Share code with recipient" variant="outline" fullWidth className="mt-sm" onPress={()=>void Share.share({message:`Rakky Ride delivery to ${trip.courier_details?.recipientName}: give code ${deliveryCode} to the driver only when your package arrives.`})}/>:null}{trip.status==='in_progress'||trip.status==='returning'?<Button label="Generate a new code" variant="ghost" fullWidth className="mt-xs" loading={rotatingCode} onPress={()=>{setRotatingCode(true);void rotateCourierDeliveryCode(trip.id).then(code=>{setDeliveryCode(code);setCodeError(null);}).catch(reason=>setCodeError(apiErrorMessage(reason))).finally(()=>setRotatingCode(false));}}/>:null}</>:null}{codeError?<Text variant="caption" color="danger">{codeError}</Text>:null}</View>:null;
+  const courierDetails = courier&&trip.courier_details?<View className="mt-md rounded-xl bg-surfaceMuted p-md"><Text variant="bodyMedium">📦 {trip.courier_details.description}</Text><Text variant="caption" color="textMuted">Recipient: {trip.courier_details.recipientName} · {trip.courier_details.recipientPhone}</Text>{deliveryCode?<><Text variant="caption" color="primary" className="mt-sm">{trip.status==='returning'?'Sender handoff code':'Delivery code for recipient'}</Text><Text variant="h2">{deliveryCode}</Text><Text variant="caption" color="textMuted">{trip.status==='returning'?'Give the code to the driver only after your package is returned.':'Share this code with the recipient, not the driver.'}</Text>{trip.status!=='returning'?<Button label="Share code with recipient" variant="outline" fullWidth className="mt-sm" onPress={()=>void shareText(`Rakky Ride delivery to ${trip.courier_details?.recipientName}: give code ${deliveryCode} to the driver only when your package arrives.`)}/>:null}{trip.status==='in_progress'||trip.status==='returning'?<Button label="Generate a new code" variant="ghost" fullWidth className="mt-xs" loading={rotatingCode} onPress={()=>{setRotatingCode(true);void rotateCourierDeliveryCode(trip.id).then(code=>{setDeliveryCode(code);setCodeError(null);}).catch(reason=>setCodeError(apiErrorMessage(reason))).finally(()=>setRotatingCode(false));}}/>:null}</>:null}{codeError?<AppMessage message={codeError} />:null}</View>:null;
 
   return <View className="flex-1 bg-background">
-    {trip.status==='searching' ? <DriverSearchView trip={trip} deliveryCode={deliveryCode} onShareCode={()=>void Share.share({message:`Rakky Ride delivery to ${trip.courier_details?.recipientName}: give code ${deliveryCode} to the driver only when your package arrives.`})} mapProps={{region,markers,polyline:route.primary,secondaryPolyline:route.secondary,followsUserLocation:true}} onBack={()=>router.replace('/home')} onCancel={()=>setCancelOpen(true)} /> : <>
+    {trip.status==='searching' ? <DriverSearchView trip={trip} deliveryCode={deliveryCode} onShareCode={()=>void shareText(`Rakky Ride delivery to ${trip.courier_details?.recipientName}: give code ${deliveryCode} to the driver only when your package arrives.`)} mapProps={{region,markers,polyline:route.primary,secondaryPolyline:route.secondary,followsUserLocation:true}} onBack={()=>router.replace('/home')} onCancel={()=>setCancelOpen(true)} /> : <>
     <AppMap region={followRegion??region} markers={markers} polyline={route.primary} secondaryPolyline={route.secondary} fitRouteOnChange={!followRegion} mapPadding={{top:100,right:36,bottom:390,left:36}}/>
     {hasDriver&&!liveDriver?<View className="absolute left-lg right-lg top-24 rounded-lg bg-surface px-md py-sm shadow-sm"><Text variant="caption" color="textMuted">Waiting for the driver’s live location</Text></View>:null}
     <SafeAreaView edges={['top']} className="absolute left-lg right-lg top-0"><View className="flex-row items-center gap-md"><Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={()=>router.replace('/home')} className="h-12 w-12 items-center justify-center rounded-full bg-surface shadow-md"><Text variant="h3">←</Text></Pressable><View className="flex-1 rounded-xl bg-surface px-lg py-md shadow-md"><Text variant="bodyMedium" numberOfLines={1}>{trip.status==='returning'?'Returning to sender':trip.status==='in_progress'?courier?'Package on its way':'On the way to destination':'Driver tracking active'}</Text><Text variant="caption" color="textMuted" numberOfLines={1}>{trip.status==='returning'?trip.pickup_address:trip.dropoff_address}</Text></View></View></SafeAreaView>
@@ -76,7 +79,7 @@ export function OngoingTripScreen(){
     </>}
 
     {cancelOpen ? <TripCancellationModal courier={courier} busy={loading} onKeep={()=>setCancelOpen(false)} onConfirm={cancel} /> : null}
-    <Modal visible={callOpen} transparent animationType="fade" onRequestClose={()=>setCallOpen(false)}><Pressable onPress={()=>setCallOpen(false)} className="flex-1 items-center justify-center px-xl" style={[nativeWindTheme[theme.scheme],{backgroundColor:theme.colors.overlay}]}><View className="w-full rounded-xl bg-surface p-xl"><Text variant="h3">Call {driverName}</Text><Text color="textMuted" className="mt-xs">Choose a secure in-app call.</Text><Button label="Audio call" fullWidth className="mt-lg" onPress={()=>{setCallOpen(false);router.push({pathname:'/trip-call',params:{tripId:trip.id,participantName:driverName,type:'audio'}});}}/><Button label="Video call" variant="outline" fullWidth className="mt-sm" onPress={()=>{setCallOpen(false);router.push({pathname:'/trip-call',params:{tripId:trip.id,participantName:driverName,type:'video'}});}}/></View></Pressable></Modal>
+    {callOpen ? <TripCallOptions tripId={trip.id} participantName={driverName} onClose={()=>setCallOpen(false)} /> : null}
   </View>;
 }
 

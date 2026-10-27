@@ -7,6 +7,7 @@ import {ensureRedis} from '../../shared/config/redis';
 import {notificationCategoryEnabled,type DeliveryPreferences} from './notificationPolicy';
 import {isServiceOfferCurrent} from '../matching/serviceEligibility';
 import {notificationAudience} from './notificationAudience';
+import {chatPushEligible} from '../communication/communication.policy';
 
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function webPushConfiguration(){
@@ -66,6 +67,7 @@ export async function processBrowserNotification(id:string){
   if(!webPushConfiguration().configured)return;
   const row=(await db.query<BrowserNotification>(`SELECT n.*,COALESCE(p.push_enabled,true) push_enabled,COALESCE(p.trip_updates_enabled,true) trip_updates_enabled,COALESCE(p.driver_offers_enabled,true) driver_offers_enabled,COALESCE(p.scheduled_reminders_enabled,true) scheduled_reminders_enabled,COALESCE(p.wallet_updates_enabled,true) wallet_updates_enabled,COALESCE(p.promotions_enabled,false) promotions_enabled,COALESCE(p.sound_enabled,true) sound_enabled,COALESCE(p.vibration_enabled,true) vibration_enabled FROM notifications n LEFT JOIN notification_preferences p ON p.user_id=n.user_id WHERE n.id=$1`,[id])).rows[0];
   if(!row||row.data?.sendPush===false||!notificationCategoryEnabled(row)||row.expires_at&&row.expires_at.getTime()<=Date.now())return;
+  if(row.type==='trip_message'&&!await chatPushEligible(db,row.user_id,row.data))return;
   if(row.type==='ride_offer'&&!(typeof row.data.tripId==='string'&&uuid.test(row.data.tripId)&&await isServiceOfferCurrent(row.user_id,row.data.tripId)))return;
   const subscriptions=(await db.query<Subscription>(`SELECT s.id,s.endpoint,s.p256dh,s.auth FROM web_push_subscriptions s JOIN users u ON u.id=s.user_id WHERE s.user_id=$1 AND s.enabled=true AND u.is_active=true AND EXISTS(SELECT 1 FROM refresh_tokens r WHERE r.user_id=s.user_id AND r.session_id=s.session_id AND r.session_scope='app' AND r.revoked_at IS NULL AND r.expires_at>now()) ORDER BY s.created_at LIMIT 20`,[row.user_id])).rows;
   let retry=false;

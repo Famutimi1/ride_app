@@ -1,3 +1,5 @@
+import { userErrorMessage } from '@/utils/userMessage';
+import { AppMessage } from '@/components/common/AppMessage';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -43,7 +45,7 @@ export function PhoneScreen() {
       });
       router.push('/otp');
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not send the code. Try again.');
+      setError(userErrorMessage(reason, 'Could not send the code. Try again.'));
     } finally {
       setLoading(false);
     }
@@ -62,7 +64,7 @@ export function PhoneScreen() {
         router.replace(destination === 'driver-dashboard' ? '/driver-dashboard' : destination === 'driver-status' ? '/driver-status' : '/home');
       }
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Google sign-up failed.');
+      setError(userErrorMessage(reason, 'Google sign-up failed.'));
     } finally {
       setGoogleLoading(false);
     }
@@ -164,7 +166,7 @@ export function PhoneScreen() {
             </View>
 
             <View style={styles.actions}>
-              {error ? <Text variant="caption" color="danger" accessibilityRole="alert" accessibilityLiveRegion="polite">{error}</Text> : null}
+              {error ? <AppMessage message={error} /> : null}
               <Button
                 label="Continue"
                 size="lg"
@@ -190,7 +192,7 @@ export function PhoneScreen() {
                     disabled={loading}
                     onPress={() => void continueWithGoogle()}
                     onCredential={(token) => void continueWithGoogle(token)}
-                    onError={(reason) => setError(reason.message)}
+                    onError={(reason) => setError(userErrorMessage(reason, 'Google sign-in is unavailable. Try again or use your phone number.'))}
                   />
                 </>
               ) : null}
