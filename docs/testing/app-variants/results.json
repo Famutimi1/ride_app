@@ -1,0 +1,134 @@
+{
+  "date": "2026-10-28",
+  "kind": "Expo SDK 57 variant configuration, followed by a successful signed EAS preview APK build and emulator installation/startup alongside the existing package. Physical-device sign-in, Maps and push delivery remain unverified.",
+  "checks": [
+    {
+      "variant": "development",
+      "androidPackage": "com.rackyride.app.test",
+      "iosBundleId": "com.rackyride.app.test",
+      "scheme": "rackyride-test",
+      "name": "Rakky Ride Test",
+      "existingExpoProjectPreserved": true,
+      "runtimePolicy": "fingerprint",
+      "testLocalHttpAllowed": true,
+      "developmentLauncherScheme": true,
+      "firebaseAndApiPreflight": "passed",
+      "status": "passed",
+      "iosTransportPolicyVerified": true
+    },
+    {
+      "variant": "preview",
+      "androidPackage": "com.rackyride.app.test",
+      "iosBundleId": "com.rackyride.app.test",
+      "scheme": "rackyride-test",
+      "name": "Rakky Ride Test",
+      "existingExpoProjectPreserved": true,
+      "runtimePolicy": "fingerprint",
+      "testLocalHttpAllowed": true,
+      "developmentLauncherScheme": false,
+      "firebaseAndApiPreflight": "passed",
+      "status": "passed",
+      "iosTransportPolicyVerified": true
+    },
+    {
+      "variant": "production",
+      "androidPackage": "com.rackyride.app",
+      "iosBundleId": "com.rackyride.app",
+      "scheme": "rackyride",
+      "name": "RackyRide",
+      "existingExpoProjectPreserved": true,
+      "runtimePolicy": "fingerprint",
+      "testLocalHttpAllowed": false,
+      "developmentLauncherScheme": false,
+      "firebaseAndApiPreflight": "passed",
+      "status": "passed",
+      "iosTransportPolicyVerified": true
+    }
+  ],
+  "automated": {
+    "variantTestsPassed": 6,
+    "variantTestsFailed": 0,
+    "mobileTypecheck": "passed",
+    "mobileLint": "passed",
+    "nativeConfigVariantsPassed": 3
+  },
+  "firebaseAndEasFollowup": {
+    "projectId": "rakky-ride-f1892",
+    "androidTestPackage": "com.rackyride.app.test",
+    "registeredThroughSignedInConsole": true,
+    "downloadedClientProjectAndPackageValidated": true,
+    "localTestFileIgnoredByGit": true,
+    "developmentAndPreviewPreflight": "passed",
+    "previewNativeIntrospectionWithRealClient": "passed",
+    "remoteEasEnvironmentsVerified": [
+      "development",
+      "preview",
+      "production"
+    ],
+    "productionFirebaseFileRetained": true,
+    "testFirebaseFileIsolatedFromProduction": true,
+    "existingGoogleCredentialsReused": true,
+    "testApiUrl": "http://172.20.10.2:4000",
+    "testApiHealth": "passed",
+    "nativeApkBuilt": true
+  },
+  "androidSigningFollowup": {
+    "date": "2026-10-28",
+    "applicationId": "com.rackyride.app.test",
+    "separateTestKeystoreCreated": true,
+    "sha1": "3D:69:A3:58:6F:4D:33:63:AC:F0:D4:18:E3:B6:23:49:78:84:98:AD",
+    "sha256": "EF:1E:9C:85:33:EB:F7:3C:F9:17:CD:B3:D2:A0:90:1A:77:27:8C:38:8A:40:5E:7F:20:55:FA:B5:E9:A1:95:22",
+    "firebaseFingerprintsSavedAndVerified": true,
+    "refreshedFirebaseClientUnchanged": true,
+    "googleOauthProject": "rackyride-510222",
+    "androidOauthClientCreated": "Rakky Ride Test - EAS preview",
+    "existingWebClientRetained": true,
+    "existingFcmV1CredentialAssignedToTestPackage": true,
+    "googleTestUserEmails": "info@rakkyride.com rejected by Google as ineligible; user subsequently requested public OAuth access rather than a test-user restriction",
+    "mapsAuthorization": "Actual Maps key still unidentified; Firebase Android and Browser keys do not match. No restrictions changed.",
+    "buildAttempts": [
+      {
+        "id": "b9f1be3e-3bd9-46b5-a34e-cf2c9e942aa7",
+        "status": "ERRORED",
+        "reason": "Local masked-view manifest had been rewritten by Gradle; fingerprint differed from a fresh EAS install"
+      },
+      {
+        "id": "777298ac-136a-40be-b4e4-e1c2c8d4f065",
+        "status": "FINISHED",
+        "fix": "Idempotent postinstall normalization matching masked-view's own Gradle behavior"
+      }
+    ],
+    "cleanInstallNormalizationCheck": "passed",
+    "normalizationIdempotenceCheck": "passed",
+    "apkVerification": {
+      "path": "/Users/mac/Downloads/Rakky-Ride-Test-preview.apk",
+      "package": "com.rackyride.app.test",
+      "label": "Rakky Ride Test",
+      "signingSha1Matches": true,
+      "signingSha256Matches": true,
+      "emulator": "emulator-5554",
+      "installation": "passed",
+      "coldStart": "passed",
+      "existingProductionPackageStillInstalled": true,
+      "fatalCrashInStartupLog": false,
+      "physicalPhoneTested": false
+    },
+    "publicOauth": {
+      "requestedByUser": true,
+      "lastVerifiedPublishingStatus": "Testing",
+      "publishingButtonDisabledForIncompleteBranding": true,
+      "homePageEntered": "https://rakkyride.com",
+      "privacyPolicyEntered": "https://rakkyride.com/privacy",
+      "brandingSaveConfirmed": true,
+      "publicPublishingConfirmed": false,
+      "privacyPolicyHttpStatus": 404,
+      "homePageRedirectsToAdminLogin": true,
+      "blocker": "Branding save confirmed by Google success toast; Audience publishing status still needs changing and verification"
+    }
+  },
+  "remaining": [
+    "Confirm the deployed production HTTPS API URL; test builds require the Mac’s current network address or a reachable staging server",
+    "Finish public OAuth publishing and identify the actual Maps key’s restrictions",
+    "Verify Google sign-in, Maps and notification delivery on a physical phone"
+  ]
+}

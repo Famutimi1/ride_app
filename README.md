@@ -12,6 +12,7 @@ PostgreSQL + Redis + Socket.io + Paystack.
 - [Money and database ownership guide](/Users/mac/Desktop/ride_app/docs/architecture/money-and-database-ownership-guide.md) — payment tables, step-by-step money flows, code examples, and verified limitations
 - [Trips, schedules, and courier ownership guide](/Users/mac/Desktop/ride_app/docs/architecture/trips-schedules-courier-ownership-guide.md) — UI-to-database walkthroughs, Redis, WebSockets, dispatch, delivery codes, returns, and troubleshooting examples
 - `docs/setup/local-development.md` — how to run this locally
+- [Firebase, Google Maps, signing, and EAS setup](docs/setup/firebase-google-maps-eas-guide.md) — beginner walkthrough of push credentials, client files, fingerprints, Google login, build environments, and updates
 
 ## Docs map
 | Folder | What lives here |

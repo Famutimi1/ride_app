@@ -35,6 +35,7 @@ yarn-error.*
 
 # Firebase Android client configuration (supply as GOOGLE_SERVICES_JSON in EAS)
 /google-services.json
+/google-services.test.json
 
 # typescript
 *.tsbuildinfo

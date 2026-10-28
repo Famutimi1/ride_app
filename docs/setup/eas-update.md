@@ -38,17 +38,17 @@ updates; an older installed binary without `expo-updates` cannot gain support re
 
 ## Publish later JavaScript, styling and asset updates
 
-Test on a preview build before publishing to production:
+Test on a preview build before publishing to production. The npm update commands select the app variant as well as its channel/environment; the plain local default is development:
 
 ```sh
 eas build --platform android --profile preview
-eas update --platform android --channel preview --environment preview --message "Describe the tested change"
+npm run update:test:android -- --message "Describe the tested change"
 ```
 
 Once verified, publish the intended code to production:
 
 ```sh
-eas update --platform android --channel production --environment production --message "Describe the release"
+npm run update:production:android -- --message "Describe the release"
 ```
 
 Use the same EAS environment for a build and its updates, including the public
@@ -73,3 +73,7 @@ preview/release build containing this native module.
 References: [EAS Update setup](https://docs.expo.dev/eas-update/getting-started/),
 [SDK 57 updates](https://docs.expo.dev/versions/v57.0.0/sdk/updates/),
 [runtime compatibility](https://docs.expo.dev/eas-update/runtime-versions/).
+
+## Production and test identities
+
+Production retains `com.rackyride.app` / `rackyride`; development and preview use `com.rackyride.app.test` / `rackyride-test`. The existing EAS project, production channel and fingerprint runtime policy are preserved. Follow [app variant setup](app-variants.md) for Firebase client registration, API endpoints and build readiness. Preview/development replace each other; either can coexist with production. Native rebuilds are required for these identifiers to take effect.

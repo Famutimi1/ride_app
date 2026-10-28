@@ -54,6 +54,14 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "postinstall": "node --experimental-strip-types scripts/normalize-native-fingerprint.ts",
+    "eas-build-post-install": "node --experimental-strip-types scripts/check-build-config.ts",
+    "check:build": "node --experimental-strip-types scripts/check-build-config.ts",
+    "test:variants": "node --experimental-strip-types --test scripts/test-app-variants.ts",
+    "build:test:android": "eas build --platform android --profile preview",
+    "build:production:android": "eas build --platform android --profile production",
+    "update:test:android": "APP_VARIANT=preview eas update --platform android --channel preview --environment preview",
+    "update:production:android": "APP_VARIANT=production eas update --platform android --channel production --environment production",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",

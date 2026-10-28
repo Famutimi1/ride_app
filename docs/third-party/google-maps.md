@@ -5,8 +5,8 @@ Implementation details and file ownership are documented in
 
 Use three restricted keys in one Google Cloud project:
 
-- Android key: Maps SDK for Android; restrict to `com.famutimi.ride` and the release/debug SHA-1 fingerprints.
-- iOS key: Maps SDK for iOS; restrict to bundle ID `com.famutimi.ride`.
+- Android key: Maps SDK for Android; authorize production package `com.rackyride.app` and test package `com.rackyride.app.test` with their respective signing SHA-1 fingerprints. Preserve existing authorized apps when adding the test entry.
+- iOS key: Maps SDK for iOS; authorize production bundle ID `com.rackyride.app` and, when provisioning iOS tests, `com.rackyride.app.test`.
 - Backend key: Places API (New), Geocoding API, Directions API, and Distance Matrix API; restrict by the deployed backend IP addresses.
 
 Put only the platform keys in `mobile/.env`:
@@ -37,5 +37,9 @@ server key and fare rules do not ship in the application bundle.
 
 The app identifiers configured for key restrictions are:
 
-- Android package: `com.famutimi.ride`
-- iOS bundle identifier: `com.famutimi.ride`
+- Production Android package / iOS bundle identifier: `com.rackyride.app`
+- Test Android package / iOS bundle identifier: `com.rackyride.app.test`
+
+The EAS preview signing SHA-1 and the console setup status are recorded in
+`docs/setup/app-variants.md`. Adding SHA fingerprints in Firebase does not by
+itself update the existing Maps key's application restrictions in Google Cloud.
